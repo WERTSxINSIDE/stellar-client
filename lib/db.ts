@@ -55,11 +55,30 @@ async function initDb() {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS balance_history (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount     INTEGER NOT NULL,
+        type       TEXT NOT NULL,
+        note       TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS play_sessions (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        started_at TIMESTAMP DEFAULT NOW(),
+        ended_at   TIMESTAMP,
+        seconds    INTEGER DEFAULT 0
+      );
+
       CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
       CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
       CREATE INDEX IF NOT EXISTS idx_keys_key ON keys(key);
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_balance_history_user ON balance_history(user_id);
+      CREATE INDEX IF NOT EXISTS idx_play_sessions_user ON play_sessions(user_id);
     `);
 
     await pool.query(`
@@ -89,6 +108,13 @@ export async function queryOne(text: string, params?: any[]) {
 export async function queryAll(text: string, params?: any[]) {
   const result = await pool.query(text, params);
   return result.rows;
+}
+
+export async function addBalanceHistory(userId: number, amount: number, type: string, note?: string) {
+  await pool.query(
+    "INSERT INTO balance_history (user_id, amount, type, note) VALUES ($1, $2, $3, $4)",
+    [userId, amount, type, note || null]
+  );
 }
 
 export default pool;

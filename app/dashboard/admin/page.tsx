@@ -20,6 +20,7 @@ import Footer from "@/components/Footer";
   Minus,
   Plus,
   User,
+  Coin,
 } from "@phosphor-icons/react";
 
 type Me = {
@@ -309,6 +310,26 @@ export default function AdminPage() {
           action: "add-subscription",
           user_id: userId,
           days: Number(days),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) alert(data.error || "Ошибка");
+      loadUsers();
+    } catch {}
+  }
+
+  async function addBalance(userId: number) {
+    const amount = prompt("Сумма начисления (можно отрицательную для списания):");
+    if (!amount || isNaN(Number(amount)) || Number(amount) === 0) return;
+    try {
+      const res = await fetch("/api/admin-users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          admin_token: adminToken,
+          action: "add-balance",
+          user_id: userId,
+          days: Number(amount),
         }),
       });
       const data = await res.json();
@@ -802,6 +823,13 @@ export default function AdminPage() {
                                   title="Добавить дни подписки"
                                 >
                                   <Plus size={16} />
+                                </button>
+                                <button
+                                  onClick={() => addBalance(u.id)}
+                                  className="text-amber-400 hover:text-amber-300 transition"
+                                  title="Начислить/списать баланс"
+                                >
+                                  <Coin size={16} />
                                 </button>
                                 {u.banned ? (
                                   <button

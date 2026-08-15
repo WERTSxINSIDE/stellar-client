@@ -20,6 +20,7 @@ import {
 export default function Home() {
   const [ready, setReady] = useState(false);
   const [news, setNews] = useState<any[]>([]);
+  const [online, setOnline] = useState<number | null>(null);
 
   const handleLoaderFinish = useCallback(() => {
     setReady(true);
@@ -29,6 +30,10 @@ export default function Home() {
     fetch("/api/news")
       .then((r) => r.json())
       .then((d) => setNews(d.news || []))
+      .catch(() => {});
+    fetch("/api/server-status")
+      .then((r) => r.json())
+      .then((d) => d.ok && setOnline(d.online))
       .catch(() => {});
   }, []);
 
@@ -75,7 +80,7 @@ export default function Home() {
 
                   <div className="grid grid-cols-2 gap-6 mb-14">
                     <div>
-                      <p className="text-4xl font-bold">50+</p>
+                      <p className="text-4xl font-bold">{online !== null ? `${online} онлайн` : "50+"}</p>
                       <p className="text-white/50">Активные пользователи</p>
                     </div>
                     <div>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query, queryOne } from "@/lib/db";
+import { query, queryOne, addBalanceHistory } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +51,7 @@ export async function POST(req: Request) {
     const newEnd = base.toISOString().slice(0, 19).replace("T", " ");
 
     await query("UPDATE users SET balance = balance - $1, subscription_end = $2 WHERE id = $3", [price, newEnd, user.id]);
+    await addBalanceHistory(user.id, -price, "subscription", `Покупка подписки на ${days} дн.`);
 
     return NextResponse.json({ ok: true, balance: (userData.balance || 0) - price, subscription_end: newEnd });
   } catch {

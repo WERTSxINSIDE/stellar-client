@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query, queryOne } from "@/lib/db";
+import { query, queryOne, addBalanceHistory } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +36,8 @@ export async function POST(req: Request) {
 
     await query("UPDATE users SET balance = balance - $1 WHERE id = $2", [amount, user.id]);
     await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [amount, recipient.id]);
+    await addBalanceHistory(user.id, -amount, "transfer", `Перевод: ${recipient.username}`);
+    await addBalanceHistory(recipient.id, amount, "transfer", `Перевод от: ${user.username}`);
 
     return NextResponse.json({ ok: true, balance: (senderData.balance || 0) - amount });
   } catch {

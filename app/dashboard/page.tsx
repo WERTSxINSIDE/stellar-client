@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Shield,
   User,
+  VideoCamera,
 } from "@phosphor-icons/react";
 
 type Me = {
@@ -68,6 +69,12 @@ export default function Dashboard() {
   const [transferAmount, setTransferAmount] = useState(0);
   const [transferMsg, setTransferMsg] = useState("");
   const [transferLoading, setTransferLoading] = useState(false);
+  const [giftUser, setGiftUser] = useState("");
+  const [giftDays, setGiftDays] = useState(30);
+  const [giftMsg, setGiftMsg] = useState("");
+  const [giftLoading, setGiftLoading] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
+  const [playStats, setPlayStats] = useState<{ seconds: number; launches: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/me")
@@ -76,6 +83,12 @@ export default function Dashboard() {
         if (!data.user) router.replace("/login");
         else setUser(data.user);
       });
+    fetch("/api/balance-history")
+      .then((r) => r.json())
+      .then((d) => d.ok && setHistory(d.history));
+    fetch("/api/play-session")
+      .then((r) => r.json())
+      .then((d) => d.ok && setPlayStats(d.stats));
   }, [router]);
 
   async function logout() {
@@ -132,6 +145,45 @@ export default function Dashboard() {
       setTransferLoading(false);
     }
   }
+
+  async function giftSubscription() {
+    setGiftMsg("");
+    if (!giftUser.trim() || giftDays < 1) return;
+    setGiftLoading(true);
+    try {
+      const res = await fetch("/api/gift-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: giftUser, days: giftDays }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setGiftMsg(data.error || "Ошибка");
+        return;
+      }
+      setGiftMsg(`Подарок отправлен ✓`);
+      setUser((prev) => prev ? { ...prev, subscription_end: data.subscription_end } : prev);
+      setGiftUser("");
+    } catch {
+      setGiftMsg("Ошибка сервера");
+    } finally {
+      setGiftLoading(false);
+    }
+  }
+
+  function formatPlayTime(seconds: number) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) return `${h} ч ${m} мин`;
+    return `${m} мин`;
+  }
+
+  const typeLabels: Record<string, string> = {
+    subscription: "Подписка",
+    transfer: "Перевод",
+    media: "Видео",
+    topup: "Пополнение",
+  };
 
   // Производные данные аккаунта
   const reg = user ? new Date(user.created_at.replace(" ", "T")) : new Date();
@@ -349,7 +401,112 @@ export default function Dashboard() {
                       {transferLoading ? "Отправка..." : "Перевести"}
                     </button>
                   </div>
+
+                  {/* Подарок подписки */}
+                  <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-7">
+                    <h4 className="text-xl font-bold mb-4">Подарить подписку</h4>
+                    <p className="text-white/40 text-sm mb-4">
+                      Отправь часть своей подписки другу.
+                    </p>
+
+                    <div className="mb-4">
+                      <label className="text-white/40 text-xs mb-1 block">Получатель</label>
+                      <input
+                        type="text"
+                        value={giftUser}
+                        onChange={(e) => setGiftUser(e.target.value)}
+                        placeholder="Имя пользователя"
+                        className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="text-white/40 text-xs mb-1 block">Дней</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={90}
+                        value={giftDays || ""}
+                        onChange={(e) => setGiftDays(Number(e.target.value))}
+                        placeholder="30"
+                        className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+                      />
+                    </div>
+
+                    {giftMsg && (
+                      <p className={`text-sm mb-3 ${giftMsg.includes("✓") ? "text-green-400" : "text-red-400"}`}>{giftMsg}</p>
+                    )}
+
+                    <button
+                      onClick={giftSubscription}
+                      disabled={giftLoading || !giftUser.trim() || giftDays < 1}
+                      className="w-full py-3 rounded-xl font-semibold bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition"
+                    >
+                      {giftLoading ? "Отправка..." : "Подарить"}
+                    </button>
+                  </div>
                 </div>
+              </div>
+
+              {/* Статистика */}
+              <div className="mb-12">
+                <h3 className="text-3xl font-bold mb-1">Статистика</h3>
+                <p className="text-white/40 mb-6">
+                  Твоя активность в клиенте.
+                </p>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <InfoTile
+                    icon={<VideoCamera size={18} />}
+                    label="Запусков"
+                    value={String(playStats?.launches ?? 0)}
+                  />
+                  <InfoTile
+                    icon={<Key size={18} />}
+                    label="Время в игре"
+                    value={formatPlayTime(playStats?.seconds ?? 0)}
+                  />
+                </div>
+              </div>
+
+              {/* История операций */}
+              <div className="mb-12">
+                <h3 className="text-3xl font-bold mb-1">История операций</h3>
+                <p className="text-white/40 mb-6">
+                  Все движения по балансу.
+                </p>
+
+                {history.length === 0 ? (
+                  <p className="text-white/40">Пока нет операций.</p>
+                ) : (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-white/40 border-b border-white/10">
+                          <th className="px-4 py-3">Операция</th>
+                          <th className="px-4 py-3">Сумма</th>
+                          <th className="px-4 py-3">Дата</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {history.map((h) => (
+                          <tr key={h.id} className="border-b border-white/5">
+                            <td className="px-4 py-3">
+                              <div>{typeLabels[h.type] || h.type}</div>
+                              {h.note && <div className="text-white/40 text-xs">{h.note}</div>}
+                            </td>
+                            <td className={`px-4 py-3 font-semibold ${h.amount > 0 ? "text-green-400" : "text-red-400"}`}>
+                              {h.amount > 0 ? `+${h.amount}₽` : `${h.amount}₽`}
+                            </td>
+                            <td className="px-4 py-3 text-white/40">
+                              {new Date(h.created_at.replace(" ", "T")).toLocaleDateString("ru-RU")}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               {/* Действия */}
@@ -393,6 +550,14 @@ export default function Dashboard() {
                       icon={<Shield size={22} />}
                       title="Админ панель"
                       desc="Управление пользователями и ключами"
+                    />
+                  )}
+                  {user?.role === "media" && (
+                    <ActionCard
+                      href="/dashboard/media"
+                      icon={<VideoCamera size={22} />}
+                      title="Медиа панель"
+                      desc="Отправка видео на проверку"
                     />
                   )}
                 </div>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { query, queryAll } from "@/lib/db";
+import { query, queryAll, addBalanceHistory } from "@/lib/db";
 
 export async function POST(req: Request) {
   try {
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
 
       await query("UPDATE media_submissions SET status = 'approved', reward = $1, admin_note = $2 WHERE id = $3", [r, admin_note || null, submission_id]);
       await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [r, sub[0].user_id]);
+      if (r > 0) await addBalanceHistory(sub[0].user_id, r, "media", "Награда за видео");
 
       return NextResponse.json({ ok: true });
     }

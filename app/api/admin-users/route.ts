@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { query, queryOne, queryAll } from "@/lib/db";
+import { query, queryOne, queryAll, addBalanceHistory } from "@/lib/db";
 import bcrypt from "bcrypt";
 
 export async function POST(req: Request) {
@@ -87,6 +87,16 @@ export async function POST(req: Request) {
       const exists = await queryOne("SELECT id FROM users WHERE LOWER(username) = LOWER($1) AND id != $2", [String(new_username), user_id]);
       if (exists) return NextResponse.json({ error: "Ник уже занят" }, { status: 400 });
       await query("UPDATE users SET username = $1 WHERE id = $2", [String(new_username), user_id]);
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "add-balance") {
+      if (!user_id) return NextResponse.json({ error: "Укажите user_id" }, { status: 400 });
+      if (!days && days !== 0) return NextResponse.json({ error: "Укажите сумму" }, { status: 400 });
+      const amount = Number(days);
+      if (isNaN(amount) || amount === 0) return NextResponse.json({ error: "Неверная сумма" }, { status: 400 });
+      await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [amount, user_id]);
+      await addBalanceHistory(user_id, amount, "topup", amount > 0 ? "Начисление администратором" : "Списание администратором");
       return NextResponse.json({ ok: true });
     }
 
