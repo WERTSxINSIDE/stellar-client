@@ -52,8 +52,12 @@ export async function POST(req: Request) {
       const user = await queryAll("SELECT subscription_end FROM users WHERE id = $1", [user_id]);
       if (!user.length || !(user[0] as any).subscription_end) return NextResponse.json({ error: "У пользователя нет подписки" }, { status: 400 });
       const current = new Date((user[0] as any).subscription_end.replace(" ", "T"));
-      current.setDate(current.getDate() - days);
-      const newEnd = current.toISOString().slice(0, 19).replace("T", " ");
+      if (isNaN(current.getTime())) return NextResponse.json({ error: "Некорректная дата подписки" }, { status: 400 });
+      const nowMs = Date.now();
+      const targetMs = current.getTime() - days * 24 * 60 * 60 * 1000;
+      const newEnd = targetMs <= nowMs
+        ? new Date(nowMs).toISOString().slice(0, 19).replace("T", " ")
+        : new Date(targetMs).toISOString().slice(0, 19).replace("T", " ");
       await query("UPDATE users SET subscription_end = $1 WHERE id = $2", [newEnd, user_id]);
       return NextResponse.json({ ok: true, subscription_end: newEnd });
     }
