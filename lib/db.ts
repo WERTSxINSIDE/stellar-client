@@ -149,6 +149,13 @@ async function initDb() {
 
     await pool.query(`
       DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN last_gift_at TIMESTAMP;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await pool.query(`
+      DO $$ BEGIN
         ALTER TABLE media_submissions ADD COLUMN views INTEGER DEFAULT 0;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;

@@ -88,7 +88,7 @@ export default function Dashboard() {
   const [transferMsg, setTransferMsg] = useState("");
   const [transferLoading, setTransferLoading] = useState(false);
   const [giftUser, setGiftUser] = useState("");
-  const [giftDays, setGiftDays] = useState(30);
+  const [giftDays, setGiftDays] = useState(7);
   const [giftMsg, setGiftMsg] = useState("");
   const [giftLoading, setGiftLoading] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
@@ -198,8 +198,11 @@ export default function Dashboard() {
         return;
       }
       setGiftMsg(`Подарок отправлен ✓`);
-      setUser((prev) => prev ? { ...prev, subscription_end: data.subscription_end } : prev);
+      fetch("/api/me")
+        .then((r) => r.json())
+        .then((d) => d.user && setUser(d.user));
       setGiftUser("");
+      setGiftDays(7);
     } catch {
       setGiftMsg("Ошибка сервера");
     } finally {
@@ -594,7 +597,8 @@ export default function Dashboard() {
                   <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-7">
                     <h4 className="text-xl font-bold mb-4">Подарить подписку</h4>
                     <p className="text-white/40 text-sm mb-4">
-                      Отправь часть своей подписки другу.
+                      Обычная подписка: от 1 до 7 дней. Навсегда: до 30 дней.
+                      Отправка — раз в 3 месяца.
                     </p>
 
                     <div className="mb-4">
@@ -613,10 +617,10 @@ export default function Dashboard() {
                       <input
                         type="number"
                         min={1}
-                        max={90}
+                        max={30}
                         value={giftDays || ""}
                         onChange={(e) => setGiftDays(Number(e.target.value))}
-                        placeholder="30"
+                        placeholder="7"
                         className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
                       />
                     </div>
