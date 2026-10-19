@@ -46,10 +46,11 @@ export async function POST(req: Request) {
     }
 
     if (senderData?.last_gift_at) {
-      const lastGift = new Date(String(senderData.last_gift_at).replace(" ", "T"));
+      const raw = senderData.last_gift_at;
+      const lastGift = raw instanceof Date ? raw : new Date(String(raw).replace(" ", "T"));
       const cooldownEnd = new Date(lastGift);
       cooldownEnd.setDate(cooldownEnd.getDate() + COOLDOWN_DAYS);
-      if (cooldownEnd > now) {
+      if (!isNaN(cooldownEnd.getTime()) && cooldownEnd > now) {
         const daysLeft = Math.ceil((cooldownEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
         return NextResponse.json(
           { error: `Подарить можно раз в ${COOLDOWN_DAYS} дней. Следующая отправка через ${daysLeft} дн.` },
