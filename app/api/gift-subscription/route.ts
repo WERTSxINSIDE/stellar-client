@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     ) as any;
 
     const senderEnd = senderData?.subscription_end
-      ? new Date(senderData.subscription_end.replace(" ", "T"))
+      ? new Date(String(senderData.subscription_end).replace(" ", "T"))
       : null;
     const now = new Date();
     const senderActive = senderEnd && senderEnd > now;
@@ -43,20 +43,6 @@ export async function POST(req: Request) {
 
     if (senderData?.sub_gifted) {
       return NextResponse.json({ error: "С подаренной подписки нельзя дарить" }, { status: 403 });
-    }
-
-    if (senderData?.last_gift_at) {
-      const raw = senderData.last_gift_at;
-      const lastGift = raw instanceof Date ? raw : new Date(String(raw).replace(" ", "T"));
-      const cooldownEnd = new Date(lastGift);
-      cooldownEnd.setDate(cooldownEnd.getDate() + COOLDOWN_DAYS);
-      if (!isNaN(cooldownEnd.getTime()) && cooldownEnd > now) {
-        const daysLeft = Math.ceil((cooldownEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
-        return NextResponse.json(
-          { error: `Подарить можно раз в ${COOLDOWN_DAYS} дней. Следующая отправка через ${daysLeft} дн.` },
-          { status: 403 }
-        );
-      }
     }
 
     const giftDays = Number(days);
@@ -81,8 +67,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
     }
 
+    // Атомарная проверка кулдауна на уровне базы
+    const claim = await query(
+      `UPDATE users SET last_gift_at = NOW()
+       WHERE id = $1 AND (last_gift_at IS NULL OR last_gift_at <= NOW() - INTERVAL '${COOLDOWN_DAYS} days')
+       RETURNING id`,
+      [user.id]
+    );
+    if (!claim.rows.length) {
+      const cd = await queryOne(
+        `SELECT CEIL(EXTRACT(EPOCH FROM (last_gift_at + INTERVAL '${COOLDOWN_DAYS} days' - NOW())) / 86400)::int AS days_left
+         FROM users WHERE id = $1`,
+        [user.id]
+      ) as any;
+      return NextResponse.json(
+        { error: `Подарить можно раз в ${COOLDOWN_DAYS} дней. Следующая отправка через ${cd?.days_left ?? "?"} дн.` },
+        { status: 403 }
+      );
+    }
+
     const recEnd = recipient.subscription_end
-      ? new Date(recipient.subscription_end.replace(" ", "T"))
+      ? new Date(String(recipient.subscription_end).replace(" ", "T"))
       : null;
     const recOwnActive = recEnd && recEnd > now && !recipient.sub_gifted;
 
@@ -95,7 +100,7 @@ export async function POST(req: Request) {
 
     let base: Date;
     if (recipient.subscription_end) {
-      const current = new Date(recipient.subscription_end.replace(" ", "T"));
+      const current = new Date(String(recipient.subscription_end).replace(" ", "T"));
       base = current > now ? current : new Date();
     } else {
       base = new Date();
@@ -107,7 +112,6 @@ export async function POST(req: Request) {
       "UPDATE users SET subscription_end = $1, sub_gifted = $2 WHERE id = $3",
       [newRecipientStr, recOwnActive ? 0 : 1, recipient.id]
     );
-    await query("UPDATE users SET last_gift_at = NOW() WHERE id = $1", [user.id]);
 
     return NextResponse.json({ ok: true, isLifetime });
   } catch {
