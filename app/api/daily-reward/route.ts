@@ -6,18 +6,18 @@ export const dynamic = "force-dynamic";
 
 export const REWARDS: {
   day: number;
-  type: "balance" | "subscription";
+  type: "balance" | "spin";
   amount?: number;
-  days?: number;
+  spins?: number;
   label: string;
 }[] = [
   { day: 1, type: "balance", amount: 5, label: "5₽ на баланс" },
   { day: 2, type: "balance", amount: 5, label: "5₽ на баланс" },
-  { day: 3, type: "subscription", days: 1, label: "1 день подписки" },
+  { day: 3, type: "spin", spins: 1, label: "1 крутка рулетки" },
   { day: 4, type: "balance", amount: 5, label: "5₽ на баланс" },
   { day: 5, type: "balance", amount: 5, label: "5₽ на баланс" },
   { day: 6, type: "balance", amount: 5, label: "5₽ на баланс" },
-  { day: 7, type: "subscription", days: 3, label: "3 дня подписки" },
+  { day: 7, type: "spin", spins: 3, label: "3 крутки рулетки" },
 ];
 
 function todayStr(): string {
@@ -132,29 +132,18 @@ export async function POST() {
       });
     }
 
-    // подписка
-    const u = await queryOne("SELECT subscription_end FROM users WHERE id = $1", [user.id]) as { subscription_end: string | null };
-    const now = new Date();
-    let subEnd: Date;
-    if (u.subscription_end) {
-      const current = new Date(u.subscription_end.replace(" ", "T"));
-      subEnd = current > now ? new Date(current) : new Date(now);
-    } else {
-      subEnd = new Date(now);
-    }
-    subEnd.setDate(subEnd.getDate() + (reward.days || 1));
-    const newEnd = formatDate(subEnd);
-
-    await query("UPDATE users SET subscription_end = $1, sub_gifted = 0 WHERE id = $2", [newEnd, user.id]);
+    // крутки рулетки
+    const spins = reward.spins ?? 1;
+    await query("UPDATE users SET spin_count = COALESCE(spin_count, 0) + $1 WHERE id = $2", [spins, user.id]);
     await saveClaim(user.id, reward.day, today);
-    message = `+${reward.days} дн. подписки`;
+    message = `+${spins} крут${spins === 1 ? "ка" : "ки"} рулетки`;
 
     return NextResponse.json({
       ok: true,
       day: reward.day,
       message,
       balance: null,
-      subscription_end: newEnd,
+      subscription_end: null,
       finished: nowFinished,
     });
   } catch {

@@ -168,15 +168,22 @@ export default function AdminPage() {
       return;
     }
     try {
-      await fetch("/api/partner-apply", {
+      const res = await fetch("/api/partner-apply", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reject", application_id: id, admin_note: partnerRejectNote.trim() }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Не удалось отклонить заявку");
+        return;
+      }
       setRejectId(null);
       setPartnerRejectNote("");
       loadPartnerApps();
-    } catch {}
+    } catch {
+      alert("Ошибка сервера");
+    }
   }
 
   async function approveMedia(id: number) {
@@ -1146,6 +1153,9 @@ export default function AdminPage() {
                     <p className="text-white/50 text-xs mb-1">Telegram: {a.telegram} · Средние просмотры: {a.views}</p>
                     {a.experience && <p className="text-white/50 text-xs mb-1">Опыт: {a.experience}</p>}
                     <p className="text-white/60 text-xs">Мотивация: {a.reason}</p>
+                    {a.status === "rejected" && a.admin_note && (
+                      <p className="text-red-300/80 text-xs mt-1">Причина отклонения: {a.admin_note}</p>
+                    )}
 
                     {a.status === "pending" && (
                       <div className="flex flex-col gap-2 mt-3">

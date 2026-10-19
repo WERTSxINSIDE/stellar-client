@@ -33,6 +33,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  CircleNotch,
 } from "@phosphor-icons/react";
 
 type Me = {
@@ -73,9 +74,9 @@ function formatDate(d: Date) {
 
 type RewardInfo = {
   day: number;
-  type: "balance" | "subscription";
+  type: "balance" | "spin";
   amount?: number;
-  days?: number;
+  spins?: number;
   label: string;
 };
 
@@ -1134,6 +1135,12 @@ export default function Dashboard() {
                     icon={<Cube size={22} />}
                     title="Дополнения"
                     desc="Ключ и смена пароля"
+                  />
+                  <ActionCard
+                    href="/dashboard/wheel"
+                    icon={<CircleNotch size={22} />}
+                    title="Колесо фортуны"
+                    desc="Крутка раз в 72 часа"
                   />
                   {hasSub ? (
                     <ActionCard

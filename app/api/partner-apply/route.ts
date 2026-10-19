@@ -40,7 +40,7 @@ export async function GET() {
     }
 
     const applications = await queryAll(
-      `SELECT pa.id, pa.platform, pa.channel_link, pa.telegram, pa.views, pa.experience, pa.reason, pa.status, pa.created_at, u.username, u.id as user_id
+      `SELECT pa.id, pa.platform, pa.channel_link, pa.telegram, pa.views, pa.experience, pa.reason, pa.status, pa.admin_note, pa.created_at, u.username, u.id as user_id
        FROM partner_applications pa
        JOIN users u ON pa.user_id = u.id
        ORDER BY pa.created_at DESC`
