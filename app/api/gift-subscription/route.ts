@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     }
 
     const senderData = await queryOne(
-      "SELECT subscription_end, last_gift_at FROM users WHERE id = $1",
+      "SELECT subscription_end, last_gift_at, sub_gifted FROM users WHERE id = $1",
       [user.id]
     ) as any;
 
@@ -39,6 +39,10 @@ export async function POST(req: Request) {
 
     if (!isLifetime && !senderActive) {
       return NextResponse.json({ error: "У вас нет активной подписки" }, { status: 403 });
+    }
+
+    if (senderData?.sub_gifted) {
+      return NextResponse.json({ error: "С подаренной подписки нельзя дарить" }, { status: 403 });
     }
 
     if (senderData?.last_gift_at) {
@@ -69,12 +73,17 @@ export async function POST(req: Request) {
     }
 
     const recipient = await queryOne(
-      "SELECT id, subscription_end FROM users WHERE LOWER(username) = LOWER($1)",
+      "SELECT id, subscription_end, sub_gifted FROM users WHERE LOWER(username) = LOWER($1)",
       [username]
     ) as any;
     if (!recipient) {
       return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
     }
+
+    const recEnd = recipient.subscription_end
+      ? new Date(recipient.subscription_end.replace(" ", "T"))
+      : null;
+    const recOwnActive = recEnd && recEnd > now && !recipient.sub_gifted;
 
     if (!isLifetime) {
       const newSenderEnd = new Date(senderEnd);
@@ -93,7 +102,10 @@ export async function POST(req: Request) {
     base.setDate(base.getDate() + giftDays);
     const newRecipientStr = base.toISOString().slice(0, 19).replace("T", " ");
 
-    await query("UPDATE users SET subscription_end = $1 WHERE id = $2", [newRecipientStr, recipient.id]);
+    await query(
+      "UPDATE users SET subscription_end = $1, sub_gifted = $2 WHERE id = $3",
+      [newRecipientStr, recOwnActive ? 0 : 1, recipient.id]
+    );
     await query("UPDATE users SET last_gift_at = NOW() WHERE id = $1", [user.id]);
 
     return NextResponse.json({ ok: true, isLifetime });

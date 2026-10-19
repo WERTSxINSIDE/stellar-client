@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     base.setDate(base.getDate() + days);
     const newEnd = base.toISOString().slice(0, 19).replace("T", " ");
 
-    await query("UPDATE users SET balance = balance - $1, subscription_end = $2 WHERE id = $3", [price, newEnd, user.id]);
+    await query("UPDATE users SET balance = balance - $1, subscription_end = $2, sub_gifted = 0 WHERE id = $3", [price, newEnd, user.id]);
     await addBalanceHistory(user.id, -price, "subscription", `Покупка подписки на ${days} дн.`);
 
     return NextResponse.json({ ok: true, balance: (userData.balance || 0) - price, subscription_end: newEnd });

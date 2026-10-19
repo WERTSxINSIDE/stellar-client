@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       }
       base.setDate(base.getDate() + days);
       const newEnd = base.toISOString().slice(0, 19).replace("T", " ");
-      await query("UPDATE users SET subscription_end = $1 WHERE id = $2", [newEnd, user_id]);
+      await query("UPDATE users SET subscription_end = $1, sub_gifted = 0 WHERE id = $2", [newEnd, user_id]);
       return NextResponse.json({ ok: true, subscription_end: newEnd });
     }
 

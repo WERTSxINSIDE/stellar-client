@@ -145,7 +145,7 @@ export async function POST() {
     subEnd.setDate(subEnd.getDate() + (reward.days || 1));
     const newEnd = formatDate(subEnd);
 
-    await query("UPDATE users SET subscription_end = $1 WHERE id = $2", [newEnd, user.id]);
+    await query("UPDATE users SET subscription_end = $1, sub_gifted = 0 WHERE id = $2", [newEnd, user.id]);
     await saveClaim(user.id, reward.day, today);
     message = `+${reward.days} дн. подписки`;
 

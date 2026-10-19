@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       subEnd = addDays(now, licenseKey.duration_days);
     }
 
-    await query("UPDATE users SET subscription_end = $1 WHERE id = $2", [formatDate(subEnd), user.id]);
+    await query("UPDATE users SET subscription_end = $1, sub_gifted = 0 WHERE id = $2", [formatDate(subEnd), user.id]);
     await query("UPDATE keys SET activated_by = $1, activated_at = $2 WHERE id = $3", [user.id, formatDate(now), licenseKey.id]);
 
     return NextResponse.json({ ok: true, subscription_end: formatDate(subEnd), duration_days: licenseKey.duration_days });

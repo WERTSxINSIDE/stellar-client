@@ -27,6 +27,7 @@ type Me = {
   hwid: string | null;
   role: string;
   platform?: string | null;
+  sub_gifted?: number;
 } | null;
 
 function formatDate(d: Date) {
@@ -152,8 +153,17 @@ export default function ProfilePage() {
                   Подписка
                 </div>
                 <p className="text-lg font-semibold">
-                  {hasSub ? formatDate(subEnd!) : "Нет подписки"}
+                  {hasSub
+                    ? user.sub_gifted
+                      ? "Подаренная подписка"
+                      : formatDate(subEnd!)
+                    : "Нет подписки"}
                 </p>
+                {hasSub && (
+                  <p className="text-white/30 text-xs mt-1">
+                    {user.sub_gifted ? `до ${formatDate(subEnd!)}` : "активна"}
+                  </p>
+                )}
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 col-span-2">
