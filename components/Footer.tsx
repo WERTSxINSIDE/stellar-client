@@ -24,7 +24,7 @@ const columns = [
       { label: "Telegram", href: "https://t.me/+YSGwKHFMrQAxZWVi", external: true },
       {
         label: "Discord",
-        href: "https://discord.gg/wf2NuypGS",
+        href: "https://discord.gg/W5KTanZnh",
         external: true,
       },
     ],
