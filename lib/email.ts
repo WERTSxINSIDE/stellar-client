@@ -63,14 +63,16 @@ async function sendViaResend(to: string, code: string): Promise<boolean> {
   return true;
 }
 
-export async function sendVerificationCode(to: string, code: string): Promise<boolean> {
+export async function sendVerificationCode(to: string, code: string): Promise<{ ok: boolean; detail: string }> {
   try {
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-      return await sendViaSmtp(to, code);
+      await sendViaSmtp(to, code);
+      return { ok: true, detail: "smtp" };
     }
-    return await sendViaResend(to, code);
-  } catch (e) {
+    const r = await sendViaResend(to, code);
+    return { ok: r, detail: r ? "resend" : "resend failed" };
+  } catch (e: any) {
     console.error("Email send error:", e);
-    return false;
+    return { ok: false, detail: String(e?.message || e).slice(0, 300) };
   }
 }

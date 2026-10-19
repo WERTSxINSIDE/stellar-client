@@ -48,8 +48,11 @@ export async function POST(req: Request) {
     await query("INSERT INTO email_codes (email, code) VALUES ($1, $2)", [lower, code]);
 
     const sent = await sendVerificationCode(lower, code);
-    if (!sent) {
-      return NextResponse.json({ error: "Не удалось отправить письмо. Попробуйте позже." }, { status: 502 });
+    if (!sent.ok) {
+      return NextResponse.json(
+        { error: "Не удалось отправить письмо. Попробуйте позже.", detail: sent.detail },
+        { status: 502 }
+      );
     }
 
     return NextResponse.json({ ok: true });
