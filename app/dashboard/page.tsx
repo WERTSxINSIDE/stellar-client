@@ -95,6 +95,11 @@ export default function Dashboard() {
   const [history, setHistory] = useState<any[]>([]);
   const [playStats, setPlayStats] = useState<{ seconds: number; launches: number } | null>(null);
   const [reward, setReward] = useState<{ day: number; claimedToday: boolean; finished: boolean; rewards: RewardInfo[] } | null>(null);
+  const [wheel, setWheel] = useState<{ canSpin: boolean; hoursLeft: number; spins: number; cooldownHours: number; prizes: { key: string; label: string; chance: number }[] } | null>(null);
+  const [wheelSpin, setWheelSpin] = useState(false);
+  const [wheelRot, setWheelRot] = useState(0);
+  const [wheelResult, setWheelResult] = useState<string | null>(null);
+  const [wheelMsg, setWheelMsg] = useState("");
   const [rewardMsg, setRewardMsg] = useState("");
   const [rewardLoading, setRewardLoading] = useState(false);
   const [tab, setTab] = useState<string>("account");
@@ -134,6 +139,9 @@ export default function Dashboard() {
     fetch("/api/daily-reward")
       .then((r) => r.json())
       .then((d) => d.ok && setReward({ day: d.day, claimedToday: d.claimedToday, finished: d.finished, rewards: d.rewards }));
+    fetch("/api/wheel")
+      .then((r) => r.json())
+      .then((d) => d.ok && setWheel(d));
     fetch("/api/media-submit")
       .then((r) => r.json())
       .then((d) => {
@@ -275,6 +283,47 @@ export default function Dashboard() {
       setRewardMsg("Ошибка сервера");
     } finally {
       setRewardLoading(false);
+    }
+  }
+
+  function refreshWheel() {
+    fetch("/api/wheel")
+      .then((r) => r.json())
+      .then((d) => d.ok && setWheel(d));
+  }
+
+  async function spinWheel() {
+    if (!wheel || wheelSpin) return;
+    if (!(wheel.spins > 0 || wheel.hoursLeft === 0)) return;
+    setWheelSpin(true);
+    setWheelResult(null);
+    setWheelMsg("");
+    try {
+      const res = await fetch("/api/wheel", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setWheelMsg(data.error || "Ошибка");
+        setWheelSpin(false);
+        refreshWheel();
+        return;
+      }
+      const center = (data.index ?? 0) * 40 + 20;
+      const jitter = Math.random() * 24 - 12;
+      const currentMod = ((wheelRot % 360) + 360) % 360;
+      const desired = (360 - center + jitter + 360) % 360;
+      const delta = (((desired - currentMod) % 360) + 360) % 360 + 360 * 5;
+      setWheelRot(wheelRot + delta);
+      setTimeout(() => {
+        setWheelResult(data.prize.label);
+        setWheelSpin(false);
+        if (data.subscription_end) {
+          setUser((prev) => (prev ? { ...prev, subscription_end: data.subscription_end } : prev));
+        }
+        refreshWheel();
+      }, 4200);
+    } catch {
+      setWheelMsg("Ошибка сервера");
+      setWheelSpin(false);
     }
   }
 
@@ -439,6 +488,62 @@ export default function Dashboard() {
                       </button>
                     ))}
                   </nav>
+
+                  {/* Колесо фортуны */}
+                  <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-[11px] uppercase tracking-widest text-white/40">Колесо фортуны</p>
+                      <Link href="/dashboard/wheel" className="text-xs text-purple-300 hover:text-purple-200 transition">
+                        Шансы
+                      </Link>
+                    </div>
+
+                    <div className="relative w-40 h-40 mx-auto mb-4">
+                      <div className="absolute left-1/2 -translate-x-1/2 -top-1 z-10 w-0 h-0 border-l-[8px] border-r-[8px] border-t-[14px] border-l-transparent border-r-transparent border-t-white drop-shadow" />
+                      <div
+                        className="w-full h-full rounded-full border-4 border-white/20 shadow-[0_0_30px_rgba(124,58,237,0.3)]"
+                        style={{
+                          background: `conic-gradient(from 0deg, ${Array.from({ length: 9 })
+                            .map((_, i) => `${i % 2 ? "#4338ca" : "#7c3aed"} ${i * 40}deg ${(i + 1) * 40}deg`)
+                            .join(", ")})`,
+                          transform: `rotate(${wheelRot}deg)`,
+                          transition: wheelSpin ? "transform 4.1s cubic-bezier(0.12, 0.6, 0.1, 1)" : "none",
+                        }}
+                      >
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#0b0b14] border-2 border-white/30 z-[1] grid place-items-center text-xs font-black">
+                          SC
+                        </div>
+                      </div>
+                    </div>
+
+                    {wheelResult && (
+                      <p className="text-center text-sm font-semibold text-purple-300 mb-2">Выпало: {wheelResult}</p>
+                    )}
+                    {wheelMsg && <p className="text-center text-xs text-red-400 mb-2">{wheelMsg}</p>}
+
+                    <button
+                      onClick={spinWheel}
+                      disabled={wheelSpin || !wheel || !(wheel.spins > 0 || wheel.hoursLeft === 0)}
+                      className="w-full py-2.5 rounded-xl text-sm font-semibold bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition flex items-center justify-center gap-2"
+                    >
+                      {wheelSpin ? (
+                        <>
+                          <CircleNotch size={16} className="animate-spin" /> Крутим...
+                        </>
+                      ) : !wheel ? (
+                        "Загрузка..."
+                      ) : wheel.spins > 0 ? (
+                        `Крутить (круток: ${wheel.spins})`
+                      ) : wheel.hoursLeft > 0 ? (
+                        `Крутка через ${wheel.hoursLeft} ч.`
+                      ) : (
+                        "Крутить бесплатно"
+                      )}
+                    </button>
+                    <p className="text-center text-[11px] text-white/30 mt-2">
+                      Бесплатно раз в {wheel?.cooldownHours ?? 72} часа
+                    </p>
+                  </div>
                 </aside>
 
                 {/* Основной контент */}
@@ -1135,12 +1240,6 @@ export default function Dashboard() {
                     icon={<Cube size={22} />}
                     title="Дополнения"
                     desc="Ключ и смена пароля"
-                  />
-                  <ActionCard
-                    href="/dashboard/wheel"
-                    icon={<CircleNotch size={22} />}
-                    title="Колесо фортуны"
-                    desc="Крутка раз в 72 часа"
                   />
                   {hasSub ? (
                     <ActionCard
