@@ -69,6 +69,17 @@ async function initDb() {
         created_at   TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS email_codes (
+        id         SERIAL PRIMARY KEY,
+        email      TEXT NOT NULL,
+        code       TEXT NOT NULL,
+        attempts   INTEGER DEFAULT 0,
+        used       BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_codes (email, created_at DESC);
+
       CREATE TABLE IF NOT EXISTS balance_history (
         id         SERIAL PRIMARY KEY,
         user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

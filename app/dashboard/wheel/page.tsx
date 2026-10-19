@@ -25,7 +25,7 @@ type WheelState = {
   prizes: PrizeInfo[];
 };
 
-const SEG_COUNT = 9;
+const SEG_COUNT = 11;
 const SEG = 360 / SEG_COUNT;
 const COLORS = ["#7c3aed", "#4338ca"];
 
@@ -44,7 +44,7 @@ export default function WheelPage() {
   const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch("/api/auth/me")
+    fetch("/api/me")
       .then((r) => r.json())
       .then((d) => {
         if (!d.user) router.replace("/login");

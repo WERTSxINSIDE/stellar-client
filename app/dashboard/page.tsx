@@ -307,7 +307,8 @@ export default function Dashboard() {
         refreshWheel();
         return;
       }
-      const center = (data.index ?? 0) * 40 + 20;
+      const WSEG = 360 / 11;
+      const center = (data.index ?? 0) * WSEG + WSEG / 2;
       const jitter = Math.random() * 24 - 12;
       const currentMod = ((wheelRot % 360) + 360) % 360;
       const desired = (360 - center + jitter + 360) % 360;
@@ -503,8 +504,11 @@ export default function Dashboard() {
                       <div
                         className="w-full h-full rounded-full border-4 border-white/20 shadow-[0_0_30px_rgba(124,58,237,0.3)]"
                         style={{
-                          background: `conic-gradient(from 0deg, ${Array.from({ length: 9 })
-                            .map((_, i) => `${i % 2 ? "#4338ca" : "#7c3aed"} ${i * 40}deg ${(i + 1) * 40}deg`)
+                          background: `conic-gradient(from 0deg, ${Array.from({ length: 11 })
+                            .map((_, i) => {
+                              const s = 360 / 11;
+                              return `${i % 2 ? "#4338ca" : "#7c3aed"} ${i * s}deg ${(i + 1) * s}deg`;
+                            })
                             .join(", ")})`,
                           transform: `rotate(${wheelRot}deg)`,
                           transition: wheelSpin ? "transform 4.1s cubic-bezier(0.12, 0.6, 0.1, 1)" : "none",

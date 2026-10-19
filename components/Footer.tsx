@@ -31,7 +31,10 @@ const columns = [
   },
   {
     title: "Правовое",
-    links: [{ label: "Лицензионное соглашение", href: "#" }],
+    links: [
+      { label: "Пользовательское соглашение", href: "/legal/user-agreement" },
+      { label: "Лицензионное соглашение", href: "/legal/eula" },
+    ],
   },
 ];
 

@@ -17,9 +17,6 @@ type Product = {
 };
 
 const products: Product[] = [
-  { title: "1 день", price: "10 rubles", rub: 10, days: 1, href: "https://funpay.com/lots/offer?id=73168336" },
-  { title: "3 дня", price: "20 rubles", rub: 20, days: 3, href: "https://funpay.com/lots/offer?id=73168722" },
-  { title: "7 дней", price: "55 rubles", rub: 55, days: 7, href: "https://funpay.com/lots/offer?id=73168775" },
   { title: "30 дней", price: "130 rubles", rub: 130, days: 30, href: "https://funpay.com/lots/offer?id=73168850" },
   { title: "90 дней", price: "250 rubles", rub: 250, days: 90, href: "https://funpay.com/lots/offer?id=73168970" },
   { title: "180 дней", price: "400 rubles", rub: 400, days: 180, href: "https://funpay.com/lots/offer?id=73169053" },

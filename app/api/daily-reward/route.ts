@@ -17,7 +17,7 @@ export const REWARDS: {
   { day: 4, type: "balance", amount: 5, label: "5₽ на баланс" },
   { day: 5, type: "balance", amount: 5, label: "5₽ на баланс" },
   { day: 6, type: "balance", amount: 5, label: "5₽ на баланс" },
-  { day: 7, type: "spin", spins: 3, label: "3 крутки рулетки" },
+  { day: 7, type: "spin", spins: 1, label: "1 крутка рулетки" },
 ];
 
 function todayStr(): string {
