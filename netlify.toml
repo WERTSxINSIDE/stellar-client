@@ -4,6 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  SECRETS_SCAN_OMIT_KEYS = "SMTP_HOST,SMTP_PORT,SMTP_USER,SMTP_PASS,SMTP_FROM,RESEND_API_KEY,DATABASE_URL"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
