@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { query, queryOne, queryAll } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const { action, key_id, admin_token } = await req.json();
-
-    if (admin_token !== "euphoria-admin-2024") {
-      return NextResponse.json({ error: "Неверный токен" }, { status: 403 });
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
+
+    const { action, key_id } = await req.json();
 
     if (action === "list") {
       const keys = await queryAll("SELECT * FROM keys ORDER BY created_at DESC");

@@ -15,6 +15,7 @@ import {
   Key,
   Fingerprint,
   Shield,
+  VideoCamera,
 } from "@phosphor-icons/react";
 
 type Me = {
@@ -25,6 +26,7 @@ type Me = {
   subscription_end: string | null;
   hwid: string | null;
   role: string;
+  platform?: string | null;
 } | null;
 
 function formatDate(d: Date) {
@@ -121,6 +123,16 @@ export default function ProfilePage() {
                     <Hash size={14} />
                     UID {user.id}
                   </span>
+                  {user.role === "media" && user.platform && (
+                    <span className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${
+                      user.platform === "youtube"
+                        ? "bg-red-500/10 border-red-500/30 text-red-300"
+                        : "bg-white/5 border-white/10 text-white/70"
+                    }`}>
+                      <VideoCamera size={14} />
+                      {user.platform === "youtube" ? "YouTube" : "TikTok"}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,13 +1,32 @@
 import { NextResponse } from "next/server";
+import bcrypt from "bcrypt";
 import { query, queryOne, queryAll } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const { action, admin_token, ...params } = await req.json();
+    const { action, username, password, ...params } = await req.json();
 
-    if (admin_token !== "euphoria-admin-2024") {
+    if (!username || !password) {
+      return NextResponse.json({ success: false, error: "Missing credentials" }, { status: 401 });
+    }
+
+    const admin = await queryOne(
+      "SELECT id, username, role, is_admin, banned FROM users WHERE LOWER(username) = LOWER($1)",
+      [username]
+    ) as any;
+
+    if (!admin) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
+
+    const ok = await bcrypt.compare(String(password), (await queryOne("SELECT password FROM users WHERE id = $1", [admin.id]) as any)?.password || "");
+    if (!ok) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
+
+    if (admin.banned || (admin.is_admin !== 1 && admin.role !== "admin")) {
       return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
     }
 

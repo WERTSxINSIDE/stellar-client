@@ -200,7 +200,7 @@ export default function AddonsPage() {
                 <input
                   value={licenseKey}
                   onChange={(e) => setLicenseKey(e.target.value)}
-                  placeholder="EUPHORIA-XXX-XXX"
+                  placeholder="STELLAR-XXX-XXX-XXX"
                   className="w-full bg-black/40 pl-11 pr-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
                 />
               </div>

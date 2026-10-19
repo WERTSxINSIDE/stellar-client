@@ -49,7 +49,7 @@ export default function FAQPage() {
 
           <FAQCard
             question="Как загрузить конфиг в клиент?"
-            answer="Чтобы загрузить конфиг, сначала запустите клиент хотя бы один раз. Затем перейдите в директорию: C:\\EuphoriaDLC\\beta\\client\\configs и поместите ваш файл конфига .euphoria в эту папку."
+            answer="Чтобы загрузить конфиг, сначала запустите клиент хотя бы один раз. Затем перейдите в директорию: C:\\StellarClient\\beta\\client\\configs и поместите ваш файл конфига .euphoria в эту папку."
           />
 
           <FAQCard

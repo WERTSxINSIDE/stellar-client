@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { query, queryOne } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const { count = 1, admin_token } = await req.json();
-
-    if (admin_token !== "euphoria-admin-2024") {
-      return NextResponse.json({ error: "Неверный токен" }, { status: 403 });
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
+
+    const { count = 1 } = await req.json();
 
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     const segments = [7, 4, 4];

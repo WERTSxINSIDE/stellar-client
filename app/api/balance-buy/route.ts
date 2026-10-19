@@ -21,7 +21,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    const { days } = await req.json();
+    const { days, hwid } = await req.json();
+
+    if (hwid) {
+      const price = 150;
+      const userData = await queryOne("SELECT balance FROM users WHERE id = $1", [user.id]) as { balance: number | null } | undefined;
+      if (!userData) {
+        return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+      }
+      if ((userData.balance || 0) < price) {
+        return NextResponse.json({ error: `Недостаточно баланса. Нужно ${price}₽, у вас ${userData.balance || 0}₽` }, { status: 400 });
+      }
+      await query("UPDATE users SET balance = balance - $1, hwid = NULL WHERE id = $2", [price, user.id]);
+      await addBalanceHistory(user.id, -price, "hwid", "Сброс HWID");
+      return NextResponse.json({ ok: true, balance: (userData.balance || 0) - price });
+    }
+
     if (!days) {
       return NextResponse.json({ error: "Укажите тариф" }, { status: 400 });
     }
@@ -31,7 +46,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Неизвестный тариф" }, { status: 400 });
     }
 
-    const userData = await queryOne("SELECT balance, subscription_end FROM users WHERE id = $1", [user.id]) as any;
+    const userData = await queryOne("SELECT balance, subscription_end FROM users WHERE id = $1", [user.id]) as { balance: number | null; subscription_end: string | null } | undefined;
     if (!userData) {
       return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
     }

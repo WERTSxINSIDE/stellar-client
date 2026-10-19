@@ -21,6 +21,7 @@ import Footer from "@/components/Footer";
   Plus,
   User,
   Coin,
+  Headset,
 } from "@phosphor-icons/react";
 
 type Me = {
@@ -50,15 +51,25 @@ export default function AdminPage() {
 
   // Все ключи
   const [allKeys, setAllKeys] = useState<any[]>([]);
-  const [keysTab, setKeysTab] = useState<"generate" | "list" | "users" | "news" | "media">("generate");
+  const [keysTab, setKeysTab] = useState<"generate" | "list" | "users" | "news" | "media" | "support" | "bugs">("generate");
 
   // Пользователи
   const [allUsers, setAllUsers] = useState<any[]>([]);
 
-  // Медиа заявки
+  // Заявки на выплату видео
   const [mediaSubmissions, setMediaSubmissions] = useState<any[]>([]);
-  const [mediaReward, setMediaReward] = useState<number>(10);
-  const [mediaNote, setMediaNote] = useState<string>("");
+  const [mediaRewards, setMediaRewards] = useState<Record<number, number>>({});
+  const [mediaNotes, setMediaNotes] = useState<Record<number, string>>({});
+  const [mediaViews, setMediaViews] = useState<Record<number, number>>({});
+  const [partnerApps, setPartnerApps] = useState<any[]>([]);
+
+  // Поддержка
+  const [supportTickets, setSupportTickets] = useState<any[]>([]);
+  const [supportReplies, setSupportReplies] = useState<Record<number, string>>({});
+
+  // Заявки на медиа-партнёрство
+  const [partnerRejectNote, setPartnerRejectNote] = useState<string>("");
+  const [rejectId, setRejectId] = useState<number | null>(null);
 
   // Новости
   const [allNews, setAllNews] = useState<any[]>([]);
@@ -68,7 +79,27 @@ export default function AdminPage() {
   const [newsMsg, setNewsMsg] = useState("");
   const [newsLoading, setNewsLoading] = useState(false);
 
-  const adminToken = "euphoria-admin-2024";
+  // Баг-репорты тестеров
+  const [bugReports, setBugReports] = useState<any[]>([]);
+
+  async function loadBugs() {
+    try {
+      const res = await fetch("/api/bug-report");
+      const data = await res.json();
+      if (data.ok) setBugReports(data.reports || []);
+    } catch {}
+  }
+
+  async function setBugStatus(id: number, status: string) {
+    try {
+      await fetch("/api/bug-report", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ report_id: id, status }),
+      });
+      setBugReports((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
+    } catch {}
+  }
 
   useEffect(() => {
     fetch("/api/me")
@@ -92,7 +123,7 @@ export default function AdminPage() {
       const res = await fetch("/api/admin-keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ admin_token: adminToken }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (data.keys) setAllKeys(data.keys);
@@ -104,10 +135,47 @@ export default function AdminPage() {
       const res = await fetch("/api/media-review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ admin_token: adminToken, action: "list" }),
+        body: JSON.stringify({ action: "list" }),
       });
       const data = await res.json();
       if (data.submissions) setMediaSubmissions(data.submissions);
+    } catch {}
+  }
+
+  async function loadPartnerApps() {
+    try {
+      const res = await fetch("/api/partner-apply");
+      const data = await res.json();
+      if (data.applications) setPartnerApps(data.applications);
+    } catch {}
+  }
+
+  async function approvePartner(id: number) {
+    try {
+      await fetch("/api/partner-apply", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve", application_id: id }),
+      });
+      loadPartnerApps();
+      loadUsers();
+    } catch {}
+  }
+
+  async function rejectPartner(id: number) {
+    if (!partnerRejectNote.trim()) {
+      alert("Укажите причину отклонения");
+      return;
+    }
+    try {
+      await fetch("/api/partner-apply", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject", application_id: id, admin_note: partnerRejectNote.trim() }),
+      });
+      setRejectId(null);
+      setPartnerRejectNote("");
+      loadPartnerApps();
     } catch {}
   }
 
@@ -116,7 +184,8 @@ export default function AdminPage() {
       await fetch("/api/media-review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ admin_token: adminToken, action: "approve", submission_id: id, reward: mediaReward, admin_note: mediaNote || undefined }),
+        body: JSON.stringify({
+          action: "approve", submission_id: id, reward: mediaRewards[id] || 0, views: mediaViews[id] || 0, admin_note: mediaNotes[id]?.trim() || undefined }),
       });
       loadMedia();
       loadUsers();
@@ -128,9 +197,43 @@ export default function AdminPage() {
       await fetch("/api/media-review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ admin_token: adminToken, action: "reject", submission_id: id, admin_note: mediaNote || undefined }),
+        body: JSON.stringify({
+          action: "reject", submission_id: id, admin_note: mediaNotes[id]?.trim() || undefined }),
       });
       loadMedia();
+    } catch {}
+  }
+
+  async function loadSupport() {
+    try {
+      const res = await fetch("/api/support?all=1");
+      const data = await res.json();
+      if (data.tickets) setSupportTickets(data.tickets);
+    } catch {}
+  }
+
+  async function replySupport(id: number) {
+    const body = supportReplies[id]?.trim();
+    if (!body) return;
+    try {
+      await fetch("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reply", ticket_id: id, body }),
+      });
+      setSupportReplies((prev) => ({ ...prev, [id]: "" }));
+      loadSupport();
+    } catch {}
+  }
+
+  async function setSupportStatus(id: number, action: "close" | "reopen") {
+    try {
+      await fetch("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ticket_id: id }),
+      });
+      loadSupport();
     } catch {}
   }
 
@@ -140,6 +243,8 @@ export default function AdminPage() {
       loadUsers();
       loadNews();
       loadMedia();
+      loadPartnerApps();
+      loadSupport();
     }
   }, [user]);
 
@@ -160,7 +265,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "create",
           title: newsTitle,
           content: newsContent,
@@ -191,7 +295,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "delete",
           id,
         }),
@@ -206,7 +309,7 @@ export default function AdminPage() {
       const res = await fetch("/api/admin-users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ admin_token: adminToken, action: "list" }),
+        body: JSON.stringify({ action: "list" }),
       });
       const data = await res.json();
       if (data.users) setAllUsers(data.users);
@@ -219,7 +322,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "set-role",
           user_id: userId,
           role,
@@ -236,7 +338,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "delete",
           user_id: userId,
         }),
@@ -253,7 +354,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "ban",
           user_id: userId,
           ban_reason: reason || undefined,
@@ -269,7 +369,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "unban",
           user_id: userId,
         }),
@@ -286,7 +385,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "reduce-subscription",
           user_id: userId,
           days: Number(days),
@@ -306,7 +404,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "add-subscription",
           user_id: userId,
           days: Number(days),
@@ -326,7 +423,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "add-balance",
           user_id: userId,
           days: Number(amount),
@@ -346,7 +442,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "change-password",
           user_id: userId,
           new_password: pw,
@@ -366,7 +461,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "change-username",
           user_id: userId,
           new_username: nick,
@@ -388,7 +482,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           action: "delete",
           key_id: keyId,
         }),
@@ -406,7 +499,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           duration_days: subDays,
           count: subCount,
         }),
@@ -434,7 +526,6 @@ export default function AdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_token: adminToken,
           count: hwidCount,
         }),
       });
@@ -486,7 +577,7 @@ export default function AdminPage() {
           </h1>
 
           {/* Переключатель */}
-          <div className="flex gap-2 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 mb-8 max-w-lg">
+          <div className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 mb-8 max-w-2xl">
             <button
               onClick={() => setKeysTab("generate")}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
@@ -536,6 +627,26 @@ export default function AdminPage() {
               }`}
             >
               Медиа
+            </button>
+            <button
+              onClick={() => setKeysTab("support")}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+                keysTab === "support"
+                  ? "bg-purple-600/80 text-white"
+                  : "text-white/60 hover:text-white"
+              }`}
+            >
+              Поддержка
+            </button>
+            <button
+              onClick={() => { setKeysTab("bugs"); loadBugs(); }}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+                keysTab === "bugs"
+                  ? "bg-purple-600/80 text-white"
+                  : "text-white/60 hover:text-white"
+              }`}
+            >
+              Баги
             </button>
           </div>
 
@@ -992,29 +1103,112 @@ export default function AdminPage() {
 
           {keysTab === "media" && (
             <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-7">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Users size={22} className="text-white/70" />
-                  <h2 className="text-2xl font-bold">Медиа заявки ({mediaSubmissions.length})</h2>
+                  <h2 className="text-2xl font-bold">Заявки на партнёрство ({partnerApps.length})</h2>
                 </div>
                 <button
-                  onClick={loadMedia}
+                  onClick={() => { loadMedia(); loadPartnerApps(); }}
                   className="text-sm text-purple-400 hover:text-purple-300"
                 >
                   Обновить
                 </button>
               </div>
 
-              <div className="mb-4 flex items-center gap-3">
-                <label className="text-white/40 text-xs">Награда (₽):</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={mediaReward}
-                  onChange={(e) => setMediaReward(Number(e.target.value))}
-                  className="w-24 bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm"
-                />
+              <div className="flex flex-col gap-4 mb-8 max-h-[400px] overflow-y-auto">
+                {partnerApps.map((a: any) => (
+                  <div key={a.id} className="bg-black/30 rounded-xl p-4 border border-white/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-white/90 text-sm">{a.username}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          a.platform === "youtube"
+                            ? "bg-red-500/20 text-red-300"
+                            : "bg-white/10 text-white/80"
+                        }`}>
+                          {a.platform === "youtube" ? "YouTube" : "TikTok"}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          a.status === "approved" ? "bg-green-500/20 text-green-300" :
+                          a.status === "rejected" ? "bg-red-500/20 text-red-300" :
+                          "bg-yellow-500/20 text-yellow-300"
+                        }`}>
+                          {a.status === "approved" ? "Одобрено" : a.status === "rejected" ? "Отклонено" : "На рассмотрении"}
+                        </span>
+                      </div>
+                      <span className="text-white/30 text-xs">{a.created_at?.slice(0, 10)}</span>
+                    </div>
+
+                    <a href={a.channel_link} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 text-sm truncate block mb-1">
+                      {a.channel_link}
+                    </a>
+                    <p className="text-white/50 text-xs mb-1">Telegram: {a.telegram} · Средние просмотры: {a.views}</p>
+                    {a.experience && <p className="text-white/50 text-xs mb-1">Опыт: {a.experience}</p>}
+                    <p className="text-white/60 text-xs">Мотивация: {a.reason}</p>
+
+                    {a.status === "pending" && (
+                      <div className="flex flex-col gap-2 mt-3">
+                        <button
+                          onClick={() => approvePartner(a.id)}
+                          className="self-start px-4 py-2 rounded-xl text-xs font-semibold bg-green-600 hover:bg-green-700 transition"
+                        >
+                          Одобрить и выдать медиа
+                        </button>
+                        {rejectId === a.id ? (
+                          <div className="flex flex-col gap-2">
+                            <input
+                              type="text"
+                              value={partnerRejectNote}
+                              onChange={(e) => setPartnerRejectNote(e.target.value)}
+                              placeholder="Причина отклонения"
+                              className="w-full bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-xs"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => rejectPartner(a.id)}
+                                className="px-4 py-2 rounded-xl text-xs font-semibold bg-red-600 hover:bg-red-700 transition"
+                              >
+                                Подтвердить отклонение
+                              </button>
+                              <button
+                                onClick={() => { setRejectId(null); setPartnerRejectNote(""); }}
+                                className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 border border-white/10 transition text-xs"
+                              >
+                                Отмена
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setRejectId(a.id); setPartnerRejectNote(""); }}
+                            className="self-start px-4 py-2 rounded-xl text-xs font-semibold bg-red-600 hover:bg-red-700 transition"
+                          >
+                            Отклонить
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {partnerApps.length === 0 && (
+                  <p className="text-white/30 text-center py-6">Нет заявок</p>
+                )}
               </div>
+
+              <div className="border-t border-white/10 pt-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <Users size={22} className="text-white/70" />
+                    <h2 className="text-2xl font-bold">Заявки на выплату видео ({mediaSubmissions.length})</h2>
+                  </div>
+                  <button
+                    onClick={loadMedia}
+                    className="text-sm text-purple-400 hover:text-purple-300"
+                  >
+                    Обновить
+                  </button>
+                </div>
 
               <div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto">
                 {mediaSubmissions.map((s: any) => (
@@ -1022,6 +1216,15 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-white/90 text-sm">{s.username}</span>
+                        {s.platform && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            s.platform === "youtube"
+                              ? "bg-red-500/20 text-red-300"
+                              : "bg-white/10 text-white/80"
+                          }`}>
+                            {s.platform === "youtube" ? "YouTube" : "TikTok"}
+                          </span>
+                        )}
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           s.status === "approved" ? "bg-green-500/20 text-green-300" :
                           s.status === "rejected" ? "bg-red-500/20 text-red-300" :
@@ -1038,18 +1241,44 @@ export default function AdminPage() {
                       {s.video_url}
                     </a>
 
+                    {s.status === "approved" && Number(s.views) > 0 && (
+                      <p className="text-white/40 text-xs mb-2">Просмотров на момент одобрения: {Number(s.views).toLocaleString("ru-RU")}</p>
+                    )}
+
                     {s.admin_note && (
                       <p className="text-white/30 text-xs mb-2">Примечание: {s.admin_note}</p>
                     )}
 
                     {s.status === "pending" && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-2">
+                          <label className="text-white/40 text-xs whitespace-nowrap">Награда (₽):</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={mediaRewards[s.id] ?? ""}
+                            onChange={(e) => setMediaRewards((prev) => ({ ...prev, [s.id]: Number(e.target.value) }))}
+                            placeholder="0"
+                            className="w-24 bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-xs"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-white/40 text-xs whitespace-nowrap">Просмотры:</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={mediaViews[s.id] ?? ""}
+                            onChange={(e) => setMediaViews((prev) => ({ ...prev, [s.id]: Number(e.target.value) }))}
+                            placeholder="0"
+                            className="w-28 bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-xs"
+                          />
+                        </div>
                         <input
                           type="text"
                           placeholder="Примечание (необязательно)"
-                          value={mediaNote}
-                          onChange={(e) => setMediaNote(e.target.value)}
-                          className="flex-1 bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-xs"
+                          value={mediaNotes[s.id] ?? ""}
+                          onChange={(e) => setMediaNotes((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                          className="flex-1 min-w-[160px] bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-xs"
                         />
                         <button
                           onClick={() => approveMedia(s.id)}
@@ -1071,7 +1300,158 @@ export default function AdminPage() {
                   <p className="text-white/30 text-center py-8">Нет заявок</p>
                 )}
               </div>
+              </div>
             </div>
+          )}
+
+          {keysTab === "support" && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Headset size={22} className="text-white/70" />
+                <h2 className="text-2xl font-bold">Тикеты ({supportTickets.length})</h2>
+              </div>
+              <button
+                onClick={loadSupport}
+                className="text-sm text-purple-400 hover:text-purple-300"
+              >
+                Обновить
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto">
+              {supportTickets.map((t: any) => (
+                <div key={t.id} className="bg-black/30 rounded-xl p-4 border border-white/5">
+                  <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-white/90 text-sm">{t.subject}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        t.status === "closed" ? "bg-white/10 text-white/50" : "bg-green-500/20 text-green-300"
+                      }`}>
+                        {t.status === "closed" ? "Закрыт" : "Открыт"}
+                      </span>
+                      <span className="text-white/40 text-xs">{t.username}</span>
+                    </div>
+                    <span className="text-white/30 text-xs">#{t.id} · {t.created_at?.slice(0, 10)}</span>
+                  </div>
+
+                  <div className="flex flex-col gap-2 mb-3">
+                    {t.messages.map((m: any) => (
+                      <div key={m.id} className={`rounded-xl p-3 border ${
+                        m.is_admin ? "bg-purple-600/10 border-purple-500/20" : "bg-white/[0.03] border-white/5"
+                      }`}>
+                        <p className={`text-xs font-semibold mb-1 ${m.is_admin ? "text-purple-300" : "text-white/60"}`}>
+                          {m.is_admin ? "Поддержка" : "Пользователь"}
+                        </p>
+                        <p className="text-white/80 text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      value={supportReplies[t.id] ?? ""}
+                      onChange={(e) => setSupportReplies((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                      placeholder="Ответ..."
+                      className="flex-1 min-w-[180px] bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm"
+                    />
+                    <button
+                      onClick={() => replySupport(t.id)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 transition"
+                    >
+                      Ответить
+                    </button>
+                    {t.status === "closed" ? (
+                      <button
+                        onClick={() => setSupportStatus(t.id, "reopen")}
+                        className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 transition"
+                      >
+                        Открыть
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setSupportStatus(t.id, "close")}
+                        className="px-4 py-2 rounded-xl text-xs font-semibold bg-red-600 hover:bg-red-700 transition"
+                      >
+                        Закрыть
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {supportTickets.length === 0 && (
+                <p className="text-white/30 text-center py-8">Тикетов нет</p>
+              )}
+            </div>
+          </div>
+          )}
+
+          {keysTab === "bugs" && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <WarningCircle size={22} className="text-white/70" />
+                <h2 className="text-2xl font-bold">Баг-репорты ({bugReports.length})</h2>
+              </div>
+              <button
+                onClick={loadBugs}
+                className="text-sm text-purple-400 hover:text-purple-300"
+              >
+                Обновить
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto">
+              {bugReports.map((b: any) => (
+                <div key={b.id} className="bg-black/30 rounded-xl p-4 border border-white/5">
+                  <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-white/90 text-sm">{b.function_name}</span>
+                      <span className="text-white/50 text-xs">{b.server_ip}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        b.frequency === "часто" ? "bg-red-500/20 text-red-300" : "bg-yellow-500/20 text-yellow-300"
+                      }`}>
+                        {b.frequency}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        b.status === "fixed" ? "bg-green-500/20 text-green-300"
+                        : b.status === "in_progress" ? "bg-blue-500/20 text-blue-300"
+                        : "bg-white/10 text-white/50"
+                      }`}>
+                        {b.status === "fixed" ? "Исправлено" : b.status === "in_progress" ? "В работе" : "Новый"}
+                      </span>
+                      <span className="text-white/40 text-xs">{b.username}</span>
+                    </div>
+                    <span className="text-white/30 text-xs">#{b.id} · {b.created_at?.slice(0, 10)}</span>
+                  </div>
+
+                  <p className="text-white/80 text-sm whitespace-pre-wrap break-words mb-3">{b.description}</p>
+
+                  <div className="flex flex-wrap gap-2">
+                    {b.status !== "in_progress" && (
+                      <button
+                        onClick={() => setBugStatus(b.id, "in_progress")}
+                        className="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 transition"
+                      >
+                        В работу
+                      </button>
+                    )}
+                    {b.status !== "fixed" && (
+                      <button
+                        onClick={() => setBugStatus(b.id, "fixed")}
+                        className="px-4 py-2 rounded-xl text-xs font-semibold bg-green-600 hover:bg-green-700 transition"
+                      >
+                        Исправлено
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {bugReports.length === 0 && (
+                <p className="text-white/30 text-center py-8">Баг-репортов нет</p>
+              )}
+            </div>
+          </div>
           )}
         </div>
       </main>

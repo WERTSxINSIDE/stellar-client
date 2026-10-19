@@ -9,8 +9,8 @@ const unbounded = Unbounded({
 });
 
 export const metadata: Metadata = {
-  title: "EuphoriaDLC",
-  description: "EuphoriaDLC",
+  title: "Stellar Client",
+  description: "Stellar Client",
   icons: {
     icon: "/icon.png",
   },

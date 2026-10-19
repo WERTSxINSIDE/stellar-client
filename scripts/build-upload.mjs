@@ -153,8 +153,8 @@ function head(title) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${title} — EuphoriaDLC</title>
-  <meta name="description" content="EuphoriaDLC" />
+  <title>${title} — Stellar Client</title>
+  <meta name="description" content="Stellar Client" />
   <link rel="icon" href="assets/favicon.ico" />
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="animation.css" />
@@ -168,7 +168,7 @@ function header(active = "") {
     <div class="mx-auto flex w-full max-w-6xl items-center justify-center gap-24 py-4">
       <div class="flex items-center gap-16">
         <a href="index.html" class="flex items-center gap-3 transition hover:opacity-100">
-          <img src="assets/icon.png" alt="EuphoriaDLC" width="45" height="45" />
+          <img src="assets/icon.png" alt="Stellar Client" width="45" height="45" />
         </a>
         <nav class="flex items-center gap-12 text-white/85">
           <a href="index.html" class="flex items-center gap-2 group ${cls("home")}">
@@ -193,8 +193,8 @@ function footer() {
   <footer class="w-full relative bg-black/50 backdrop-blur-md border-t border-white/10 overflow-hidden">
     <div class="relative z-10 px-48 py-20 flex justify-between items-start text-white/70">
       <div class="flex flex-col gap-3 max-w-xs">
-        <h3 class="text-xl font-semibold text-white">EuphoriaDLC</h3>
-        <p class="text-sm text-white/50 leading-relaxed">© ${year} EuphoriaDLC.<br />Все права защищены.</p>
+        <h3 class="text-xl font-semibold text-white">Stellar Client</h3>
+        <p class="text-sm text-white/50 leading-relaxed">© ${year} Stellar Client.<br />Все права защищены.</p>
       </div>
       <div class="flex gap-20">
         <div class="flex flex-col gap-3">
@@ -210,7 +210,7 @@ function footer() {
         </div>
         <div class="flex flex-col gap-3">
           <h4 class="text-lg font-semibold text-white">Контакты</h4>
-          <a href="https://t.me/EuphoriaDLC" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-purple-300 transition">Telegram</a>
+          <a href="https://t.me/Stellar1DLC" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-purple-300 transition">Telegram</a>
           <a href="https://discord.gg/8dkVx9FfH" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-purple-300 transition">Discord</a>
         </div>
         <div class="flex flex-col gap-3">
@@ -354,7 +354,7 @@ function faqHtml() {
   <section class="relative z-10 pt-40 pb-32 flex flex-col items-center px-6">
     <h1 class="reveal text-6xl font-extrabold mb-16 text-center">FAQ</h1>
     ${item("Как запустить клиент?", "Сначала скачайте лаунчер и откройте его. В появившемся окне вы увидите поле, где можно задать выделение оперативной памяти. Рекомендуем выделять не больше 8 ГБ. После этого нажмите кнопку «Старт» и дождитесь загрузки клиента.")}
-    ${item("Как загрузить конфиг в клиент?", "Чтобы загрузить конфиг, сначала запустите клиент хотя бы один раз. Затем перейдите в директорию: C:\\EuphoriaDLC\\beta\\client\\configs и поместите ваш файл конфига .euphoria в эту папку.")}
+    ${item("Как загрузить конфиг в клиент?", "Чтобы загрузить конфиг, сначала запустите клиент хотя бы один раз. Затем перейдите в директорию: C:\\StellarClient\\beta\\client\\configs и поместите ваш файл конфига .euphoria в эту папку.")}
     ${item("Как создать собственный скрипт для клиента?", "Чтобы создать свой скрипт, сначала нужно прочитать документацию. В ней есть примеры использования, хуки событий и описание API. Обязательно следуйте рекомендациям по разработке, чтобы обеспечить совместимость.")}
     ${item("Как связаться с техподдержкой?", "Есть два способа связаться с поддержкой. Первый — открыть тикет на нашем Discord-сервере в канале Support. Второй — написать в нашу группу VK. Поддержка обычно отвечает в течение 24 часов.")}
   </section>

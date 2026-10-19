@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query, queryOne } from "@/lib/db";
+import { query, queryAll, recomputePartnerRank } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +35,14 @@ export async function GET() {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    const submissions = await query(
-      "SELECT id, video_url, status, reward, admin_note, created_at FROM media_submissions WHERE user_id = $1 ORDER BY created_at DESC",
+    const submissions = await queryAll(
+      "SELECT id, video_url, status, reward, views, admin_note, created_at FROM media_submissions WHERE user_id = $1 ORDER BY created_at DESC",
       [user.id]
     );
 
-    return NextResponse.json({ ok: true, submissions });
+    const info = await recomputePartnerRank(user.id);
+
+    return NextResponse.json({ ok: true, submissions, ...info });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });
   }

@@ -33,7 +33,7 @@ function header(active = "home") {
   return `<header class="site-header">
   <div class="header-inner">
     <div class="header-left">
-      <a href="index.html" class="logo-link"><img src="assets/icon.png" alt="EuphoriaDLC" width="45" height="45"></a>
+      <a href="index.html" class="logo-link"><img src="assets/icon.png" alt="Stellar Client" width="45" height="45"></a>
       <nav class="header-nav">
         ${nav
           .map(
@@ -52,13 +52,13 @@ function footer() {
   return `<footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-brand">
-      <h3>EuphoriaDLC</h3>
-      <p>© ${year} EuphoriaDLC.<br>Все права защищены.</p>
+      <h3>Stellar Client</h3>
+      <p>© ${year} Stellar Client.<br>Все права защищены.</p>
     </div>
     <div class="footer-columns">
       <div class="footer-col"><h4>Платформа</h4><a href="index.html">Главная</a><a href="pricing.html">Покупка</a><a href="faq.html">FAQ</a></div>
       <div class="footer-col"><h4>Аккаунт</h4><a href="login.html">Вход</a><a href="register.html">Регистрация</a></div>
-      <div class="footer-col"><h4>Контакты</h4><a href="https://t.me/EuphoriaDLC" target="_blank" rel="noopener">Telegram</a><a href="https://discord.gg/8dkVx9FfH" target="_blank" rel="noopener">Discord</a></div>
+      <div class="footer-col"><h4>Контакты</h4><a href="https://t.me/Stellar1DLC" target="_blank" rel="noopener">Telegram</a><a href="https://discord.gg/8dkVx9FfH" target="_blank" rel="noopener">Discord</a></div>
       <div class="footer-col"><h4>Правовое</h4><a href="#">Лицензионное соглашение</a></div>
     </div>
   </div>
@@ -71,7 +71,7 @@ function page(title, body, active = "home", extraHead = "") {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} — EuphoriaDLC</title>
+  <title>${title} — Stellar Client</title>
   <link rel="icon" href="assets/icon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -183,7 +183,7 @@ const pages = {
   <section class="faq-section">
     <h1 class="reveal">FAQ</h1>
     ${faqCard("Как запустить клиент?", "Сначала скачайте лаунчер и откройте его. В появившемся окне вы увидите поле, где можно задать выделение оперативной памяти. Рекомендуем выделять не больше 8 ГБ. После этого нажмите кнопку «Старт» и дождитесь загрузки клиента.")}
-    ${faqCard("Как загрузить конфиг в клиент?", "Чтобы загрузить конфиг, сначала запустите клиент хотя бы один раз. Затем перейдите в директорию: C:\\EuphoriaDLC\\beta\\client\\configs и поместите ваш файл конфига .euphoria в эту папку.")}
+    ${faqCard("Как загрузить конфиг в клиент?", "Чтобы загрузить конфиг, сначала запустите клиент хотя бы один раз. Затем перейдите в директорию: C:\\StellarClient\\beta\\client\\configs и поместите ваш файл конфига .euphoria в эту папку.")}
     ${faqCard("Как создать собственный скрипт для клиента?", "Чтобы создать свой скрипт, сначала нужно прочитать документацию. В ней есть примеры использования, хуки событий и описание API. Обязательно следуйте рекомендациям по разработке, чтобы обеспечить совместимость.")}
     ${faqCard("Как связаться с техподдержкой?", "Есть два способа связаться с поддержкой. Первый — открыть тикет на нашем Discord-сервере в канале Support. Второй — написать в нашу группу VK. Поддержка обычно отвечает в течение 24 часов.")}
   </section>

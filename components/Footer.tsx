@@ -81,9 +81,9 @@ export default function Footer() {
         className="relative z-10 px-48 py-20 flex justify-between items-start text-white/70"
       >
         <motion.div variants={colVar} className="flex flex-col gap-3 max-w-xs">
-          <h3 className="text-xl font-semibold text-white">EuphoriaDLC</h3>
+          <h3 className="text-xl font-semibold text-white">Stellar Client</h3>
           <p className="text-sm text-white/50 leading-relaxed">
-            © {new Date().getFullYear()} EuphoriaDLC.
+            © {new Date().getFullYear()} Stellar Client.
             <br />
             Все права защищены.
           </p>

@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { query, queryOne, queryAll, addBalanceHistory } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 import bcrypt from "bcrypt";
 
 export async function POST(req: Request) {
   try {
-    const { admin_token, action, user_id, role, ban_reason, days, new_password, new_username } = await req.json();
-
-    if (admin_token !== "euphoria-admin-2024") {
-      return NextResponse.json({ error: "Неверный токен" }, { status: 403 });
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
+
+    const { action, user_id, role, ban_reason, days, new_password, new_username } = await req.json();
 
     if (action === "list") {
       const users = await queryAll("SELECT id, username, email, role, subscription_end, hwid, is_admin, banned, ban_reason, created_at, balance FROM users ORDER BY id");
