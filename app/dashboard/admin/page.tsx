@@ -83,9 +83,18 @@ export default function AdminPage() {
   // Баг-репорты тестеров
   const [bugReports, setBugReports] = useState<any[]>([]);
 
-  // Отзывы
-  const [reviewsList, setReviewsList] = useState<any[]>([]);
-  const [reviewBusy, setReviewBusy] = useState(false);
+  // Статистика
+  const [stats, setStats] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  async function loadStats() {
+    setStatsLoading(true);
+    try {
+      const res = await fetch("/api/admin/stats");
+      const data = await res.json();
+      if (data.ok) setStats(data);
+    } catch {} finally { setStatsLoading(false); }
+  }
 
   async function loadReviews() {
     try {
@@ -147,6 +156,10 @@ export default function AdminPage() {
         setLoading(false);
       });
   }, [router]);
+
+  useEffect(() => {
+    if ((keysTab as any) === "stats") loadStats();
+  }, [keysTab]);
 
   async function loadKeys() {
     try {
@@ -694,6 +707,16 @@ export default function AdminPage() {
               }`}
             >
               Отзывы
+            </button>
+            <button
+              onClick={() => { setKeysTab("stats" as any); }}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+                keysTab === ("stats" as any)
+                  ? "bg-purple-600/80 text-white"
+                  : "text-white/60 hover:text-white"
+              }`}
+            >
+              Статистика
             </button>
           </div>
 
@@ -1505,34 +1528,26 @@ export default function AdminPage() {
           )}
 
           {keysTab === "reviews" && (
+          <div> ... </div>
+          )}
+
+          {(keysTab as any) === "stats" && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <Star size={22} className="text-white/70" />
-                <h2 className="text-2xl font-bold">Отзывы ({reviewsList.length})</h2>
-              </div>
-              <button onClick={loadReviews} className="text-sm text-purple-400 hover:text-purple-300">Обновить</button>
+              <h2 className="text-2xl font-bold">Статистика</h2>
+              <button onClick={loadStats} disabled={statsLoading} className="text-sm text-purple-400 hover:text-purple-300 disabled:opacity-50">{statsLoading?"Обновление...":"Обновить"}</button>
             </div>
-            <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto">
-              {reviewsList.map((r: any) => (
-                <div key={r.id} className="bg-black/30 rounded-xl p-4 border border-white/5">
-                  <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-white/90 text-sm">{r.username}</span>
-                      <span className="flex items-center gap-0.5">{[1,2,3,4,5].map(i=><Star key={i} size={13} weight={i<=r.rating?"fill":"regular"} className={i<=r.rating?"text-yellow-400":"text-white/20"}/>)}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${r.status==="approved"?"bg-green-500/20 text-green-300":r.status==="rejected"?"bg-red-500/20 text-red-300":"bg-white/10 text-white/50"}`}>{r.status==="approved"?"Одобрен":r.status==="rejected"?"Отклонён":"На проверке"}</span>
-                    </div>
-                    <span className="text-white/30 text-xs">#{r.id} · {String(r.created_at).slice(0,10)}</span>
-                  </div>
-                  <p className="text-white/80 text-sm whitespace-pre-wrap break-words mb-3">{r.body}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {r.status !== "approved" && <button onClick={()=>reviewAction(r.id,"approve")} disabled={reviewBusy} className="px-4 py-2 rounded-xl text-xs font-semibold bg-green-600 hover:bg-green-700 disabled:opacity-50 transition">Одобрить</button>}
-                    {r.status !== "rejected" && <button onClick={()=>reviewAction(r.id,"reject")} disabled={reviewBusy} className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 disabled:opacity-50 transition">Отклонить</button>}
-                    <button onClick={()=>deleteReview(r.id)} disabled={reviewBusy} className="px-4 py-2 rounded-xl text-xs font-semibold bg-red-600/80 hover:bg-red-700 disabled:opacity-50 transition">Удалить</button>
-                  </div>
-                </div>
-              ))}
-              {reviewsList.length === 0 && <p className="text-white/30 text-center py-8">Отзывов нет</p>}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-black/30 rounded-2xl p-4 border border-white/5"><p className="text-white/40 text-sm">Пользователей</p><p className="text-2xl font-bold mt-1">{stats?.totalUsers ?? "—"}</p></div>
+              <div className="bg-black/30 rounded-2xl p-4 border border-white/5"><p className="text-white/40 text-sm">Регистраций за 7д</p><p className="text-2xl font-bold mt-1">{stats?.regs7d ?? "—"}</p></div>
+              <div className="bg-black/30 rounded-2xl p-4 border border-white/5"><p className="text-white/40 text-sm">Покупок</p><p className="text-2xl font-bold mt-1">{stats?.purchases ?? "—"}</p></div>
+              <div className="bg-black/30 rounded-2xl p-4 border border-white/5"><p className="text-white/40 text-sm">Куплено дней</p><p className="text-2xl font-bold mt-1">{stats?.daysBought ?? "—"}</p></div>
+            </div>
+            <div className="bg-black/30 rounded-2xl p-5 border border-white/5">
+              <h3 className="font-semibold mb-3">Регистрации по дням (30д)</h3>
+              <div className="flex items-end gap-1 h-40">
+                {(stats?.byDay||[]).map((d:any,i:number)=>(<div key={i} className="flex-1 flex flex-col items-center justify-end gap-1"><div className="w-full bg-purple-500/60 rounded-t" style={{height:`${Math.max(4,(d.c/Math.max(1,...(stats?.byDay||[]).map((x:any)=>x.c)))*100)}%`}} title={`${d.c} — ${d.day}`}></div><span className="text-[9px] text-white/30 rotate-45 origin-top-left mt-6">{d.day.slice(5)}</span></div>))}
+              </div>
             </div>
           </div>
           )}
