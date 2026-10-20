@@ -11,9 +11,10 @@ type PrizeInfo = {
   key: string;
   label: string;
   weight: number;
-  kind: "sub" | "hwid";
+  kind: "sub" | "hwid" | "balance";
   hours?: number;
   days?: number;
+  amount?: number;
   chance: number;
 };
 

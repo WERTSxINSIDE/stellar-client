@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { House, ShoppingCartSimple, Question, Trophy, Headset } from "@phosphor-icons/react";
+import { House, ShoppingCartSimple, Question, Trophy, Headset, Star } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 
 export default function Header() {
@@ -104,6 +104,22 @@ export default function Header() {
                 />
                 <span className="text-sm group-hover:text-white transition">
                   FAQ
+                </span>
+              </Link>
+            </motion.div>
+
+            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
+              <Link
+                href="/reviews"
+                className="flex items-center gap-2 cursor-pointer group"
+              >
+                <Star
+                  size={24}
+                  weight="fill"
+                  className="group-hover:text-purple-300 transition"
+                />
+                <span className="text-sm group-hover:text-white transition">
+                  Отзывы
                 </span>
               </Link>
             </motion.div>

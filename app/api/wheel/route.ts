@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query, queryOne } from "@/lib/db";
+import { query, queryOne, addBalanceHistory } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -10,22 +10,27 @@ export type Prize = {
   key: string;
   label: string;
   weight: number;
-  kind: "sub" | "hwid";
+  kind: "sub" | "hwid" | "balance";
   hours?: number;
   days?: number;
+  amount?: number;
 };
 
 export const PRIZES: Prize[] = [
-  { key: "sub_1h", label: "1 час подписки", weight: 75, kind: "sub", hours: 1 },
-  { key: "sub_3h", label: "3 часа подписки", weight: 15, kind: "sub", hours: 3 },
+  { key: "sub_1h", label: "1 час подписки", weight: 70, kind: "sub", hours: 1 },
+  { key: "sub_3h", label: "3 часа подписки", weight: 16, kind: "sub", hours: 3 },
   { key: "sub_6h", label: "6 часов подписки", weight: 13, kind: "sub", hours: 6 },
   { key: "sub_12h", label: "12 часов подписки", weight: 10, kind: "sub", hours: 12 },
-  { key: "sub_1d", label: "1 день подписки", weight: 6, kind: "sub", days: 1 },
+  { key: "sub_1d", label: "1 день подписки", weight: 7, kind: "sub", days: 1 },
+  { key: "balance_5", label: "+5 ₽", weight: 6, kind: "balance", amount: 5 },
   { key: "hwid", label: "Сброс HWID", weight: 4, kind: "hwid" },
-  { key: "sub_7d", label: "7 дней подписки", weight: 3, kind: "sub", days: 7 },
+  { key: "balance_10", label: "+10 ₽", weight: 3.5, kind: "balance", amount: 10 },
+  { key: "sub_7d", label: "7 дней подписки", weight: 2.5, kind: "sub", days: 7 },
+  { key: "balance_50", label: "+50 ₽", weight: 1.2, kind: "balance", amount: 50 },
   { key: "sub_30d", label: "30 дней подписки", weight: 0.5, kind: "sub", days: 30 },
   { key: "sub_90d", label: "90 дней подписки", weight: 0.25, kind: "sub", days: 90 },
-  { key: "sub_180d", label: "180 дней подписки", weight: 0.1, kind: "sub", days: 180 },
+  { key: "sub_180d", label: "180 дней подписки", weight: 0.12, kind: "sub", days: 180 },
+  { key: "balance_100", label: "+100 ₽", weight: 0.08, kind: "balance", amount: 100 },
   { key: "lifetime", label: "Навсегда", weight: 0.01, kind: "sub", days: 999999 },
 ];
 
@@ -123,6 +128,10 @@ export async function POST() {
 
     if (prize.kind === "hwid") {
       await query("UPDATE users SET hwid = NULL WHERE id = $1", [user.id]);
+    } else if (prize.kind === "balance") {
+      const amt = prize.amount || 0;
+      await query("UPDATE users SET balance = COALESCE(balance,0) + $1 WHERE id = $2", [amt, user.id]);
+      await addBalanceHistory(user.id, amt, "wheel", `Выигрыш в колесе — ${prize.label}`);
     } else {
       const u = await queryOne(
         "SELECT subscription_end FROM users WHERE id = $1",

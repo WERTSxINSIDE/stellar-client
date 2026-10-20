@@ -22,6 +22,7 @@ import Footer from "@/components/Footer";
   User,
   Coin,
   Headset,
+  Star,
 } from "@phosphor-icons/react";
 
 type Me = {
@@ -51,7 +52,7 @@ export default function AdminPage() {
 
   // Все ключи
   const [allKeys, setAllKeys] = useState<any[]>([]);
-  const [keysTab, setKeysTab] = useState<"generate" | "list" | "users" | "news" | "media" | "support" | "bugs">("generate");
+  const [keysTab, setKeysTab] = useState<"generate" | "list" | "users" | "news" | "media" | "support" | "bugs" | "reviews">("generate");
 
   // Пользователи
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -81,6 +82,35 @@ export default function AdminPage() {
 
   // Баг-репорты тестеров
   const [bugReports, setBugReports] = useState<any[]>([]);
+
+  // Отзывы
+  const [reviewsList, setReviewsList] = useState<any[]>([]);
+  const [reviewBusy, setReviewBusy] = useState(false);
+
+  async function loadReviews() {
+    try {
+      const res = await fetch("/api/reviews?all=1");
+      const data = await res.json();
+      if (data.ok) setReviewsList(data.reviews || []);
+    } catch {}
+  }
+
+  async function reviewAction(id: number, action: "approve" | "reject") {
+    setReviewBusy(true);
+    try {
+      await fetch("/api/reviews", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, id }) });
+      await loadReviews();
+    } finally { setReviewBusy(false); }
+  }
+
+  async function deleteReview(id: number) {
+    if (!confirm("Удалить отзыв?")) return;
+    setReviewBusy(true);
+    try {
+      await fetch("/api/reviews", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+      await loadReviews();
+    } finally { setReviewBusy(false); }
+  }
 
   async function loadBugs() {
     try {
@@ -654,6 +684,16 @@ export default function AdminPage() {
               }`}
             >
               Баги
+            </button>
+            <button
+              onClick={() => { setKeysTab("reviews"); loadReviews(); }}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+                keysTab === "reviews"
+                  ? "bg-purple-600/80 text-white"
+                  : "text-white/60 hover:text-white"
+              }`}
+            >
+              Отзывы
             </button>
           </div>
 
@@ -1460,6 +1500,39 @@ export default function AdminPage() {
               {bugReports.length === 0 && (
                 <p className="text-white/30 text-center py-8">Баг-репортов нет</p>
               )}
+            </div>
+          </div>
+          )}
+
+          {keysTab === "reviews" && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Star size={22} className="text-white/70" />
+                <h2 className="text-2xl font-bold">Отзывы ({reviewsList.length})</h2>
+              </div>
+              <button onClick={loadReviews} className="text-sm text-purple-400 hover:text-purple-300">Обновить</button>
+            </div>
+            <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto">
+              {reviewsList.map((r: any) => (
+                <div key={r.id} className="bg-black/30 rounded-xl p-4 border border-white/5">
+                  <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-white/90 text-sm">{r.username}</span>
+                      <span className="flex items-center gap-0.5">{[1,2,3,4,5].map(i=><Star key={i} size={13} weight={i<=r.rating?"fill":"regular"} className={i<=r.rating?"text-yellow-400":"text-white/20"}/>)}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${r.status==="approved"?"bg-green-500/20 text-green-300":r.status==="rejected"?"bg-red-500/20 text-red-300":"bg-white/10 text-white/50"}`}>{r.status==="approved"?"Одобрен":r.status==="rejected"?"Отклонён":"На проверке"}</span>
+                    </div>
+                    <span className="text-white/30 text-xs">#{r.id} · {String(r.created_at).slice(0,10)}</span>
+                  </div>
+                  <p className="text-white/80 text-sm whitespace-pre-wrap break-words mb-3">{r.body}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {r.status !== "approved" && <button onClick={()=>reviewAction(r.id,"approve")} disabled={reviewBusy} className="px-4 py-2 rounded-xl text-xs font-semibold bg-green-600 hover:bg-green-700 disabled:opacity-50 transition">Одобрить</button>}
+                    {r.status !== "rejected" && <button onClick={()=>reviewAction(r.id,"reject")} disabled={reviewBusy} className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 disabled:opacity-50 transition">Отклонить</button>}
+                    <button onClick={()=>deleteReview(r.id)} disabled={reviewBusy} className="px-4 py-2 rounded-xl text-xs font-semibold bg-red-600/80 hover:bg-red-700 disabled:opacity-50 transition">Удалить</button>
+                  </div>
+                </div>
+              ))}
+              {reviewsList.length === 0 && <p className="text-white/30 text-center py-8">Отзывов нет</p>}
             </div>
           </div>
           )}
