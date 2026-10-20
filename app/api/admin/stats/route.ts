@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query, queryOne } from "@/lib/db";
+import { queryAll, queryOne } from "@/lib/db";
 
 export async function GET() {
   try {
@@ -13,7 +13,7 @@ export async function GET() {
     const activeSubs = (await queryOne("SELECT COUNT(*)::int as c FROM users WHERE subscription_end IS NOT NULL AND subscription_end::timestamptz > NOW()")) as any;
     const keysTotal = (await queryOne("SELECT COUNT(*)::int as c FROM keys")) as any;
     const keysUsed = (await queryOne("SELECT COUNT(*)::int as c FROM keys WHERE activated_by IS NOT NULL")) as any;
-    const byDay = await query("SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') as day, COUNT(*)::int as c FROM users WHERE created_at > NOW() - INTERVAL '30 days' GROUP BY day ORDER BY day ASC");
+    const byDay = await queryAll("SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') as day, COUNT(*)::int as c FROM users WHERE created_at > NOW() - INTERVAL '30 days' GROUP BY day ORDER BY day ASC");
 
     return NextResponse.json({
       ok: true,
