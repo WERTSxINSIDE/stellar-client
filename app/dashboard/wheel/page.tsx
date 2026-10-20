@@ -26,12 +26,12 @@ type WheelState = {
   prizes: PrizeInfo[];
 };
 
-const SEG_COUNT = 11;
-const SEG = 360 / SEG_COUNT;
 const COLORS = ["#7c3aed", "#4338ca"];
 
 function shortLabel(label: string) {
-  return label.replace(" подписки", "");
+  const s = label.replace(" подписки", "").replace("HWID сброс", "HWID");
+  if (s.includes("₽")) return s.replace(" ₽", "₽");
+  return s.length > 10 ? s.slice(0, 9) + "..." : s;
 }
 
 export default function WheelPage() {
@@ -43,6 +43,10 @@ export default function WheelPage() {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState("");
   const resultRef = useRef<HTMLDivElement>(null);
+
+  const prizes = state?.prizes ?? [];
+  const SEG_COUNT = prizes.length || 1;
+  const SEG = 360 / SEG_COUNT;
 
   useEffect(() => {
     fetch("/api/me")
@@ -135,12 +139,12 @@ export default function WheelPage() {
                   transition: spinning ? "transform 4.1s cubic-bezier(0.12, 0.6, 0.1, 1)" : "none",
                 }}
               >
-                {state?.prizes.map((p, i) => (
+                {prizes.map((p, i) => (
                   <span
                     key={p.key}
-                    className="absolute left-1/2 top-1/2 text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-white/90 whitespace-nowrap"
+                    className="absolute left-1/2 top-1/2 text-[8px] sm:text-[9px] font-bold uppercase tracking-wide text-white/90 whitespace-nowrap"
                     style={{
-                      transform: `rotate(${i * SEG + SEG / 2}deg) translate(-50%, -118px)`,
+                      transform: `rotate(${i * SEG + SEG / 2}deg) translate(-50%, ${prizes.length > 8 ? "-110px" : "-118px"})`,
                       transformOrigin: "0 0",
                       textShadow: "0 1px 3px rgba(0,0,0,0.6)",
                     }}
