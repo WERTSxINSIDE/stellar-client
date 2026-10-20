@@ -87,6 +87,10 @@ export default function AdminPage() {
   const [stats, setStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
+  // Отзывы
+  const [reviewsList, setReviewsList] = useState<any[]>([]);
+  const [reviewBusy, setReviewBusy] = useState(false);
+
   async function loadStats() {
     setStatsLoading(true);
     try {
