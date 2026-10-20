@@ -207,7 +207,7 @@ async function initDb() {
 
     await pool.query(`
       DO $$ BEGIN
-        ALTER TABLE media_submissions ADD COLUMN views INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN twofa_enabled INTEGER DEFAULT 0;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
     `);
@@ -300,6 +300,7 @@ export type User = {
   beta_access: number;
   balance: number;
   partner_rank: string;
+  twofa_enabled?: number;
   created_at: string;
 };
 

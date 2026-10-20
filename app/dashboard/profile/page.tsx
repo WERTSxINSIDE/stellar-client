@@ -16,6 +16,7 @@ import {
   Fingerprint,
   Shield,
   VideoCamera,
+  LockKey,
 } from "@phosphor-icons/react";
 
 type Me = {
@@ -45,18 +46,28 @@ export default function ProfilePage() {
   const [msgOk, setMsgOk] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [twofaEnabled, setTwofaEnabled] = useState(false);
+  const [twofaFlow, setTwofaFlow] = useState<"idle" | "code" | "disable">("idle");
+  const [twofaCode, setTwofaCode] = useState("");
+  const [twofaPassword, setTwofaPassword] = useState("");
+  const [twofaMsg, setTwofaMsg] = useState("");
+  const [twofaOk, setTwofaOk] = useState(false);
+  const [twofaBusy, setTwofaBusy] = useState(false);
+
   useEffect(() => {
     fetch("/api/me")
       .then((r) => r.json())
       .then((data) => {
-        if (!data.user) {
-          router.replace("/login");
-          return;
-        }
+        if (!data.user) { router.replace("/login"); return; }
         setUser(data.user);
         setLoading(false);
       });
+    fetch("/api/2fa").then(r=>r.json()).then(d=>{ if(d.ok) setTwofaEnabled(!!d.enabled); }).catch(()=>{});
   }, [router]);
+
+  async function twofaRequest(){ setTwofaBusy(true); setTwofaMsg(""); setTwofaOk(false); try{ const res=await fetch("/api/2fa",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"request"})}); const d=await res.json(); if(!res.ok){setTwofaMsg(d.error||"Ошибка");return;} setTwofaFlow("code"); setTwofaMsg("Код отправлен на вашу почту"); setTwofaOk(true);}catch{setTwofaMsg("Ошибка сервера");}finally{setTwofaBusy(false);}}
+  async function twofaEnable(){ setTwofaBusy(true); setTwofaMsg(""); try{ const res=await fetch("/api/2fa",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"enable",code:twofaCode})}); const d=await res.json(); if(!res.ok){setTwofaOk(false);setTwofaMsg(d.error||"Ошибка");return;} setTwofaEnabled(true); setTwofaFlow("idle"); setTwofaCode(""); setTwofaMsg("Двухфакторная защита включена"); setTwofaOk(true);}catch{setTwofaMsg("Ошибка сервера");}finally{setTwofaBusy(false);}}
+  async function twofaDisable(){ setTwofaBusy(true); setTwofaMsg(""); try{ const res=await fetch("/api/2fa",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"disable",password:twofaPassword})}); const d=await res.json(); if(!res.ok){setTwofaOk(false);setTwofaMsg(d.error||"Ошибка");return;} setTwofaEnabled(false); setTwofaFlow("idle"); setTwofaPassword(""); setTwofaMsg("Двухфакторная защита отключена"); setTwofaOk(true);}catch{setTwofaMsg("Ошибка сервера");}finally{setTwofaBusy(false);}}
 
   if (loading || !user) return null;
 
@@ -176,6 +187,38 @@ export default function ProfilePage() {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Двухфакторная защита */}
+          <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-7 mb-8">
+            <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center shrink-0"><LockKey size={22} className="text-purple-300" /></div>
+                <div>
+                  <h2 className="text-xl font-bold mb-1">Двухфакторная защита</h2>
+                  <p className="text-white/50 text-sm max-w-md">При входе в аккаунт дополнительно потребуется код из письма на {user.email}.</p>
+                </div>
+              </div>
+              <span className={`text-xs px-3 py-1.5 rounded-full border ${twofaEnabled?"bg-green-500/15 border-green-500/30 text-green-300":"bg-white/5 border-white/10 text-white/50"}`}>{twofaEnabled?"Включена":"Выключена"}</span>
+            </div>
+            {twofaMsg && <p className={`text-sm mb-4 ${twofaOk?"text-green-400":"text-red-400"}`}>{twofaMsg}</p>}
+            {twofaFlow === "code" ? (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input type="text" inputMode="numeric" value={twofaCode} onChange={(e)=>setTwofaCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="Код из письма" maxLength={6} className="flex-1 bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-center tracking-[0.3em]" />
+                <button onClick={twofaEnable} disabled={twofaBusy||twofaCode.length<6} className="px-6 py-3 rounded-xl font-semibold bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition">Подтвердить</button>
+                <button onClick={()=>{setTwofaFlow("idle");setTwofaCode("");setTwofaMsg("");}} className="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition">Отмена</button>
+              </div>
+            ) : twofaFlow === "disable" ? (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input type="password" value={twofaPassword} onChange={(e)=>setTwofaPassword(e.target.value)} placeholder="Пароль от аккаунта" className="flex-1 bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none" />
+                <button onClick={twofaDisable} disabled={twofaBusy||!twofaPassword} className="px-6 py-3 rounded-xl font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-50 transition">Отключить</button>
+                <button onClick={()=>{setTwofaFlow("idle");setTwofaPassword("");setTwofaMsg("");}} className="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition">Отмена</button>
+              </div>
+            ) : twofaEnabled ? (
+              <button onClick={()=>{setTwofaFlow("disable");setTwofaMsg("");}} className="px-6 py-3 rounded-xl font-semibold bg-white/5 hover:bg-white/10 border border-white/10 transition">Отключить</button>
+            ) : (
+              <button onClick={twofaRequest} disabled={twofaBusy} className="px-6 py-3 rounded-xl font-semibold bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition">{twofaBusy?"Отправка...":"Включить"}</button>
+            )}
           </div>
 
           {user.role === "admin" && (

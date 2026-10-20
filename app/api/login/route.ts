@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { queryOne, User } from "@/lib/db";
 import { createSession } from "@/lib/auth";
+import { issueVerificationCode } from "@/lib/email-codes";
 
 export async function POST(req: Request) {
   try {
@@ -27,6 +28,12 @@ export async function POST(req: Request) {
 
     if (user.banned) {
       return NextResponse.json({ error: user.ban_reason || "Ваш аккаунт заблокирован" }, { status: 403 });
+    }
+
+    if (user.twofa_enabled) {
+      const res = await issueVerificationCode(user.email);
+      if (!res.ok) return NextResponse.json({ error: res.error || "Не удалось отправить код" }, { status: res.status || 502 });
+      return NextResponse.json({ ok: true, twofa: true });
     }
 
     await createSession(user.id, remember !== false);
