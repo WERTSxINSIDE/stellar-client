@@ -25,6 +25,7 @@ import {
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
+import { isCosmicBadge, isRgbValue } from "@/lib/cosmetics";
 import {
   CLAN_ROLES,
   CLAN_ROLE_META,
@@ -708,12 +709,22 @@ export default function ClanPage() {
                           )}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p
-                            className="text-sm font-medium truncate inline-flex items-center gap-1.5"
-                            style={{ color: member.nickname_color || undefined }}
-                          >
-                            {member.equipped_badge && <span>{member.equipped_badge}</span>}
-                            {member.username}
+                          <p className="text-sm font-medium truncate inline-flex items-center gap-1.5">
+                            {member.equipped_badge && (
+                              <span className={isCosmicBadge(member.equipped_badge) ? "cosmic-badge" : undefined}>
+                                {member.equipped_badge}
+                              </span>
+                            )}
+                            <span
+                              className={isRgbValue(member.nickname_color) ? "cosmic-rgb-text" : undefined}
+                              style={
+                                isRgbValue(member.nickname_color)
+                                  ? undefined
+                                  : { color: member.nickname_color || undefined }
+                              }
+                            >
+                              {member.username}
+                            </span>
                             {member.user_id === data.clan.leader_id && <Crown size={13} className="text-amber-300" />}
                           </p>
                           <p className="text-[11px] text-white/30">
@@ -979,7 +990,14 @@ export default function ClanPage() {
                         </span>
                         <div className="min-w-0">
                           <p className="text-[11px] text-white/35">
-                            <span style={{ color: message.nickname_color || "#c4b5fd" }}>
+                            <span
+                              className={isRgbValue(message.nickname_color) ? "cosmic-rgb-text" : undefined}
+                              style={
+                                isRgbValue(message.nickname_color)
+                                  ? undefined
+                                  : { color: message.nickname_color || "#c4b5fd" }
+                              }
+                            >
                               {message.username || "—"}
                             </span>
                             {" · "}

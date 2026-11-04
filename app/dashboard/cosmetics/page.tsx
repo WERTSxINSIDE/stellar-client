@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
+import { isCosmicBadge, isRgbValue } from "@/lib/cosmetics";
 import {
   ArrowLeft,
   CheckCircle,
@@ -23,7 +24,7 @@ type Cosmetic = {
   description: string | null;
   price: number;
   value: string | null;
-  rarity: "common" | "rare" | "epic" | "legendary" | string;
+  rarity: "common" | "rare" | "epic" | "legendary" | "cosmic" | string;
 };
 
 type CoinTx = {
@@ -39,13 +40,15 @@ const RARITY: Record<string, string> = {
   rare: "border-sky-400/30 bg-sky-500/10",
   epic: "border-purple-400/30 bg-purple-500/10",
   legendary: "border-amber-400/40 bg-amber-500/10",
+  cosmic: "cosmic-card",
 };
 
-const RARITY_LABEL: Record<string, string> = {
-  common: "Обычный",
-  rare: "Редкий",
-  epic: "Эпический",
-  legendary: "Легендарный",
+const RARITY_LABEL: Record<string, { ru: string; en: string }> = {
+  common: { ru: "Обычный", en: "Common" },
+  rare: { ru: "Редкий", en: "Rare" },
+  epic: { ru: "Эпический", en: "Epic" },
+  legendary: { ru: "Легендарный", en: "Legendary" },
+  cosmic: { ru: "Космический", en: "Cosmic" },
 };
 
 export default function CosmeticsPage() {
@@ -152,7 +155,7 @@ export default function CosmeticsPage() {
   return (
     <>
       <Header />
-      <main className="relative min-h-screen bg-[#0a0710] text-white">
+      <main className="cosmetics-rgb-bg relative min-h-screen text-white">
         <div className="max-w-6xl mx-auto px-6 pt-36 pb-24">
           <Link
             href="/dashboard"
@@ -169,7 +172,7 @@ export default function CosmeticsPage() {
                   {tr("SC-магазин", "SC shop")}
                 </p>
               </div>
-              <h1 className="text-4xl md:text-5xl font-extrabold">
+              <h1 className="cosmic-rgb-text text-4xl md:text-5xl font-extrabold">
                 {tr("Косметика профиля", "Profile cosmetics")}
               </h1>
               <p className="text-white/45 mt-2 max-w-2xl">
@@ -201,6 +204,14 @@ export default function CosmeticsPage() {
               {notice.text}
             </div>
           )}
+
+          <div className="mb-6 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/[0.06] px-4 py-3 text-xs text-white/55">
+            <span className="cosmic-rgb-text font-bold">COSMIC</span>{" "}
+            {tr(
+              "— космическая редкость: анимированные RGB-эффекты для ника, рамки, бейджа и темы профиля. Предметы с пометкой «Космический» переливаются всеми цветами.",
+              "— cosmic rarity: animated RGB effects for your nickname, frame, badge and profile theme. Items marked “Cosmic” shift through every colour."
+            )}
+          </div>
 
           <div className="flex flex-wrap gap-2 mb-6">
             {tabs.map((entry) => (
@@ -236,8 +247,16 @@ export default function CosmeticsPage() {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="rounded-md border border-white/10 bg-black/25 px-2 py-0.5 text-[10px] uppercase tracking-widest text-white/50">
-                        {RARITY_LABEL[item.rarity] || item.rarity}
+                      <span
+                        className={`rounded-md border border-white/10 bg-black/25 px-2 py-0.5 text-[10px] uppercase tracking-widest text-white/50 ${
+                          item.rarity === "cosmic" ? "cosmic-rarity" : ""
+                        }`}
+                      >
+                        {RARITY_LABEL[item.rarity]
+                          ? lang === "en"
+                            ? RARITY_LABEL[item.rarity].en
+                            : RARITY_LABEL[item.rarity].ru
+                          : item.rarity}
                       </span>
                       {isEquipped && (
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-300">
@@ -247,15 +266,22 @@ export default function CosmeticsPage() {
                     </div>
 
                     <div className="h-24 rounded-xl border border-white/10 bg-black/30 grid place-items-center mb-4 overflow-hidden">
-                      {item.type === "nickname_color" && (
-                        <span className="text-xl font-extrabold" style={{ color: item.value || "#fff" }}>
-                          {tr("Ваш ник", "Your nickname")}
-                        </span>
-                      )}
+                      {item.type === "nickname_color" &&
+                        (isRgbValue(item.value) ? (
+                          <span className="cosmic-rgb-text text-xl font-extrabold">
+                            {tr("Ваш ник", "Your nickname")}
+                          </span>
+                        ) : (
+                          <span className="text-xl font-extrabold" style={{ color: item.value || "#fff" }}>
+                            {tr("Ваш ник", "Your nickname")}
+                          </span>
+                        ))}
                       {item.type === "frame" && (
                         <div
-                          className="h-16 w-16 rounded-full grid place-items-center"
-                          style={{ background: item.value || "#7c3aed" }}
+                          className={`h-16 w-16 rounded-full grid place-items-center ${
+                            isRgbValue(item.value) ? "cosmic-rgb-surface" : ""
+                          }`}
+                          style={isRgbValue(item.value) ? undefined : { background: item.value || "#7c3aed" }}
                         >
                           <div className="h-12 w-12 rounded-full bg-[#0a0710] grid place-items-center text-lg">
                             🙂
@@ -263,12 +289,18 @@ export default function CosmeticsPage() {
                         </div>
                       )}
                       {item.type === "badge" && (
-                        <span className="text-4xl">{item.value || "⭐"}</span>
+                        <span
+                          className={`text-4xl ${isCosmicBadge(item.value) ? "cosmic-badge" : ""}`}
+                        >
+                          {item.value || "⭐"}
+                        </span>
                       )}
                       {item.type === "theme" && (
                         <div
-                          className="h-full w-full grid place-items-center"
-                          style={{ background: item.value || "#312e81" }}
+                          className={`h-full w-full grid place-items-center ${
+                            isRgbValue(item.value) ? "cosmic-rgb-surface" : ""
+                          }`}
+                          style={isRgbValue(item.value) ? undefined : { background: item.value || "#312e81" }}
                         >
                           <span className="text-sm font-semibold text-white/90">
                             {tr("Профиль", "Profile")}
@@ -277,8 +309,18 @@ export default function CosmeticsPage() {
                       )}
                     </div>
 
-                    <h3 className="font-semibold mb-1 break-words">{item.title}</h3>
-                    <p className="text-xs text-white/45 leading-relaxed mb-4 break-words">
+                    <h3
+                      className={`font-semibold mb-1 break-words ${
+                        item.rarity === "cosmic" ? "cosmic-card-title" : ""
+                      }`}
+                    >
+                      {item.title}
+                    </h3>
+                    <p
+                      className={`text-xs leading-relaxed mb-4 break-words ${
+                        item.rarity === "cosmic" ? "cosmic-card-desc" : "text-white/45"
+                      }`}
+                    >
                       {item.description}
                     </p>
 

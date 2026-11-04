@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useI18n, type Lang } from "@/lib/i18n";
+import { isCosmicBadge, isRgbValue, safeHexColor } from "@/lib/cosmetics";
 import { achievementEn } from "@/lib/achievements";
 import {
   ArrowLeft,
@@ -249,18 +250,20 @@ export default function PublicProfilePage() {
     : "#a855f7";
 
   const cosmetics = profile?.cosmetics ?? null;
-  const nicknameColor = /^#[0-9a-f]{6}$/i.test(cosmetics?.nickname_color || "")
-    ? String(cosmetics?.nickname_color)
-    : undefined;
+  const rgbNickname = isRgbValue(cosmetics?.nickname_color);
+  const nicknameColor = safeHexColor(cosmetics?.nickname_color);
+  const rgbTheme = isRgbValue(cosmetics?.profile_theme);
   const profileTheme =
-    cosmetics?.profile_theme && /^(linear-gradient|#[0-9a-f]{6})/i.test(cosmetics.profile_theme)
+    !rgbTheme && cosmetics?.profile_theme && /^(linear-gradient|#[0-9a-f]{6})/i.test(cosmetics.profile_theme)
       ? cosmetics.profile_theme
       : null;
+  const rgbFrame = isRgbValue(cosmetics?.frame);
   const avatarFrame =
-    cosmetics?.frame && /^(linear-gradient|#[0-9a-f]{6})/i.test(cosmetics.frame)
+    !rgbFrame && cosmetics?.frame && /^(linear-gradient|#[0-9a-f]{6})/i.test(cosmetics.frame)
       ? cosmetics.frame
       : null;
   const equippedBadge = cosmetics?.badge ? String(cosmetics.badge).slice(0, 4) : null;
+  const cosmicBadge = isCosmicBadge(equippedBadge);
 
   return (
     <>
@@ -297,8 +300,10 @@ export default function PublicProfilePage() {
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
                 {/* Шапка профиля */}
                 <div
-                  className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl"
-                  style={profileTheme ? { background: profileTheme } : undefined}
+                  className={`relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl ${
+                    rgbTheme ? "cosmic-rgb-theme" : ""
+                  }`}
+                  style={!rgbTheme && profileTheme ? { background: profileTheme } : undefined}
                 >
                   <div className="relative h-32 sm:h-44 w-full overflow-hidden">
                     {profile.banner_url ? (
@@ -328,10 +333,10 @@ export default function PublicProfilePage() {
                     <div className="relative flex flex-col sm:flex-row sm:items-end gap-5">
                       <div
                         className={`w-20 h-20 rounded-2xl overflow-hidden grid place-items-center text-3xl font-black shrink-0 shadow-lg ring-2 ring-white/20 ${
-                          avatarFrame ? "p-1" : ""
-                        }`}
+                          avatarFrame || rgbFrame ? "p-1" : ""
+                        } ${rgbFrame ? "cosmic-rgb-surface" : ""}`}
                         style={{
-                          background: avatarFrame ?? `linear-gradient(135deg, ${accent}, #d946ef)`,
+                          background: avatarFrame ?? (rgbFrame ? undefined : `linear-gradient(135deg, ${accent}, #d946ef)`),
                         }}
                       >
                         {profile.avatar_url ? (
@@ -349,13 +354,18 @@ export default function PublicProfilePage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <h1
-                            className="text-3xl md:text-4xl font-extrabold break-words"
-                            style={nicknameColor ? { color: nicknameColor } : undefined}
+                            className={`text-3xl md:text-4xl font-extrabold break-words ${
+                              rgbNickname ? "cosmic-rgb-text" : ""
+                            }`}
+                            style={!rgbNickname && nicknameColor ? { color: nicknameColor } : undefined}
                           >
                             {profile.username}
                           </h1>
                           {equippedBadge && (
-                            <span className="text-xl" title={lang === "en" ? "Cosmetic badge" : "Косметический бейдж"}>
+                            <span
+                              className={`text-xl ${cosmicBadge ? "cosmic-badge" : ""}`}
+                              title={lang === "en" ? "Cosmetic badge" : "Косметический бейдж"}
+                            >
                               {equippedBadge}
                             </span>
                           )}

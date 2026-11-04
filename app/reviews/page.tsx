@@ -13,6 +13,7 @@ import {
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useI18n, type Lang } from "@/lib/i18n";
+import { isRgbValue } from "@/lib/cosmetics";
 
 type Review = {
   id: number;
@@ -229,8 +230,10 @@ export default function ReviewsPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <Link
                             href={`/u/${encodeURIComponent(r.username)}`}
-                            className="font-semibold text-sm hover:opacity-80 transition"
-                            style={{ color: safeColor(r.nickname_color) }}
+                            className={`font-semibold text-sm hover:opacity-80 transition ${
+                              isRgbValue(r.nickname_color) ? "cosmic-rgb-text" : ""
+                            }`}
+                            style={isRgbValue(r.nickname_color) ? undefined : { color: safeColor(r.nickname_color) }}
                           >
                             {r.username}
                           </Link>

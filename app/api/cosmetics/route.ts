@@ -26,12 +26,12 @@ const COLUMNS = ["nickname_color", "equipped_frame", "equipped_badge", "profile_
 function equippedKeys(items: CosmeticRow[], values: Record<string, string | null>) {
   const byValue = new Map<string, string>();
   for (const item of items) {
-    if (item.value) byValue.set(item.value, item.key);
+    if (item.value) byValue.set(`${item.type}:${item.value}`, item.key);
   }
   const result: Record<string, string | null> = {};
   for (const [type, column] of Object.entries(SLOT_BY_TYPE)) {
     const value = values[column] ?? null;
-    result[type] = value ? byValue.get(value) ?? null : null;
+    result[type] = value ? byValue.get(`${type}:${value}`) ?? null : null;
   }
   return result;
 }

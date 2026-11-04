@@ -1018,7 +1018,32 @@ async function initDb() {
         ('badge_diamond', 'badge', 'Алмаз', 'Бейдж 💎 рядом с ником.', 1800, '💎', 'epic'),
         ('theme_midnight', 'theme', 'Полночь', 'Тёмный фиолетовый фон профиля.', 1200, 'linear-gradient(135deg,#0f172a,#312e81,#7c3aed)', 'rare'),
         ('theme_aurora', 'theme', 'Аврора', 'Бирюзово-фиолетовое свечение.', 1600, 'linear-gradient(135deg,#042f2e,#0e7490,#7c3aed)', 'epic'),
-        ('theme_sakura', 'theme', 'Сакура', 'Тёплый розовый фон профиля.', 2000, 'linear-gradient(135deg,#4c0519,#9d174d,#f472b6)', 'epic')
+        ('theme_sakura', 'theme', 'Сакура', 'Тёплый розовый фон профиля.', 2000, 'linear-gradient(135deg,#4c0519,#9d174d,#f472b6)', 'epic'),
+        ('color_mint', 'nickname_color', 'Мята', 'Свежий мятный цвет для спокойного профиля.', 200, '#6ee7b7', 'common'),
+        ('color_lime', 'nickname_color', 'Кислотный лайм', 'Яркий лаймовый ник для заметного профиля.', 350, '#a3e635', 'common'),
+        ('color_matrix', 'nickname_color', 'Матрица', 'Зелёный цвет цифрового дождя.', 500, '#22c55e', 'rare'),
+        ('color_blood', 'nickname_color', 'Кровавая луна', 'Глубокий красный с холодным отливом.', 650, '#ef4444', 'rare'),
+        ('color_sunset', 'nickname_color', 'Закат', 'Тёплый розово-оранжевый оттенок.', 650, '#fb7185', 'rare'),
+        ('color_cosmic', 'nickname_color', 'Космический RGB', 'Живой радужный градиент, который переливается прямо в нике.', 5000, 'rgb', 'cosmic'),
+        ('frame_smoke', 'frame', 'Дым', 'Сдержанная серая рамка на каждый день.', 500, 'linear-gradient(135deg,#3f3f46,#a1a1aa,#e4e4e7)', 'common'),
+        ('frame_toxic', 'frame', 'Токсичный импульс', 'Кислотная рамка с неоновым свечением.', 900, 'linear-gradient(135deg,#65a30d,#22d3ee,#a3e635)', 'rare'),
+        ('frame_void', 'frame', 'Пустота', 'Тёмная рамка с фиолетовым горизонтом событий.', 1500, 'linear-gradient(135deg,#020617,#1e1b4b,#7c3aed)', 'epic'),
+        ('frame_plasma', 'frame', 'Плазма', 'Раскалённая рамка для самых заметных профилей.', 2200, 'linear-gradient(135deg,#f0abfc,#22d3ee,#facc15)', 'legendary'),
+        ('frame_cosmic', 'frame', 'Космический RGB', 'Анимированная радужная рамка вокруг аватара.', 7500, 'rgb', 'cosmic'),
+        ('badge_leaf', 'badge', 'Лист', 'Бейдж 🌿 рядом с ником.', 300, '🌿', 'common'),
+        ('badge_moon', 'badge', 'Луна', 'Бейдж 🌙 рядом с ником.', 400, '🌙', 'common'),
+        ('badge_comet', 'badge', 'Комета', 'Бейдж ☄️ рядом с ником.', 900, '☄️', 'rare'),
+        ('badge_planet', 'badge', 'Планета', 'Бейдж 🪐 рядом с ником.', 1100, '🪐', 'rare'),
+        ('badge_alien', 'badge', 'Контакты', 'Бейдж 👽 рядом с ником.', 1300, '👽', 'epic'),
+        ('badge_satellite', 'badge', 'Спутник', 'Бейдж 🛰️ рядом с ником.', 1400, '🛰️', 'epic'),
+        ('badge_galaxy', 'badge', 'Галактика', 'Бейдж 🌌 рядом с ником.', 2000, '🌌', 'legendary'),
+        ('badge_shooting', 'badge', 'Падающая звезда', 'Бейдж 🌠 рядом с ником.', 2200, '🌠', 'legendary'),
+        ('badge_cosmic', 'badge', 'Космический RGB', 'Радужный бейдж с пульсирующим космическим свечением.', 6000, '🌈', 'cosmic'),
+        ('theme_graphite', 'theme', 'Графит', 'Минималистичная тёмная тема профиля.', 700, 'linear-gradient(135deg,#09090b,#27272a,#52525b)', 'common'),
+        ('theme_nebula', 'theme', 'Туманность', 'Фиолетово-розовая туманность в шапке профиля.', 2600, 'linear-gradient(135deg,#020617,#4c1d95,#db2777)', 'epic'),
+        ('theme_redgiant', 'theme', 'Красный гигант', 'Глубокий космический красный градиент.', 3200, 'linear-gradient(135deg,#450a0a,#b91c1c,#fb923c)', 'legendary'),
+        ('theme_deepspace', 'theme', 'Глубокий космос', 'Синяя бездна с ярким горизонтом.', 3600, 'linear-gradient(135deg,#020617,#0f172a,#1d4ed8)', 'legendary'),
+        ('theme_cosmic', 'theme', 'Космический RGB', 'Живая радужная тема профиля с космическим свечением.', 6500, 'rgb', 'cosmic')
       ON CONFLICT (key) DO NOTHING
     `);
 
