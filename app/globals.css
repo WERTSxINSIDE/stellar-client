@@ -29,7 +29,13 @@ body::before {
     position: fixed;
     inset: 0;
     z-index: -2;
-    background: url("/bg.gif") center / cover no-repeat fixed;
+    background-color: #0a0a0a;
+    background-image: var(--site-bg-image, url("/bg.gif"));
+    background-position: 0% 50%;
+    background-size: var(--site-bg-size, cover);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    animation: var(--site-bg-anim, none);
 }
 
 /* Затемняющий слой поверх обоев (чем больше alpha — тем темнее) */
@@ -38,7 +44,7 @@ body::after {
     position: fixed;
     inset: 0;
     z-index: -1;
-    background: rgba(0, 0, 0, 0.55);
+    background: var(--site-overlay, rgba(0, 0, 0, 0.55));
 }
 
 /* ===== Космическая косметика: анимированный RGB ===== */
@@ -207,6 +213,139 @@ body::after {
     text-shadow: 0 0 12px rgba(236, 72, 153, 0.45);
 }
 
+/* ===== Темы всего сайта (косметика site_theme) ===== */
+
+@keyframes site-bg-drift {
+    0% {
+        background-position: 0% 0%;
+    }
+    100% {
+        background-position: 100% 100%;
+    }
+}
+
+.site-theme-ocean {
+    --site-bg-image: radial-gradient(circle at 15% 20%, rgba(8, 145, 178, 0.55), transparent 55%),
+        radial-gradient(circle at 85% 15%, rgba(37, 99, 235, 0.5), transparent 55%),
+        radial-gradient(circle at 55% 95%, rgba(6, 182, 212, 0.35), transparent 60%),
+        linear-gradient(160deg, #020617, #082f49 55%, #0b1a3a);
+    --site-bg-size: 170% 170%;
+    --site-bg-anim: site-bg-drift 26s ease-in-out infinite alternate;
+    --site-overlay: rgba(2, 6, 23, 0.5);
+    background-color: #020617;
+    background-image: var(--site-bg-image);
+    background-size: var(--site-bg-size);
+    animation: var(--site-bg-anim);
+}
+
+.site-theme-forest {
+    --site-bg-image: radial-gradient(circle at 20% 15%, rgba(16, 185, 129, 0.45), transparent 55%),
+        radial-gradient(circle at 80% 30%, rgba(101, 163, 13, 0.35), transparent 55%),
+        radial-gradient(circle at 50% 90%, rgba(5, 150, 105, 0.4), transparent 60%),
+        linear-gradient(160deg, #02120c, #052e16 60%, #0a1f12);
+    --site-bg-size: 170% 170%;
+    --site-bg-anim: site-bg-drift 30s ease-in-out infinite alternate;
+    --site-overlay: rgba(2, 10, 7, 0.55);
+    background-color: #02120c;
+    background-image: var(--site-bg-image);
+    background-size: var(--site-bg-size);
+    animation: var(--site-bg-anim);
+}
+
+.site-theme-aurora {
+    --site-bg-image: radial-gradient(circle at 18% 12%, rgba(45, 212, 191, 0.5), transparent 55%),
+        radial-gradient(circle at 82% 18%, rgba(168, 85, 247, 0.5), transparent 55%),
+        radial-gradient(circle at 50% 88%, rgba(59, 130, 246, 0.45), transparent 60%),
+        linear-gradient(160deg, #020617, #0b1120 50%, #111827);
+    --site-bg-size: 180% 180%;
+    --site-bg-anim: site-bg-drift 22s ease-in-out infinite alternate;
+    --site-overlay: rgba(2, 6, 23, 0.45);
+    background-color: #020617;
+    background-image: var(--site-bg-image);
+    background-size: var(--site-bg-size);
+    animation: var(--site-bg-anim);
+}
+
+.site-theme-nebula {
+    --site-bg-image: radial-gradient(circle at 20% 20%, rgba(217, 70, 239, 0.45), transparent 55%),
+        radial-gradient(circle at 80% 25%, rgba(124, 58, 237, 0.5), transparent 55%),
+        radial-gradient(circle at 50% 90%, rgba(236, 72, 153, 0.35), transparent 60%),
+        linear-gradient(160deg, #0a0118, #1e1b4b 55%, #3b0764);
+    --site-bg-size: 180% 180%;
+    --site-bg-anim: site-bg-drift 24s ease-in-out infinite alternate;
+    --site-overlay: rgba(5, 2, 12, 0.5);
+    background-color: #0a0118;
+    background-image: var(--site-bg-image);
+    background-size: var(--site-bg-size);
+    animation: var(--site-bg-anim);
+}
+
+.site-theme-sunset {
+    --site-bg-image: radial-gradient(circle at 15% 20%, rgba(249, 115, 22, 0.45), transparent 55%),
+        radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.4), transparent 55%),
+        radial-gradient(circle at 50% 95%, rgba(124, 58, 237, 0.35), transparent 60%),
+        linear-gradient(160deg, #1c0a0a, #431407 55%, #4c0519);
+    --site-bg-size: 180% 180%;
+    --site-bg-anim: site-bg-drift 25s ease-in-out infinite alternate;
+    --site-overlay: rgba(14, 4, 6, 0.5);
+    background-color: #1c0a0a;
+    background-image: var(--site-bg-image);
+    background-size: var(--site-bg-size);
+    animation: var(--site-bg-anim);
+}
+
+.site-theme-royal {
+    --site-bg-image: radial-gradient(circle at 20% 15%, rgba(124, 58, 237, 0.55), transparent 55%),
+        radial-gradient(circle at 80% 25%, rgba(250, 204, 21, 0.22), transparent 50%),
+        radial-gradient(circle at 50% 95%, rgba(88, 28, 135, 0.5), transparent 60%),
+        linear-gradient(160deg, #0b0619, #1e1b4b 55%, #2e1065);
+    --site-bg-size: 180% 180%;
+    --site-bg-anim: site-bg-drift 27s ease-in-out infinite alternate;
+    --site-overlay: rgba(8, 4, 18, 0.5);
+    background-color: #0b0619;
+    background-image: var(--site-bg-image);
+    background-size: var(--site-bg-size);
+    animation: var(--site-bg-anim);
+}
+
+.site-theme-matrix {
+    --site-bg-image: repeating-linear-gradient(
+            0deg,
+            rgba(34, 197, 94, 0.1) 0 1px,
+            transparent 1px 44px
+        ),
+        repeating-linear-gradient(90deg, rgba(34, 197, 94, 0.1) 0 1px, transparent 1px 44px),
+        radial-gradient(circle at 50% 0%, rgba(34, 197, 94, 0.35), transparent 60%),
+        linear-gradient(160deg, #020617, #02120a 60%, #031a0d);
+    --site-bg-size: 44px 44px, 44px 44px, 160% 160%, auto;
+    --site-bg-anim: none;
+    --site-overlay: rgba(1, 8, 4, 0.55);
+    background-color: #020617;
+    background-image: var(--site-bg-image);
+    background-size: var(--site-bg-size);
+    animation: var(--site-bg-anim);
+}
+
+.site-theme-cosmic {
+    --site-bg-image: linear-gradient(
+        120deg,
+        rgba(255, 0, 128, 0.55),
+        rgba(255, 140, 0, 0.5),
+        rgba(255, 238, 0, 0.45),
+        rgba(0, 255, 157, 0.5),
+        rgba(0, 207, 255, 0.5),
+        rgba(122, 92, 255, 0.55),
+        rgba(255, 0, 128, 0.55)
+    );
+    --site-bg-size: 300% 300%;
+    --site-bg-anim: cosmic-rgb-pan 14s linear infinite;
+    --site-overlay: rgba(6, 3, 14, 0.55);
+    background-color: #0a0710;
+    background-image: var(--site-bg-image);
+    background-size: var(--site-bg-size);
+    animation: var(--site-bg-anim);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .cosmic-rgb-text,
     .cosmic-rgb-surface,
@@ -215,7 +354,15 @@ body::after {
     .cosmic-card,
     .cosmic-card .cosmic-card-title,
     .cosmic-card .cosmic-card-desc,
-    .cosmetics-rgb-bg {
+    .cosmetics-rgb-bg,
+    body::before,
+    .site-theme-ocean,
+    .site-theme-forest,
+    .site-theme-aurora,
+    .site-theme-nebula,
+    .site-theme-sunset,
+    .site-theme-royal,
+    .site-theme-cosmic {
         animation: none;
     }
 }

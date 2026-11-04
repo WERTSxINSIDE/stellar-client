@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-05-2";
+const SCHEMA_VERSION = "2026-11-05-3";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -710,6 +710,13 @@ async function initDb() {
 
     await client.query(`
       DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN site_theme TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
         ALTER TABLE users ADD COLUMN partner_code TEXT;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
@@ -1043,7 +1050,15 @@ async function initDb() {
         ('theme_nebula', 'theme', 'Туманность', 'Фиолетово-розовая туманность в шапке профиля.', 2600, 'linear-gradient(135deg,#020617,#4c1d95,#db2777)', 'epic'),
         ('theme_redgiant', 'theme', 'Красный гигант', 'Глубокий космический красный градиент.', 3200, 'linear-gradient(135deg,#450a0a,#b91c1c,#fb923c)', 'legendary'),
         ('theme_deepspace', 'theme', 'Глубокий космос', 'Синяя бездна с ярким горизонтом.', 3600, 'linear-gradient(135deg,#020617,#0f172a,#1d4ed8)', 'legendary'),
-        ('theme_cosmic', 'theme', 'Космический RGB', 'Живая радужная тема профиля с космическим свечением.', 6500, 'rgb', 'cosmic')
+        ('theme_cosmic', 'theme', 'Космический RGB', 'Живая радужная тема профиля с космическим свечением.', 6500, 'rgb', 'cosmic'),
+        ('site_ocean', 'site_theme', 'Океан', 'Глубокий синий фон с бирюзовыми волнами по всему сайту.', 1500, 'ocean', 'common'),
+        ('site_forest', 'site_theme', 'Лес', 'Тёмно-зелёное оформление с мягким изумрудным свечением.', 1600, 'forest', 'common'),
+        ('site_aurora', 'site_theme', 'Северное сияние', 'Бирюзово-фиолетовые переливы на каждой странице.', 2400, 'aurora', 'epic'),
+        ('site_nebula', 'site_theme', 'Туманность', 'Розово-фиолетовая космическая дымка по всему сайту.', 2600, 'nebula', 'epic'),
+        ('site_sunset', 'site_theme', 'Закат', 'Тёплый оранжево-розовый градиент для всего интерфейса.', 2800, 'sunset', 'epic'),
+        ('site_matrix', 'site_theme', 'Матрица', 'Зелёная цифровая сетка и неоновое свечение.', 3200, 'matrix', 'legendary'),
+        ('site_royal', 'site_theme', 'Королевский', 'Фиолетовый фон с золотыми акцентами.', 3400, 'royal', 'legendary'),
+        ('site_cosmic', 'site_theme', 'Космический RGB', 'Анимированный радужный фон на всех страницах сайта.', 9000, 'cosmic', 'cosmic')
       ON CONFLICT (key) DO NOTHING
     `);
 
@@ -1195,6 +1210,7 @@ export type User = {
   profile_theme?: string | null;
   equipped_frame?: string | null;
   equipped_badge?: string | null;
+  site_theme?: string | null;
   partner_code?: string | null;
   partner_code_at?: string | null;
   sub_gifted?: number;

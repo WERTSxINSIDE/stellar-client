@@ -4,6 +4,7 @@ import "./globals.css";
 import Cursor from "@/components/Cursor";
 import LanguageGate from "@/components/LanguageGate";
 import RefTracker from "@/components/RefTracker";
+import SiteTheme from "@/components/SiteTheme";
 import { LanguageProvider } from "@/lib/i18n";
 
 const unbounded = Unbounded({
@@ -68,6 +69,7 @@ export default function RootLayout({
         className={`${unbounded.variable} antialiased`}
       >
         <LanguageProvider>
+          <SiteTheme />
           <Cursor />
           <RefTracker />
           {children}

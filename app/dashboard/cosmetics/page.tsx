@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
 import { isCosmicBadge, isRgbValue } from "@/lib/cosmetics";
+import { applySiteTheme, siteThemeClass } from "@/lib/site-theme";
 import {
   ArrowLeft,
   CheckCircle,
@@ -19,7 +20,7 @@ import {
 
 type Cosmetic = {
   key: string;
-  type: "nickname_color" | "frame" | "badge" | "theme";
+  type: "nickname_color" | "frame" | "badge" | "theme" | "site_theme";
   title: string;
   description: string | null;
   price: number;
@@ -132,6 +133,9 @@ export default function CosmeticsPage() {
         return;
       }
       setEquipped((prev) => ({ ...prev, [item.type]: unequip ? null : item.key }));
+      if (item.type === "site_theme") {
+        applySiteTheme(unequip ? null : item.value);
+      }
       setNotice({
         ok: true,
         text: unequip ? tr("Косметика снята", "Cosmetic removed") : tr("Косметика надета", "Cosmetic equipped"),
@@ -148,6 +152,7 @@ export default function CosmeticsPage() {
     { id: "frame", label: tr("Рамки", "Frames"), icon: <Sparkle size={16} /> },
     { id: "badge", label: tr("Бейджи", "Badges"), icon: <Crown size={16} /> },
     { id: "theme", label: tr("Темы профиля", "Profile themes"), icon: <Palette size={16} /> },
+    { id: "site_theme", label: tr("Темы сайта", "Site themes"), icon: <Sparkle size={16} /> },
   ];
 
   const visible = items.filter((item) => item.type === tab);
@@ -230,6 +235,15 @@ export default function CosmeticsPage() {
             ))}
           </div>
 
+          {tab === "site_theme" && (
+            <div className="mb-5 rounded-2xl border border-cyan-400/20 bg-cyan-500/[0.06] px-4 py-3 text-xs text-white/55">
+              {tr(
+                "Тема сайта применяется ко всем страницам — фон, свечение и настроение интерфейса. Её видите только вы.",
+                "A site theme applies to every page — background, glow and the mood of the whole interface. Only you see it."
+              )}
+            </div>
+          )}
+
           {loading ? (
             <p className="text-white/40">{tr("Загрузка...", "Loading...")}</p>
           ) : visible.length === 0 ? (
@@ -304,6 +318,21 @@ export default function CosmeticsPage() {
                         >
                           <span className="text-sm font-semibold text-white/90">
                             {tr("Профиль", "Profile")}
+                          </span>
+                        </div>
+                      )}
+                      {item.type === "site_theme" && (
+                        <div
+                          className={`relative h-full w-full overflow-hidden ${
+                            siteThemeClass(item.value) || ""
+                          }`}
+                        >
+                          <div className="absolute inset-x-3 top-3 h-2.5 rounded-full border border-white/10 bg-black/45" />
+                          <div className="absolute left-3 top-8 h-11 w-16 rounded-lg border border-white/10 bg-black/35" />
+                          <div className="absolute right-3 top-8 h-11 w-9 rounded-lg border border-white/10 bg-black/35" />
+                          <div className="absolute inset-x-3 bottom-3 h-6 rounded-lg border border-white/10 bg-black/35" />
+                          <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-white/80">
+                            {tr("Весь сайт", "Whole site")}
                           </span>
                         </div>
                       )}

@@ -109,8 +109,8 @@ const FAQ: FaqEntry[] = [
     id: "faq-coins",
     question: { ru: "Что такое SC-монеты и как их получить?", en: "What are SC coins and how do I earn them?" },
     answer: {
-      ru: "SC — внутренняя валюта клуба. +10 SC дают за ежедневную награду, +25 за одобренный отзыв, 1 SC за каждые 10 ₽ покупки, +50 за новое достижение и +1 SC за каждые 10 минут игры в клиенте (до 30 SC в день). Монеты тратятся на косметику: цвета ника, рамки, бейджи и темы профиля.",
-      en: "SC is the club's internal currency. You get +10 SC for a daily reward, +25 for an approved review, 1 SC per 10 ₽ spent, +50 for a new achievement and +1 SC per 10 minutes played in the client (up to 30 SC/day). Coins are spent on cosmetics: nickname colors, frames, badges and profile themes.",
+      ru: "SC — внутренняя валюта клуба. +10 SC дают за ежедневную награду, +25 за одобренный отзыв, 1 SC за каждые 10 ₽ покупки, +50 за новое достижение и +1 SC за каждые 10 минут игры в клиенте (до 30 SC в день). Монеты тратятся на косметику: цвета ника, рамки, бейджи, темы профиля и темы всего сайта.",
+      en: "SC is the club's internal currency. You get +10 SC for a daily reward, +25 for an approved review, 1 SC per 10 ₽ spent, +50 for a new achievement and +1 SC per 10 minutes played in the client (up to 30 SC/day). Coins are spent on cosmetics: nickname colors, frames, badges, profile themes and whole-site themes.",
     },
     keywords: ["sc", "монеты", "coins", "валюта", "currency", "косметика", "cosmetics"],
   },

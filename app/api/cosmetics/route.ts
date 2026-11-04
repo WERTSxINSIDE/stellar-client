@@ -19,9 +19,10 @@ const SLOT_BY_TYPE: Record<string, string> = {
   frame: "equipped_frame",
   badge: "equipped_badge",
   theme: "profile_theme",
+  site_theme: "site_theme",
 };
 
-const COLUMNS = ["nickname_color", "equipped_frame", "equipped_badge", "profile_theme"] as const;
+const COLUMNS = ["nickname_color", "equipped_frame", "equipped_badge", "profile_theme", "site_theme"] as const;
 
 function equippedKeys(items: CosmeticRow[], values: Record<string, string | null>) {
   const byValue = new Map<string, string>();
@@ -55,7 +56,7 @@ export async function GET() {
         [user.id]
       ) as Promise<{ cosmetic_key: string }[]>,
       queryOne(
-        `SELECT nickname_color, equipped_frame, equipped_badge, profile_theme
+        `SELECT nickname_color, equipped_frame, equipped_badge, profile_theme, site_theme
          FROM users WHERE id = $1`,
         [user.id]
       ) as Promise<Record<string, string | null> | null>,
