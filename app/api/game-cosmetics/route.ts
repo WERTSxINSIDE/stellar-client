@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { queryAll, queryOne } from "@/lib/db";
+import { queryOne } from "@/lib/db";
+import { getGameCosmetics } from "@/lib/game-cosmetics";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
  * Клиент/лаунчер запрашивает её по нику и рисует на персонаже.
  *
  * GET /api/game-cosmetics?username=WERTS
- * → { ok, username, equipped, owned: [{ key, title, preview, rarity }] }
+ * → { ok, username, equipped: { pet, wings, backpack, model, cape, hat, aura }, owned: [...] }
  */
 export async function GET(req: Request) {
   try {
@@ -18,26 +19,15 @@ export async function GET(req: Request) {
     }
 
     const user = (await queryOne(
-      "SELECT id, username, equipped_game FROM users WHERE LOWER(username) = LOWER($1)",
+      "SELECT id, username FROM users WHERE LOWER(username) = LOWER($1)",
       [username]
-    )) as { id: number; username: string; equipped_game: string | null } | null;
+    )) as { id: number; username: string } | null;
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const owned = (await queryAll(
-      `SELECT ci.key, ci.title, ci.value AS preview, ci.rarity
-       FROM user_cosmetics uc
-       JOIN cosmetic_items ci ON ci.key = uc.cosmetic_key
-       WHERE uc.user_id = $1 AND ci.type = 'game' AND ci.active = 1
-       ORDER BY uc.acquired_at DESC`,
-      [user.id]
-    )) as { key: string; title: string; preview: string | null; rarity: string }[];
-
-    const equipped = user.equipped_game && owned.some((item) => item.key === user.equipped_game)
-      ? user.equipped_game
-      : null;
+    const { equipped, owned } = await getGameCosmetics(user.id);
 
     return NextResponse.json({
       ok: true,

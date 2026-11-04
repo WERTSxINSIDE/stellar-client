@@ -20,8 +20,26 @@ const SLOT_BY_TYPE: Record<string, string> = {
   badge: "equipped_badge",
   theme: "profile_theme",
   site_theme: "site_theme",
-  game: "equipped_game",
 };
+
+/** Слоты игровой косметики: у каждой категории своя колонка. */
+const GAME_SLOT_COLUMNS = {
+  pet: "equipped_game_pet",
+  wings: "equipped_game_wings",
+  backpack: "equipped_game_backpack",
+  model: "equipped_game_model",
+  cape: "equipped_game_cape",
+  hat: "equipped_game_hat",
+  aura: "equipped_game_aura",
+} as const;
+
+type GameSlot = keyof typeof GAME_SLOT_COLUMNS;
+
+function gameSlotOf(key: string): GameSlot | null {
+  const match = /^game_([a-z]+)_/.exec(key);
+  const slot = match?.[1] as GameSlot | undefined;
+  return slot && slot in GAME_SLOT_COLUMNS ? slot : null;
+}
 
 const COLUMNS = [
   "nickname_color",
@@ -29,7 +47,7 @@ const COLUMNS = [
   "equipped_badge",
   "profile_theme",
   "site_theme",
-  "equipped_game",
+  ...Object.values(GAME_SLOT_COLUMNS),
 ] as const;
 
 function equippedKeys(items: CosmeticRow[], values: Record<string, string | null>) {
@@ -39,14 +57,16 @@ function equippedKeys(items: CosmeticRow[], values: Record<string, string | null
   }
   const result: Record<string, string | null> = {};
   for (const [type, column] of Object.entries(SLOT_BY_TYPE)) {
-    // Для игровой косметики в колонке хранится ключ предмета, а не value (эмодзи).
-    if (type === "game") {
-      const key = values[column] ?? null;
-      result[type] = key && items.some((item) => item.type === "game" && item.key === key) ? key : null;
-      continue;
-    }
     const value = values[column] ?? null;
     result[type] = value ? byValue.get(`${type}:${value}`) ?? null : null;
+  }
+  // Игровые слоты: в колонке лежит ключ предмета, а не его value (эмодзи).
+  for (const slot of Object.keys(GAME_SLOT_COLUMNS) as GameSlot[]) {
+    const key = values[GAME_SLOT_COLUMNS[slot]] ?? null;
+    result[`game_${slot}`] =
+      key && items.some((item) => item.type === "game" && item.key === key && gameSlotOf(item.key) === slot)
+        ? key
+        : null;
   }
   return result;
 }
@@ -70,8 +90,7 @@ export async function GET() {
         [user.id]
       ) as Promise<{ cosmetic_key: string }[]>,
       queryOne(
-        `SELECT nickname_color, equipped_frame, equipped_badge, profile_theme, site_theme, equipped_game
-         FROM users WHERE id = $1`,
+        `SELECT ${COLUMNS.join(", ")} FROM users WHERE id = $1`,
         [user.id]
       ) as Promise<Record<string, string | null> | null>,
       queryAll(
@@ -180,8 +199,50 @@ export async function PUT(req: Request) {
     const body = (await req.json().catch(() => ({}))) as {
       type?: unknown;
       key?: unknown;
+      slot?: unknown;
     };
     const type = String(body.type || "");
+
+    // Игровая косметика: у каждой категории собственный слот.
+    if (type === "game") {
+      const key = body.key ? String(body.key) : "";
+      if (!key) {
+        const slot = String(body.slot || "") as GameSlot;
+        const gameColumn = GAME_SLOT_COLUMNS[slot];
+        if (!gameColumn) {
+          return NextResponse.json({ error: "Неизвестный слот" }, { status: 400 });
+        }
+        await query(`UPDATE users SET ${gameColumn} = NULL WHERE id = $1`, [user.id]);
+        return NextResponse.json({ ok: true, equipped: null });
+      }
+
+      const slot = gameSlotOf(key);
+      const gameColumn = slot ? GAME_SLOT_COLUMNS[slot] : null;
+      if (!gameColumn) {
+        return NextResponse.json({ error: "Неизвестная категория предмета" }, { status: 400 });
+      }
+
+      const item = (await queryOne(
+        `SELECT key, type, title, description, price, value, rarity
+         FROM cosmetic_items WHERE key = $1 AND type = 'game' AND active = 1`,
+        [key]
+      )) as CosmeticRow | null;
+      if (!item) {
+        return NextResponse.json({ error: "Предмет не найден" }, { status: 404 });
+      }
+
+      const owned = await queryOne(
+        "SELECT 1 AS found FROM user_cosmetics WHERE user_id = $1 AND cosmetic_key = $2",
+        [user.id, key]
+      );
+      if (!owned) {
+        return NextResponse.json({ error: "Сначала купите предмет" }, { status: 403 });
+      }
+
+      await query(`UPDATE users SET ${gameColumn} = $2 WHERE id = $1`, [user.id, item.key]);
+      return NextResponse.json({ ok: true, equipped: item.key, slot });
+    }
+
     const column = SLOT_BY_TYPE[type];
     if (!column) {
       return NextResponse.json({ error: "Неизвестный слот" }, { status: 400 });
@@ -211,10 +272,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Сначала купите предмет" }, { status: 403 });
     }
 
-    await query(`UPDATE users SET ${column} = $2 WHERE id = $1`, [
-      user.id,
-      type === "game" ? item.key : item.value,
-    ]);
+    await query(`UPDATE users SET ${column} = $2 WHERE id = $1`, [user.id, item.value]);
     return NextResponse.json({ ok: true, equipped: item.key });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });

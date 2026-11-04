@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-05-7";
+const SCHEMA_VERSION = "2026-11-05-8";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -772,6 +772,31 @@ async function initDb() {
       END $$;
     `);
 
+    // Отдельный слот для каждой категории игровой косметики.
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS equipped_game_pet TEXT,
+        ADD COLUMN IF NOT EXISTS equipped_game_wings TEXT,
+        ADD COLUMN IF NOT EXISTS equipped_game_backpack TEXT,
+        ADD COLUMN IF NOT EXISTS equipped_game_model TEXT,
+        ADD COLUMN IF NOT EXISTS equipped_game_cape TEXT,
+        ADD COLUMN IF NOT EXISTS equipped_game_hat TEXT,
+        ADD COLUMN IF NOT EXISTS equipped_game_aura TEXT;
+    `);
+
+    // Переносим старый единичный слот в новую категорию, если он был занят.
+    await client.query(`
+      UPDATE users SET
+        equipped_game_pet      = COALESCE(equipped_game_pet,      CASE WHEN equipped_game LIKE 'game_pet_%'      THEN equipped_game END),
+        equipped_game_wings    = COALESCE(equipped_game_wings,    CASE WHEN equipped_game LIKE 'game_wings_%'    THEN equipped_game END),
+        equipped_game_backpack = COALESCE(equipped_game_backpack, CASE WHEN equipped_game LIKE 'game_backpack_%' THEN equipped_game END),
+        equipped_game_model    = COALESCE(equipped_game_model,    CASE WHEN equipped_game LIKE 'game_model_%'    THEN equipped_game END),
+        equipped_game_cape     = COALESCE(equipped_game_cape,     CASE WHEN equipped_game LIKE 'game_cape_%'     THEN equipped_game END),
+        equipped_game_hat      = COALESCE(equipped_game_hat,      CASE WHEN equipped_game LIKE 'game_hat_%'      THEN equipped_game END),
+        equipped_game_aura     = COALESCE(equipped_game_aura,     CASE WHEN equipped_game LIKE 'game_aura_%'     THEN equipped_game END)
+      WHERE equipped_game IS NOT NULL;
+    `);
+
     await client.query(`
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN partner_code TEXT;
@@ -1141,7 +1166,19 @@ async function initDb() {
         ('game_hat_crown', 'game', 'Корона', 'Золотая корона над ником в игре.', 2500, '👑', 'epic'),
         ('game_aura_cosmic', 'game', 'Космическая аура', 'Радужные частицы вокруг персонажа.', 5000, '🌈', 'cosmic'),
         ('game_pet_cat', 'game', 'Питомец «Космокот»', 'Кот в скафандре следует за вами по миру.', 4000, '🐱', 'epic'),
-        ('game_pet_dragon', 'game', 'Питомец «Мини-дракон»', 'Маленький дракон летает рядом с вами.', 6000, '🐉', 'legendary')
+        ('game_pet_dragon', 'game', 'Питомец «Мини-дракон»', 'Маленький дракон летает рядом с вами.', 6000, '🐉', 'legendary'),
+        ('game_pet_penguin', 'game', 'Питомец «Пингвин»', 'Небольшой пингвин в шарфе шагает рядом с вами.', 3000, '🐧', 'rare'),
+        ('game_pet_fox', 'game', 'Питомец «Космолис»', 'Рыжий лис с космическим хвостом.', 3500, '🦊', 'epic'),
+        ('game_wings_dragon', 'game', 'Крылья дракона', 'Кожаные крылья с металлическими шипами.', 4500, '🐲', 'legendary'),
+        ('game_wings_cosmic', 'game', 'Крылья «Космос»', 'Радужные крылья с мерцающими звёздами.', 5500, '🌠', 'cosmic'),
+        ('game_backpack_stellar', 'game', 'Рюкзак «Stellar»', 'Фирменный рюкзак с логотипом Stellar за спиной.', 2000, '🎒', 'rare'),
+        ('game_backpack_neon', 'game', 'Рюкзак «Неон»', 'Светящийся неоновый рюкзак, заметный в темноте.', 2600, '🟪', 'epic'),
+        ('game_backpack_dragon', 'game', 'Рюкзак «Драконье пламя»', 'Рюкзак в виде драконьей головы с огненным дыханием.', 3500, '🐲', 'epic'),
+        ('game_backpack_cosmic', 'game', 'Рюкзак «Космос»', 'Радужный рюкзак с мини-планетами и звёздами.', 5000, '🌌', 'cosmic'),
+        ('game_model_knight', 'game', 'Модель «Рыцарь»', 'Полная 3D-модель персонажа в тяжёлых доспехах.', 4000, '🛡️', 'epic'),
+        ('game_model_astronaut', 'game', 'Модель «Астронавт»', 'Скафандр с отражающим визором и модулем жизнеобеспечения.', 4500, '👨‍🚀', 'epic'),
+        ('game_model_shadow', 'game', 'Модель «Тень»', 'Тёмный силуэт с фиолетовым свечением.', 5000, '🥷', 'legendary'),
+        ('game_model_dragon', 'game', 'Модель «Дракон»', 'Чешуйчатая модель с рогами и хвостом.', 6000, '🐉', 'legendary')
       ON CONFLICT (key) DO NOTHING
     `);
 
@@ -1295,6 +1332,13 @@ export type User = {
   equipped_badge?: string | null;
   site_theme?: string | null;
   equipped_game?: string | null;
+  equipped_game_pet?: string | null;
+  equipped_game_wings?: string | null;
+  equipped_game_backpack?: string | null;
+  equipped_game_model?: string | null;
+  equipped_game_cape?: string | null;
+  equipped_game_hat?: string | null;
+  equipped_game_aura?: string | null;
   partner_code?: string | null;
   partner_code_at?: string | null;
   sub_gifted?: number;

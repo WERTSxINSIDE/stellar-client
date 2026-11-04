@@ -53,6 +53,23 @@ const RARITY_LABEL: Record<string, { ru: string; en: string }> = {
   cosmic: { ru: "Космический", en: "Cosmic" },
 };
 
+/** Категории игровой косметики — по префиксу ключа предмета. */
+const GAME_GROUPS: { id: string; ru: string; en: string; prefix: string }[] = [
+  { id: "all", ru: "Все", en: "All", prefix: "" },
+  { id: "pet", ru: "Питомцы", en: "Pets", prefix: "game_pet_" },
+  { id: "wings", ru: "Крылья", en: "Wings", prefix: "game_wings_" },
+  { id: "backpack", ru: "Рюкзаки", en: "Backpacks", prefix: "game_backpack_" },
+  { id: "model", ru: "Модели", en: "Models", prefix: "game_model_" },
+  { id: "cape", ru: "Плащи", en: "Capes", prefix: "game_cape_" },
+  { id: "hat", ru: "Головные уборы", en: "Hats", prefix: "game_hat_" },
+  { id: "aura", ru: "Эффекты", en: "Effects", prefix: "game_aura_" },
+];
+
+function gameSlotOf(key: string): string | null {
+  const match = /^game_([a-z]+)_/.exec(key);
+  return match?.[1] ?? null;
+}
+
 export default function CosmeticsPage() {
   const { lang } = useI18n();
   const tr = (ru: string, en: string) => (lang === "en" ? en : ru);
@@ -64,6 +81,7 @@ export default function CosmeticsPage() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<CoinTx[]>([]);
   const [tab, setTab] = useState<Cosmetic["type"]>("game");
+  const [gameGroup, setGameGroup] = useState("all");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
@@ -122,18 +140,24 @@ export default function CosmeticsPage() {
     setBusy(item.key);
     setNotice(null);
     try {
-      const unequip = equipped[item.type] === item.key;
+      const slot = item.type === "game" ? gameSlotOf(item.key) : null;
+      const stateKey = item.type === "game" && slot ? `game_${slot}` : item.type;
+      const unequip = equipped[stateKey] === item.key;
       const res = await fetch("/api/cosmetics", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: item.type, key: unequip ? null : item.key }),
+        body: JSON.stringify({
+          type: item.type,
+          key: unequip ? null : item.key,
+          slot: slot || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         setNotice({ ok: false, text: data.error || tr("Не удалось применить", "Could not apply") });
         return;
       }
-      setEquipped((prev) => ({ ...prev, [item.type]: unequip ? null : item.key }));
+      setEquipped((prev) => ({ ...prev, [stateKey]: unequip ? null : item.key }));
       if (item.type === "site_theme") {
         applySiteTheme(unequip ? null : item.value);
       }
@@ -157,7 +181,10 @@ export default function CosmeticsPage() {
     { id: "site_theme", label: tr("Темы сайта", "Site themes"), icon: <Sparkle size={16} /> },
   ];
 
-  const visible = items.filter((item) => item.type === tab);
+  const gamePrefix = GAME_GROUPS.find((group) => group.id === gameGroup)?.prefix ?? "";
+  const visible = items.filter(
+    (item) => item.type === tab && (tab !== "game" || item.key.startsWith(gamePrefix))
+  );
 
   return (
     <>
@@ -240,9 +267,28 @@ export default function CosmeticsPage() {
           {tab === "game" && (
             <div className="mb-5 rounded-2xl border border-emerald-400/20 bg-emerald-500/[0.06] px-4 py-3 text-xs text-white/55">
               {tr(
-                "Покупка привязывается к вашему нику и автоматически подтягивается клиентом. Наденьте предмет здесь — он появится у персонажа в Minecraft после перезапуска клиента. Один активный предмет за раз.",
-                "A purchase is linked to your nickname and picked up by the client automatically. Equip an item here and it appears on your Minecraft character after restarting the client. One active item at a time."
+                "Покупка привязывается к вашему нику и автоматически подтягивается клиентом. Можно надеть по одному предмету из каждой категории: питомец, крылья, рюкзак, модель, плащ, головной убор и эффект. После перезапуска клиента всё появится в Minecraft.",
+                "A purchase is linked to your nickname and picked up by the client automatically. You can equip one item from each category: pet, wings, backpack, model, cape, hat and effect. Everything appears in Minecraft after restarting the client."
               )}
+            </div>
+          )}
+
+          {tab === "game" && (
+            <div className="flex flex-wrap gap-2 mb-5">
+              {GAME_GROUPS.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => setGameGroup(group.id)}
+                  className={`rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${
+                    gameGroup === group.id
+                      ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100"
+                      : "border-white/10 bg-white/[0.04] text-white/55 hover:text-white"
+                  }`}
+                >
+                  {tr(group.ru, group.en)}
+                </button>
+              ))}
             </div>
           )}
 
@@ -263,7 +309,10 @@ export default function CosmeticsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {visible.map((item) => {
                 const isOwned = owned.includes(item.key);
-                const isEquipped = equipped[item.type] === item.key;
+                const isEquipped =
+                  item.type === "game"
+                    ? equipped[`game_${gameSlotOf(item.key)}`] === item.key
+                    : equipped[item.type] === item.key;
                 return (
                   <div
                     key={item.key}
