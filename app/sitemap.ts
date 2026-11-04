@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { queryAll } from "@/lib/db";
+import { GUIDES } from "@/lib/guides";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stellar-client.vercel.app";
 
@@ -12,6 +13,8 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: Metadata
   { path: "/community", priority: 0.8, changeFrequency: "daily" },
   { path: "/leaderboard", priority: 0.7, changeFrequency: "daily" },
   { path: "/faq", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/guides", priority: 0.8, changeFrequency: "weekly" },
+  { path: "/changelog", priority: 0.7, changeFrequency: "weekly" },
   { path: "/support", priority: 0.5, changeFrequency: "monthly" },
   { path: "/legal", priority: 0.4, changeFrequency: "yearly" },
 ];
@@ -24,6 +27,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: now,
     changeFrequency: route.changeFrequency,
     priority: route.priority,
+  }));
+
+  const guideEntries: MetadataRoute.Sitemap = GUIDES.map((guide) => ({
+    url: `${SITE_URL}/guides/${guide.slug}`,
+    lastModified: new Date(`${guide.updated}T00:00:00Z`),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
   }));
 
   let profileEntries: MetadataRoute.Sitemap = [];
@@ -68,5 +78,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     showcaseEntries = [];
   }
 
-  return [...staticEntries, ...profileEntries, ...showcaseEntries];
+  return [...staticEntries, ...guideEntries, ...profileEntries, ...showcaseEntries];
 }

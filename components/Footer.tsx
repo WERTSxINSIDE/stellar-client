@@ -12,6 +12,8 @@ const columns = [
       { label: "footer.community", href: "/community" },
       { label: "footer.status", href: "/status" },
       { label: "footer.faq", href: "/faq" },
+      { label: "footer.guides", href: "/guides" },
+      { label: "footer.changelog", href: "/changelog" },
     ],
   },
   {
