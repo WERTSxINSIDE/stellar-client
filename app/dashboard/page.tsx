@@ -45,6 +45,7 @@ import {
   Trash,
   Bell,
   Sparkle,
+  Books,
 } from "@phosphor-icons/react";
 
 function tx(lang: Lang, ru: string, en: string) {
@@ -1073,6 +1074,14 @@ export default function Dashboard() {
                       </button>
                     ))}
                   </nav>
+
+                  <Link
+                    href="/dashboard/library"
+                    className="mt-3 flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-medium text-white/70 hover:text-white hover:bg-white/[0.07] transition"
+                  >
+                    <Books size={18} />
+                    {tr("Мои покупки", "My purchases")}
+                  </Link>
 
                   {/* Колесо фортуны */}
                   <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-5">
@@ -2650,6 +2659,12 @@ export default function Dashboard() {
                     icon={<ShoppingCartSimple size={22} />}
                     title={tr("Продукты", "Products")}
                     desc={tr("Подписки и товары", "Subscriptions and products")}
+                  />
+                  <ActionCard
+                    href="/dashboard/library"
+                    icon={<Books size={22} />}
+                    title={tr("Мои покупки", "My purchases")}
+                    desc={tr("Конфиги, наборы и история пополнений", "Configs, bundles and top-up history")}
                   />
                   <ActionCard
                     href="/dashboard/addons"
