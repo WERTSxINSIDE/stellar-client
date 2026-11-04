@@ -15,6 +15,7 @@ import {
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { localizeApiError } from "@/lib/api-error";
 import { useI18n } from "@/lib/i18n";
 
 type Source = {
@@ -54,9 +55,9 @@ const QUICK_EN = [
 ];
 
 const GREETING_RU =
-  "Привет! Я помощник по гайдам Stellar Client. Опишите проблему или задайте вопрос — найду подходящую статью. Если ответа нет, предложу создать тикет.";
+  "Привет! Я ИИ-помощник Stellar Client. Могу обсудить любой вопрос — про клиент, игры или что угодно ещё. Спрашивайте. Мат и попытки обхода инструкций запрещены: 3 страйка за 30 дней — блокировка аккаунта.";
 const GREETING_EN =
-  "Hi! I'm the Stellar Client guide assistant. Describe the issue or ask a question — I'll find a relevant article. If there is no answer, I'll offer to open a ticket.";
+  "Hi! I'm the Stellar Client AI assistant. I can talk about anything — the client, games, or whatever is on your mind. Ask away. Profanity and jailbreak attempts are not allowed: 3 strikes in 30 days means an account ban.";
 
 export default function AssistantPage() {
   const { lang } = useI18n();
@@ -69,6 +70,7 @@ export default function AssistantPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [banned, setBanned] = useState(false);
   const counter = useRef(1);
   const endRef = useRef<HTMLDivElement | null>(null);
 
@@ -86,22 +88,37 @@ export default function AssistantPage() {
 
   async function ask(question: string) {
     const text = question.trim();
-    if (!text || loading) return;
+    if (!text || loading || banned) return;
+
+    const history = messages
+      .filter((message) => message.role === "user" || message.role === "assistant")
+      .slice(-8)
+      .map((message) => ({ role: message.role, content: message.text }));
+
+    const userMessageId = counter.current++;
 
     setError("");
     setInput("");
-    setMessages((prev) => [...prev, { id: counter.current++, role: "user", text }]);
+    setMessages((prev) => [...prev, { id: userMessageId, role: "user", text }]);
     setLoading(true);
 
     try {
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, lang }),
+        body: JSON.stringify({ message: text, lang, history }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
-        setError(data.error || tr("Не удалось получить ответ.", "Failed to get an answer."));
+        if (data.moderation) {
+          // Заблокированное сообщение не оставляем в истории чата.
+          setMessages((prev) => prev.filter((message) => message.id !== userMessageId));
+          if (data.moderation.banned) setBanned(true);
+        }
+        setError(
+          localizeApiError(data.error, lang) ||
+            tr("Не удалось получить ответ.", "Failed to get an answer.")
+        );
         return;
       }
       setMessages((prev) => [
@@ -146,15 +163,15 @@ export default function AssistantPage() {
             >
               <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-purple-300/80 mb-4">
                 <Sparkle size={16} weight="fill" />
-                {tr("AI-помощник", "AI assistant")}
+                {tr("ИИ-помощник", "AI assistant")}
               </p>
               <h1 className="text-4xl sm:text-5xl font-extrabold mb-4">
-                {tr("Помощник по гайдам", "Guide assistant")}
+                {tr("Помощник Stellar", "Stellar assistant")}
               </h1>
               <p className="text-white/45 max-w-2xl leading-relaxed">
                 {tr(
-                  "Отвечает по FAQ и статьям Stellar Client. Работает локально — без внешних сервисов и ключей. Сложные вопросы передаёт в поддержку.",
-                  "Answers from Stellar Client FAQ and articles. Runs locally — no external services or keys. Complex issues are handed to support."
+                  "Общается на любые темы и помогает по Stellar Client. Если вопрос про клиент, опирается на FAQ и гайды; если нет — просто отвечает. Сложные вопросы передаёт в поддержку.",
+                  "Talks about any topic and helps with Stellar Client. For client questions it uses the FAQ and guides; for everything else it just answers. Complex issues are handed to support."
                 )}
               </p>
             </motion.div>
@@ -167,7 +184,7 @@ export default function AssistantPage() {
                 <div>
                   <p className="text-sm font-semibold">{tr("Stellar Assistant", "Stellar Assistant")}</p>
                   <p className="text-[11px] text-white/35">
-                    {tr("Поиск по FAQ и гайдам", "Searching FAQ and guides")}
+                    {tr("Любые темы · гайды Stellar Client", "Any topic · Stellar Client guides")}
                   </p>
                 </div>
               </div>
@@ -282,7 +299,20 @@ export default function AssistantPage() {
                   </div>
                 )}
 
-                {error && <p className="mb-2 text-xs text-red-300">{error}</p>}
+                {error && (
+                  <p className="mb-2 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                    {error}
+                  </p>
+                )}
+
+                {banned && (
+                  <p className="mb-2 rounded-xl border border-red-400/25 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                    {tr(
+                      "Чат недоступен: аккаунт заблокирован. Обжаловать блокировку можно через поддержку.",
+                      "Chat unavailable: the account is banned. You can appeal through support."
+                    )}
+                  </p>
+                )}
 
                 <form
                   onSubmit={(event) => {
@@ -301,15 +331,16 @@ export default function AssistantPage() {
                       }
                     }}
                     rows={1}
+                    disabled={banned}
                     placeholder={tr(
-                      "Например: почему не запускается лаунчер?",
-                      "For example: why won't the launcher start?"
+                      "Спросите о чём угодно...",
+                      "Ask anything..."
                     )}
-                    className="min-h-[44px] max-h-32 flex-1 resize-none rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-purple-400/40"
+                    className="min-h-[44px] max-h-32 flex-1 resize-none rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-purple-400/40 disabled:opacity-40"
                   />
                   <button
                     type="submit"
-                    disabled={loading || !input.trim()}
+                    disabled={loading || banned || !input.trim()}
                     className="h-11 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:hover:bg-purple-600 text-sm font-semibold inline-flex items-center gap-2 transition"
                   >
                     <PaperPlaneTilt size={16} weight="fill" />
@@ -319,8 +350,8 @@ export default function AssistantPage() {
 
                 <p className="mt-2 text-[10px] text-white/25">
                   {tr(
-                    "Помощник не заменяет поддержку: по платежам и блокировкам лучше сразу тикет.",
-                    "The assistant is not a replacement for support: for payments and bans, open a ticket."
+                    "Правила общения: без мата и попыток обхода инструкций. 3 страйка за 30 дней — блокировка аккаунта. По платежам и блокировкам лучше сразу тикет.",
+                    "Chat rules: no profanity or jailbreak attempts. 3 strikes in 30 days means an account ban. For payments and bans, open a ticket."
                   )}
                 </p>
               </div>

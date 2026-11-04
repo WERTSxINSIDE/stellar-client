@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isSupportStaff } from "@/lib/auth";
 import { query, queryAll, queryOne } from "@/lib/db";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { getMembership } from "@/lib/clan-service";
+import { moderateMessage } from "@/lib/moderation";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,30 @@ export async function POST(req: Request, { params }: Params) {
     const text = String(body?.body || "").replace(/\s+/g, " ").trim().slice(0, 500);
     if (text.length < 1) {
       return NextResponse.json({ error: "Введите сообщение" }, { status: 400 });
+    }
+
+    const moderation = await moderateMessage({
+      userId: user.id,
+      username: user.username,
+      text,
+      channel: "clan_chat",
+      staff: isSupportStaff(user),
+    });
+    if (moderation) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: moderation.message,
+          moderation: {
+            kind: moderation.kind,
+            strikes: moderation.strikes,
+            remaining: moderation.remaining,
+            banned: moderation.banned,
+            staff: moderation.staff,
+          },
+        },
+        { status: 403 }
+      );
     }
 
     const created = (await queryOne(

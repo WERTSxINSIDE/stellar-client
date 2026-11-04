@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-05-5";
+const SCHEMA_VERSION = "2026-11-05-6";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -295,6 +295,16 @@ async function initDb() {
         created_at  TIMESTAMP DEFAULT NOW(),
         resolved_at TIMESTAMP,
         resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS moderation_events (
+        id          SERIAL PRIMARY KEY,
+        user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        channel     TEXT NOT NULL,
+        kind        TEXT NOT NULL,
+        excerpt     TEXT,
+        action      TEXT NOT NULL DEFAULT 'strike',
+        created_at  TIMESTAMP DEFAULT NOW()
       );
 
       CREATE TABLE IF NOT EXISTS showcase_items (
@@ -616,6 +626,8 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_rate_limits_expires ON rate_limits(expires_at);
       CREATE INDEX IF NOT EXISTS idx_risk_events_user ON risk_events(user_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_risk_events_status ON risk_events(status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_moderation_events_user ON moderation_events(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_moderation_events_action ON moderation_events(action, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_showcase_status ON showcase_items(status, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_showcase_type ON showcase_items(type, status, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_showcase_user ON showcase_items(user_id, created_at DESC);

@@ -28,6 +28,16 @@ CREATE TABLE IF NOT EXISTS keys (
   created_at    TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS moderation_events (
+  id         SERIAL PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  channel    TEXT NOT NULL,
+  kind       TEXT NOT NULL,
+  excerpt    TEXT,
+  action     TEXT NOT NULL DEFAULT 'strike',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS news (
   id         SERIAL PRIMARY KEY,
   title      TEXT NOT NULL,

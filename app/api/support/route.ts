@@ -5,6 +5,7 @@ import { notifyUser } from "@/lib/notify";
 import { escapeTelegramHtml, notifyAdmins } from "@/lib/telegram";
 import { logAdminAction, findUserForLog } from "@/lib/audit";
 import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
+import { moderateMessage } from "@/lib/moderation";
 import {
   SUPPORT_ATTACHMENT_DATA_MAX,
   SUPPORT_ATTACHMENT_MIME,
@@ -163,6 +164,31 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
+
+      const moderation = await moderateMessage({
+        userId: user.id,
+        username: user.username,
+        text: `${subj} ${text}`.trim(),
+        channel: "support",
+        staff: isStaff,
+      });
+      if (moderation) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: moderation.message,
+            moderation: {
+              kind: moderation.kind,
+              strikes: moderation.strikes,
+              remaining: moderation.remaining,
+              banned: moderation.banned,
+              staff: moderation.staff,
+            },
+          },
+          { status: 403 }
+        );
+      }
+
       const t = await queryOne(
         `INSERT INTO support_tickets (user_id, subject, category, status, admin_unread, last_message_by)
          VALUES ($1, $2, $3, 'open', 1, 'user')
@@ -207,6 +233,32 @@ export async function POST(req: Request) {
       if (!t) return NextResponse.json({ error: "Тикет не найден" }, { status: 404 });
       if (!isStaff && t.user_id !== user.id) {
         return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
+      }
+
+      if (text) {
+        const moderation = await moderateMessage({
+          userId: user.id,
+          username: user.username,
+          text,
+          channel: "support",
+          staff: isStaff,
+        });
+        if (moderation) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: moderation.message,
+              moderation: {
+                kind: moderation.kind,
+                strikes: moderation.strikes,
+                remaining: moderation.remaining,
+                banned: moderation.banned,
+                staff: moderation.staff,
+              },
+            },
+            { status: 403 }
+          );
+        }
       }
 
       await query(
