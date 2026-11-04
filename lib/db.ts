@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-05-1";
+const SCHEMA_VERSION = "2026-11-05-2";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -511,6 +511,81 @@ async function initDb() {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS clans (
+        id          SERIAL PRIMARY KEY,
+        name        TEXT UNIQUE NOT NULL,
+        tag         TEXT UNIQUE NOT NULL,
+        description TEXT,
+        emblem      TEXT DEFAULT '🛡️',
+        color       TEXT DEFAULT '#a78bfa',
+        leader_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        xp          INTEGER NOT NULL DEFAULT 0,
+        treasury    INTEGER NOT NULL DEFAULT 0,
+        recruiting  INTEGER NOT NULL DEFAULT 1,
+        created_at  TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS clan_members (
+        user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        clan_id        INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+        role           TEXT NOT NULL DEFAULT 'recruit',
+        contribution   INTEGER NOT NULL DEFAULT 0,
+        weekly_points  INTEGER NOT NULL DEFAULT 0,
+        joined_at      TIMESTAMP DEFAULT NOW(),
+        last_active_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS clan_applications (
+        id          SERIAL PRIMARY KEY,
+        clan_id     INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+        user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        message     TEXT,
+        status      TEXT NOT NULL DEFAULT 'pending',
+        reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        reviewed_at TIMESTAMP,
+        created_at  TIMESTAMP DEFAULT NOW(),
+        UNIQUE (clan_id, user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS clan_invites (
+        id          SERIAL PRIMARY KEY,
+        clan_id     INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+        inviter_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        invitee_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status      TEXT NOT NULL DEFAULT 'pending',
+        created_at  TIMESTAMP DEFAULT NOW(),
+        expires_at  TIMESTAMP,
+        UNIQUE (clan_id, invitee_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS clan_transactions (
+        id         SERIAL PRIMARY KEY,
+        clan_id    INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+        user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        amount     INTEGER NOT NULL,
+        type       TEXT NOT NULL,
+        note       TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS clan_activity (
+        id         SERIAL PRIMARY KEY,
+        clan_id    INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+        user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        type       TEXT NOT NULL,
+        points     INTEGER NOT NULL DEFAULT 0,
+        note       TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS clan_messages (
+        id         SERIAL PRIMARY KEY,
+        clan_id    INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+        user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        body       TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
       CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
       CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
@@ -547,6 +622,14 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_showcase_refunds_seller ON showcase_refunds(seller_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_coin_transactions_user ON coin_transactions(user_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_user_cosmetics_user ON user_cosmetics(user_id);
+      CREATE INDEX IF NOT EXISTS idx_clan_members_clan ON clan_members(clan_id, role);
+      CREATE INDEX IF NOT EXISTS idx_clan_applications_clan ON clan_applications(clan_id, status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_clan_applications_user ON clan_applications(user_id, status);
+      CREATE INDEX IF NOT EXISTS idx_clan_invites_invitee ON clan_invites(invitee_id, status);
+      CREATE INDEX IF NOT EXISTS idx_clan_transactions_clan ON clan_transactions(clan_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_clan_activity_clan ON clan_activity(clan_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_clan_messages_clan ON clan_messages(clan_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_clans_xp ON clans(xp DESC, created_at DESC);
 
 
       CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);

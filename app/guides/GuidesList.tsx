@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, BookOpenText, Clock } from "@phosphor-icons/react";
+import { ArrowRight, BookOpenText, Clock, Robot } from "@phosphor-icons/react";
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -98,6 +98,13 @@ export default function GuidesList() {
                   )}
                 </p>
               </div>
+              <Link
+                href="/assistant"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-purple-400/30 bg-purple-500/10 hover:bg-purple-500/20 text-sm font-semibold text-purple-100 transition"
+              >
+                <Robot size={16} weight="fill" />
+                {tr("Спросить помощника", "Ask the assistant")}
+              </Link>
               <Link
                 href="/support"
                 className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-semibold transition"

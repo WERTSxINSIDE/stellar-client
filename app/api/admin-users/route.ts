@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     if (action === "set-role") {
       if (!user_id || !role) return NextResponse.json({ error: "Укажите user_id и role" }, { status: 400 });
-      const validRoles = ["user", "media", "tester", "admin"];
+      const validRoles = ["user", "media", "tester", "support", "admin"];
       if (!validRoles.includes(role)) return NextResponse.json({ error: `Роль должна быть: ${validRoles.join(", ")}` }, { status: 400 });
       const isAdmin = role === "admin" ? 1 : 0;
       await query("UPDATE users SET is_admin = $1, role = $2 WHERE id = $3", [isAdmin, role, user_id]);

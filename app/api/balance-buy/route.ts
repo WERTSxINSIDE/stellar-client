@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { addBalanceHistory, withTransaction } from "@/lib/db";
+import { CLAN_XP } from "@/lib/clans";
+import { logClanActivity } from "@/lib/clan-service";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +119,21 @@ export async function POST(req: Request) {
         `Покупка подписки на ${days} дн.`,
         client
       );
+
+      const clanMember = await client.query(
+        "SELECT clan_id FROM clan_members WHERE user_id = $1",
+        [user.id]
+      );
+      if (clanMember.rows.length) {
+        await logClanActivity(
+          Number(clanMember.rows[0].clan_id),
+          user.id,
+          "purchase",
+          CLAN_XP.purchase,
+          `Покупка подписки на ${days} дн.`,
+          client
+        );
+      }
 
       return {
         balance: Number(updated.rows[0].balance) || 0,

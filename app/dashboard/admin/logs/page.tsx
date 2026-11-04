@@ -42,6 +42,7 @@ const ACTION_LABELS: Record<string, string> = {
   "news.create": "Создание новости",
   "news.delete": "Удаление новости",
   "support.reply": "Ответ в поддержке",
+  "support.delete-ticket": "Удаление тикета",
 };
 
 function formatDate(value: string) {

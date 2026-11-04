@@ -1,7 +1,9 @@
 ﻿"use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
+import { Robot } from "@phosphor-icons/react";
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -63,6 +65,30 @@ export default function FAQPage() {
             question={t("faq.q4")}
             answer={t("faq.a4")}
           />
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            className="mt-6 w-full max-w-3xl rounded-3xl border border-purple-400/20 bg-purple-500/[0.07] p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between"
+          >
+            <div className="flex items-start gap-3">
+              <span className="w-10 h-10 shrink-0 rounded-xl bg-purple-500/20 border border-purple-400/30 grid place-items-center text-purple-200">
+                <Robot size={22} weight="fill" />
+              </span>
+              <div>
+                <p className="font-semibold">{t("assistant.faqTitle")}</p>
+                <p className="text-white/40 text-sm mt-1">{t("assistant.faqHint")}</p>
+              </div>
+            </div>
+            <Link
+              href="/assistant"
+              className="shrink-0 inline-flex items-center justify-center rounded-xl bg-purple-600 hover:bg-purple-500 px-5 py-3 text-sm font-semibold transition"
+            >
+              {t("assistant.open")}
+            </Link>
+          </motion.div>
         </section>
       </main>
 

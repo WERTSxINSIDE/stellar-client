@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isFullAdmin, isSupportStaff } from "@/lib/auth";
 import { query, queryAll, queryOne } from "@/lib/db";
 import { notifyUser } from "@/lib/notify";
 import { escapeTelegramHtml, notifyAdmins } from "@/lib/telegram";
@@ -64,7 +64,8 @@ async function loadTickets(userId: number | null) {
   const tickets = await queryAll(
     `SELECT t.id, t.user_id, t.subject, t.category, t.status, t.created_at, t.updated_at,
             t.user_unread, t.admin_unread, t.last_message_by,
-            t.csat_rating, t.csat_comment, t.csat_at, u.username
+            t.csat_rating, t.csat_comment, t.csat_at, u.username,
+            u.banned AS user_banned, u.ban_reason AS user_ban_reason, u.role AS user_role
      FROM support_tickets t
      JOIN users u ON t.user_id = u.id
      ${userId ? "WHERE t.user_id = $1" : ""}
@@ -88,9 +89,9 @@ export async function GET(req: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
-    const isAdmin = !!(user.is_admin || user.role === "admin");
+    const isStaff = isSupportStaff(user);
     const all = new URL(req.url).searchParams.get("all");
-    const showAll = all && isAdmin;
+    const showAll = all && isStaff;
 
     const tickets = await loadTickets(showAll ? null : user.id);
 
@@ -122,7 +123,8 @@ export async function GET(req: Request) {
       tickets: tickets.map((t) =>
         showAll ? { ...t, admin_unread: 0 } : { ...t, user_unread: 0 }
       ),
-      isAdmin,
+      isAdmin: isStaff,
+      isFullAdmin: isFullAdmin(user),
       unread,
       csat,
     });
@@ -135,7 +137,7 @@ export async function POST(req: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
-    const isAdmin = !!(user.is_admin || user.role === "admin");
+    const isStaff = isSupportStaff(user);
     const { action, ticket_id, subject, body, attachment, category, rating, comment } =
       await req.json();
 
@@ -174,7 +176,7 @@ export async function POST(req: Request) {
         [
           t.id,
           user.id,
-          isAdmin ? 1 : 0,
+          isStaff ? 1 : 0,
           text,
           file.value?.url ?? null,
           file.value?.name ?? null,
@@ -203,7 +205,7 @@ export async function POST(req: Request) {
         [ticket_id]
       );
       if (!t) return NextResponse.json({ error: "Тикет не найден" }, { status: 404 });
-      if (!isAdmin && t.user_id !== user.id) {
+      if (!isStaff && t.user_id !== user.id) {
         return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
       }
 
@@ -214,7 +216,7 @@ export async function POST(req: Request) {
         [
           ticket_id,
           user.id,
-          isAdmin ? 1 : 0,
+          isStaff ? 1 : 0,
           text,
           file.value?.url ?? null,
           file.value?.name ?? null,
@@ -222,7 +224,7 @@ export async function POST(req: Request) {
       );
 
       // Ответ поддержки ждёт реакции пользователя, ответ пользователя — поддержки.
-      const nextStatus = isAdmin ? "pending" : "open";
+      const nextStatus = isStaff ? "pending" : "open";
       await query(
         `UPDATE support_tickets
          SET updated_at = NOW(),
@@ -231,10 +233,10 @@ export async function POST(req: Request) {
              admin_unread = admin_unread + $3,
              last_message_by = $4
          WHERE id = $5`,
-        [nextStatus, isAdmin ? 1 : 0, isAdmin ? 0 : 1, isAdmin ? "admin" : "user", ticket_id]
+        [nextStatus, isStaff ? 1 : 0, isStaff ? 0 : 1, isStaff ? "admin" : "user", ticket_id]
       );
 
-      if (isAdmin && Number(t.user_id) !== user.id) {
+      if (isStaff && Number(t.user_id) !== user.id) {
         await notifyUser(
           Number(t.user_id),
           {
@@ -257,7 +259,7 @@ export async function POST(req: Request) {
       if (!ticket_id) return NextResponse.json({ error: "Укажите ticket_id" }, { status: 400 });
       const t = await queryOne("SELECT user_id FROM support_tickets WHERE id = $1", [ticket_id]);
       if (!t) return NextResponse.json({ error: "Тикет не найден" }, { status: 404 });
-      if (!isAdmin && t.user_id !== user.id) {
+      if (!isStaff && t.user_id !== user.id) {
         return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
       }
       const status = action === "close" ? "closed" : "open";
@@ -307,15 +309,97 @@ export async function POST(req: Request) {
       if (!ticket_id) return NextResponse.json({ error: "Укажите ticket_id" }, { status: 400 });
       const t = await queryOne("SELECT user_id FROM support_tickets WHERE id = $1", [ticket_id]);
       if (!t) return NextResponse.json({ error: "Тикет не найден" }, { status: 404 });
-      if (!isAdmin && t.user_id !== user.id) {
+      if (!isStaff && t.user_id !== user.id) {
         return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
       }
       await query(
-        isAdmin
+        isStaff
           ? "UPDATE support_tickets SET admin_unread = 0 WHERE id = $1"
           : "UPDATE support_tickets SET user_unread = 0 WHERE id = $1",
         [ticket_id]
       );
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "ban-user") {
+      if (!isStaff) return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
+      if (!ticket_id) return NextResponse.json({ error: "Укажите ticket_id" }, { status: 400 });
+
+      const t = (await queryOne(
+        `SELECT t.user_id, t.subject, u.username, u.role, u.is_admin
+         FROM support_tickets t
+         JOIN users u ON u.id = t.user_id
+         WHERE t.id = $1`,
+        [ticket_id]
+      )) as
+        | {
+            user_id: number;
+            subject: string;
+            username: string;
+            role: string | null;
+            is_admin: number | null;
+          }
+        | null;
+      if (!t) return NextResponse.json({ error: "Тикет не найден" }, { status: 404 });
+      if (Number(t.user_id) === user.id) {
+        return NextResponse.json({ error: "Нельзя забанить самого себя" }, { status: 400 });
+      }
+      if (t.is_admin === 1 || t.role === "admin" || t.role === "support") {
+        return NextResponse.json(
+          { error: "Нельзя забанить администратора или агента поддержки" },
+          { status: 403 }
+        );
+      }
+
+      const reason = typeof comment === "string" ? comment.trim().slice(0, 300) : "";
+      await query("UPDATE users SET banned = 1, ban_reason = $1 WHERE id = $2", [
+        reason || null,
+        t.user_id,
+      ]);
+      await query("DELETE FROM sessions WHERE user_id = $1", [t.user_id]);
+      await logAdminAction(
+        user,
+        "user.ban",
+        { id: Number(t.user_id), username: t.username },
+        `Тикет #${ticket_id}${reason ? ` · ${reason}` : ""}`
+      );
+      await notifyUser(
+        Number(t.user_id),
+        {
+          type: "support",
+          title: "Аккаунт заблокирован",
+          body: reason || "Обратитесь в поддержку, чтобы обжаловать блокировку.",
+          link: "/support",
+        },
+        { email: true }
+      ).catch(() => {});
+
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "delete-ticket") {
+      if (!isStaff) return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
+      if (!ticket_id) return NextResponse.json({ error: "Укажите ticket_id" }, { status: 400 });
+
+      const t = (await queryOne(
+        `SELECT t.id, t.subject, t.user_id, u.username
+         FROM support_tickets t
+         JOIN users u ON u.id = t.user_id
+         WHERE t.id = $1`,
+        [ticket_id]
+      )) as
+        | { id: number; subject: string; user_id: number; username: string }
+        | null;
+      if (!t) return NextResponse.json({ error: "Тикет не найден" }, { status: 404 });
+
+      await query("DELETE FROM support_tickets WHERE id = $1", [ticket_id]);
+      await logAdminAction(
+        user,
+        "support.delete-ticket",
+        { id: Number(t.user_id), username: t.username },
+        `Тикет #${t.id} · ${t.subject}`.slice(0, 500)
+      );
+
       return NextResponse.json({ ok: true });
     }
 

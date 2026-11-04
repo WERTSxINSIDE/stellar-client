@@ -17,6 +17,7 @@ import {
   Clock,
   RocketLaunch,
   Star,
+  Shield,
   ShieldCheck,
   Handshake,
   CircleNotch,
@@ -69,6 +70,14 @@ type Profile = {
   subscription_active: boolean;
   is_admin: boolean;
   is_partner: boolean;
+  clan?: {
+    id: number;
+    name: string;
+    tag: string;
+    emblem: string;
+    color: string;
+    role: string;
+  } | null;
   cosmetics?: {
     nickname_color: string | null;
     profile_theme: string | null;
@@ -359,6 +368,21 @@ export default function PublicProfilePage() {
                             <span className="flex items-center gap-1 text-[11px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30">
                               <Handshake size={13} weight="fill" /> {t("profile.partner")}
                             </span>
+                          )}
+                          {profile.clan && (
+                            <Link
+                              href={`/clans/${profile.clan.id}`}
+                              className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full border transition hover:brightness-110"
+                              style={{
+                                color: profile.clan.color,
+                                borderColor: `${profile.clan.color}55`,
+                                background: `${profile.clan.color}1a`,
+                              }}
+                              title={profile.clan.name}
+                            >
+                              <Shield size={13} weight="fill" />
+                              {profile.clan.emblem} [{profile.clan.tag}]
+                            </Link>
                           )}
                           {profile.subscription_active && (
                             <span className="flex items-center gap-1 text-[11px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full bg-green-500/15 text-green-300 border border-green-400/30">

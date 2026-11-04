@@ -329,6 +329,22 @@ export default function Dashboard() {
   const [notifMsg, setNotifMsg] = useState("");
   const [notifLoading, setNotifLoading] = useState<string | null>(null);
 
+  type MyClanCard = {
+    id: number;
+    name: string;
+    tag: string;
+    emblem: string;
+    color: string;
+    role: string;
+    level: number;
+    member_count: number;
+    max_members: number;
+    bonus_percent: number;
+    xp: number;
+    treasury: number;
+  };
+  const [myClan, setMyClan] = useState<MyClanCard | null>(null);
+
   type TelegramState = {
     enabled: boolean;
     linked: boolean;
@@ -426,6 +442,10 @@ export default function Dashboard() {
     fetch("/api/referral")
       .then((r) => r.json())
       .then((d) => d.ok && setReferral(d))
+      .catch(() => {});
+    fetch("/api/clans")
+      .then((r) => r.json())
+      .then((d) => d.ok && setMyClan(d.my_clan || null))
       .catch(() => {});
     fetch("/api/sessions")
       .then((r) => r.json())
@@ -1371,6 +1391,51 @@ export default function Dashboard() {
                     label="UID"
                     value={String(user?.id ?? "—")}
                   />
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <span
+                        className="w-12 h-12 shrink-0 rounded-xl grid place-items-center text-xl border"
+                        style={{
+                          borderColor: myClan ? `${myClan.color}55` : "rgba(255,255,255,0.1)",
+                          background: myClan ? `${myClan.color}22` : "rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        {myClan ? myClan.emblem : <Shield size={20} className="text-white/30" />}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[11px] uppercase tracking-wider text-white/35">
+                          {tr("Мой клан", "My clan")}
+                        </p>
+                        {myClan ? (
+                          <>
+                            <p className="font-semibold truncate">
+                              {myClan.name}{" "}
+                              <span className="text-xs font-mono text-purple-300">[{myClan.tag}]</span>
+                            </p>
+                            <p className="text-[11px] text-white/40">
+                              {tr("уровень", "level")} {myClan.level} · {myClan.xp} XP ·{" "}
+                              {myClan.member_count}/{myClan.max_members} {tr("участников", "members")} · +
+                              {myClan.bonus_percent}% SC
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-white/50">
+                            {tr("Вы пока не состоите в клане.", "You are not in a clan yet.")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Link
+                      href={myClan ? `/clans/${myClan.id}` : "/clans"}
+                      className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl border border-purple-400/30 bg-purple-500/10 hover:bg-purple-500/20 px-4 py-2.5 text-sm font-semibold text-purple-100 transition"
+                    >
+                      {myClan ? tr("Открыть клан", "Open clan") : tr("Найти клан", "Find a clan")}
+                      <ArrowUpRight size={15} />
+                    </Link>
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
@@ -2928,12 +2993,20 @@ export default function Dashboard() {
                       desc={tr("Требуется подписка", "Subscription required")}
                     />
                   )}
-                  {user?.role === "admin" && (
+                  {(user?.role === "admin" || user?.role === "support") && (
                     <ActionCard
                       href="/dashboard/admin"
                       icon={<Shield size={22} />}
-                      title={tr("Админ панель", "Admin panel")}
-                      desc={tr("Управление пользователями и ключами", "Manage users and keys")}
+                      title={
+                        user?.role === "support"
+                          ? tr("Панель поддержки", "Support panel")
+                          : tr("Админ панель", "Admin panel")
+                      }
+                      desc={
+                        user?.role === "support"
+                          ? tr("Тикеты, блокировки и ответы игрокам", "Tickets, bans and player replies")
+                          : tr("Управление пользователями и ключами", "Manage users and keys")
+                      }
                     />
                   )}
                 </div>

@@ -291,6 +291,11 @@ const ru: Dictionary = {
   "top.minutesShort": "{m} мин",
 
   "nav.community": "Комьюнити",
+  "nav.clans": "Кланы",
+  "nav.assistant": "Помощник",
+  "assistant.faqTitle": "Не нашли ответ в FAQ?",
+  "assistant.faqHint": "Помощник ищет по всем гайдам и отвечает за пару секунд.",
+  "assistant.open": "Спросить помощника",
   "footer.community": "Комьюнити",
 
   "community.title": "Комьюнити",
@@ -747,6 +752,11 @@ const en: Dictionary = {
   "top.minutesShort": "{m}m",
 
   "nav.community": "Community",
+  "nav.clans": "Clans",
+  "nav.assistant": "Assistant",
+  "assistant.faqTitle": "Didn't find an answer in the FAQ?",
+  "assistant.faqHint": "The assistant searches every guide and answers in seconds.",
+  "assistant.open": "Ask the assistant",
   "footer.community": "Community",
 
   "community.title": "Community",

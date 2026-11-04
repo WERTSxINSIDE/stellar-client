@@ -3,6 +3,8 @@ import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { query, queryAll, queryOne } from "@/lib/db";
 import { grantCoins } from "@/lib/coins";
+import { CLAN_XP } from "@/lib/clans";
+import { logClanActivity } from "@/lib/clan-service";
 
 export const dynamic = "force-dynamic";
 
@@ -128,6 +130,20 @@ export async function PUT(req: Request) {
           "review",
           "Одобренный отзыв о клиенте"
         );
+
+        const clanMember = (await queryOne(
+          "SELECT clan_id FROM clan_members WHERE user_id = $1",
+          [Number(row.user_id)]
+        )) as { clan_id: number } | null;
+        if (clanMember) {
+          await logClanActivity(
+            Number(clanMember.clan_id),
+            Number(row.user_id),
+            "review",
+            CLAN_XP.review,
+            "Одобренный отзыв участника"
+          );
+        }
       }
     } else {
       await query("UPDATE reviews SET status = 'rejected' WHERE id = $1", [id]);

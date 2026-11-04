@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { House, ShoppingCartSimple, Question, Trophy, Headset, Star, BellSimple, Check, UsersThree, Pulse, List, X } from "@phosphor-icons/react";
+import { House, ShoppingCartSimple, Question, Trophy, Headset, Star, BellSimple, Check, UsersThree, Pulse, List, X, Robot, Shield } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import OnlineBadge from "@/components/OnlineBadge";
@@ -221,6 +221,46 @@ export default function Header() {
 
             <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
               <Link
+                href="/clans"
+                aria-label={t("nav.clans")}
+                title={t("nav.clans")}
+                className={`flex items-center gap-2 cursor-pointer group ${
+                  pathname.startsWith("/clans") ? "text-purple-300" : ""
+                }`}
+              >
+                <Shield
+                  size={24}
+                  weight="fill"
+                  className="group-hover:text-purple-300 transition"
+                />
+                <span className="hidden xl:inline text-sm group-hover:text-white transition">
+                  {t("nav.clans")}
+                </span>
+              </Link>
+            </motion.div>
+
+            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
+              <Link
+                href="/assistant"
+                aria-label={t("nav.assistant")}
+                title={t("nav.assistant")}
+                className={`flex items-center gap-2 cursor-pointer group ${
+                  pathname === "/assistant" ? "text-purple-300" : ""
+                }`}
+              >
+                <Robot
+                  size={24}
+                  weight="fill"
+                  className="group-hover:text-purple-300 transition"
+                />
+                <span className="hidden xl:inline text-sm group-hover:text-white transition">
+                  {t("nav.assistant")}
+                </span>
+              </Link>
+            </motion.div>
+
+            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
+              <Link
                 href="/status"
                 aria-label={t("nav.status")}
                 title={t("nav.status")}
@@ -303,6 +343,8 @@ export default function Header() {
                   { href: "/pricing", label: t("nav.buy"), icon: <ShoppingCartSimple size={20} weight="fill" /> },
                   { href: "/leaderboard", label: t("nav.top"), icon: <Trophy size={20} weight="fill" /> },
                   { href: "/community", label: t("nav.community"), icon: <UsersThree size={20} weight="fill" /> },
+                  { href: "/clans", label: t("nav.clans"), icon: <Shield size={20} weight="fill" /> },
+                  { href: "/assistant", label: t("nav.assistant"), icon: <Robot size={20} weight="fill" /> },
                   { href: "/reviews", label: t("nav.reviews"), icon: <Star size={20} weight="fill" /> },
                   { href: "/support", label: t("nav.support"), icon: <Headset size={20} weight="fill" /> },
                   { href: "/faq", label: t("nav.faq"), icon: <Question size={20} weight="fill" /> },

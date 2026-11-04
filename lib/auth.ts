@@ -126,6 +126,27 @@ export async function requireAdmin(): Promise<Omit<User, "password"> | null> {
   return user;
 }
 
+type StaffLike = { role?: string | null; is_admin?: number | null; banned?: number | null };
+
+/** Полный администратор: доступ ко всем разделам панели. */
+export function isFullAdmin(user: StaffLike | null | undefined): boolean {
+  if (!user || user.banned) return false;
+  return user.is_admin === 1 || user.role === "admin";
+}
+
+/** Поддержка: доступ к тикетам, бану авторов тикетов и удалению тикетов. */
+export function isSupportStaff(user: StaffLike | null | undefined): boolean {
+  if (!user || user.banned) return false;
+  return isFullAdmin(user) || user.role === "support";
+}
+
+/** Полный администратор или агент поддержки. */
+export async function requireSupportStaff(): Promise<Omit<User, "password"> | null> {
+  const user = await getCurrentUser();
+  if (!isSupportStaff(user)) return null;
+  return user;
+}
+
 export async function destroySession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;

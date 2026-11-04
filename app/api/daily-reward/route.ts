@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { addBalanceHistory, query, queryOne, withTransaction, type DbExecutor } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { grantCoins } from "@/lib/coins";
+import { clanBonusPercent, CLAN_XP } from "@/lib/clans";
+import { logClanActivity } from "@/lib/clan-service";
 
 export const dynamic = "force-dynamic";
 
@@ -147,6 +149,26 @@ export async function POST() {
 
       const nowFinished = reward.day >= 7;
 
+      // Клановый бонус: состав и разнообразие ролей увеличивают ежедневные SC.
+      const clanRow = await client.query(
+        `SELECT c.id, c.xp,
+                (SELECT COUNT(*)::int FROM clan_members cm2 WHERE cm2.clan_id = c.id) AS member_count,
+                (SELECT COUNT(DISTINCT cm2.role)::int FROM clan_members cm2 WHERE cm2.clan_id = c.id) AS role_count
+         FROM clan_members cm
+         JOIN clans c ON c.id = cm.clan_id
+         WHERE cm.user_id = $1`,
+        [user.id]
+      );
+      const clan = clanRow.rows[0] as
+        | { id: number; member_count: number; role_count: number }
+        | undefined;
+      const clanPercent = clan
+        ? clanBonusPercent(Number(clan.member_count) || 0, Number(clan.role_count) || 0)
+        : 0;
+      const clanBonus = clanPercent > 0 ? Math.max(1, Math.round((10 * clanPercent) / 100)) : 0;
+      const coins = 10 + clanBonus;
+      const coinsNote = clanBonus > 0 ? ` (клановый бонус +${clanBonus})` : "";
+
       if (reward.type === "balance") {
         const amount = reward.amount ?? 0;
         const updated = await client.query(
@@ -162,14 +184,31 @@ export async function POST() {
           client
         );
         await saveClaim(user.id, reward.day, today, client);
-        await grantCoins(user.id, 10, "daily_reward", `Ежедневная награда — день ${reward.day}`, client);
+        await grantCoins(
+          user.id,
+          coins,
+          "daily_reward",
+          `Ежедневная награда — день ${reward.day}${coinsNote}`,
+          client
+        );
+        if (clan) {
+          await logClanActivity(
+            clan.id,
+            user.id,
+            "daily",
+            CLAN_XP.dailyReward,
+            `Ежедневная награда участника (день ${reward.day})`,
+            client
+          );
+        }
 
         return {
           day: reward.day,
-          message: `+${amount}₽ на баланс и +10 SC`,
+          message: `+${amount}₽ на баланс и +${coins} SC`,
           balance: Number(updated.rows[0]?.balance) || 0,
           finished: nowFinished,
-          coins: 10,
+          coins,
+          clan_bonus: clanBonus,
         } as const;
       }
 
@@ -180,14 +219,31 @@ export async function POST() {
         [spins, user.id]
       );
       await saveClaim(user.id, reward.day, today, client);
-      await grantCoins(user.id, 10, "daily_reward", `Ежедневная награда — день ${reward.day}`, client);
+      await grantCoins(
+        user.id,
+        coins,
+        "daily_reward",
+        `Ежедневная награда — день ${reward.day}${coinsNote}`,
+        client
+      );
+      if (clan) {
+        await logClanActivity(
+          clan.id,
+          user.id,
+          "daily",
+          CLAN_XP.dailyReward,
+          `Ежедневная награда участника (день ${reward.day})`,
+          client
+        );
+      }
 
       return {
         day: reward.day,
-        message: `+${spins} крут${spins === 1 ? "ка" : "ки"} рулетки и +10 SC`,
+        message: `+${spins} крут${spins === 1 ? "ка" : "ки"} рулетки и +${coins} SC`,
         balance: null,
         finished: nowFinished,
-        coins: 10,
+        coins,
+        clan_bonus: clanBonus,
       } as const;
     });
 

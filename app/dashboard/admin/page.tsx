@@ -41,11 +41,13 @@ type Me = {
   username: string;
   email: string;
   is_admin: number;
+  role: string;
 } | null;
 
 export default function AdminPage() {
   const router = useRouter();
   const [user, setUser] = useState<Me>(null);
+  const [isFullAdmin, setIsFullAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Генерация ключей подписки
@@ -293,11 +295,15 @@ export default function AdminPage() {
           router.replace("/login");
           return;
         }
-        if (!data.user.is_admin) {
+        const fullAdmin = !!data.user.is_admin || data.user.role === "admin";
+        const supportAgent = data.user.role === "support";
+        if (!fullAdmin && !supportAgent) {
           router.replace("/dashboard");
           return;
         }
         setUser(data.user);
+        setIsFullAdmin(fullAdmin);
+        if (!fullAdmin) setKeysTab("support");
         setLoading(false);
       });
   }, [router]);
@@ -486,6 +492,59 @@ export default function AdminPage() {
       });
       loadSupport();
     } catch {}
+  }
+
+  async function banTicketAuthor(ticket: any) {
+    const reason = prompt(
+      `Причина бана пользователя ${ticket.username} (необязательно):`
+    );
+    if (reason === null) return;
+    if (!confirm(`Забанить ${ticket.username}? Все активные сессии будут завершены.`)) return;
+    try {
+      const res = await fetch("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "ban-user",
+          ticket_id: ticket.id,
+          comment: reason.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Не удалось забанить пользователя");
+        return;
+      }
+      loadSupport();
+      loadUsers();
+    } catch {
+      alert("Ошибка сети");
+    }
+  }
+
+  async function deleteSupportTicket(ticket: any) {
+    if (
+      !confirm(
+        `Удалить тикет #${ticket.id} «${ticket.subject}»?\nВсе сообщения тикета будут удалены без возможности восстановления.`
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-ticket", ticket_id: ticket.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Не удалось удалить тикет");
+        return;
+      }
+      loadSupport();
+    } catch {
+      alert("Ошибка сети");
+    }
   }
 
   useEffect(() => {
@@ -827,6 +886,8 @@ export default function AdminPage() {
             >
               <ArrowLeft size={16} weight="bold" />В кабинет
             </Link>
+            {isFullAdmin && (
+              <>
             <Link
               href="/dashboard/admin/logs"
               className="inline-flex items-center gap-2 text-purple-300 hover:text-purple-200 transition text-sm px-4 py-2 rounded-xl bg-white/5 border border-white/10"
@@ -863,19 +924,23 @@ export default function AdminPage() {
             >
               <Pulse size={16} /> Статус
             </Link>
+              </>
+            )}
           </div>
 
           <p className="text-white/40 text-xs tracking-widest uppercase mb-2">
-            Управление
+            {isFullAdmin ? "Управление" : "Поддержка"}
           </p>
           <h1 className="text-5xl font-extrabold mb-12">
             <span className="bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">
-              Админ панель
+              {isFullAdmin ? "Админ панель" : "Панель поддержки"}
             </span>
           </h1>
 
           {/* Переключатель */}
           <div className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 mb-8 max-w-2xl">
+            {isFullAdmin && (
+              <>
             <button
               onClick={() => setKeysTab("generate")}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
@@ -926,6 +991,8 @@ export default function AdminPage() {
             >
               Медиа
             </button>
+              </>
+            )}
             <button
               onClick={() => setKeysTab("support")}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
@@ -936,6 +1003,8 @@ export default function AdminPage() {
             >
               Поддержка
             </button>
+            {isFullAdmin && (
+              <>
             <button
               onClick={() => { setKeysTab("bugs"); loadBugs(); }}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
@@ -976,6 +1045,8 @@ export default function AdminPage() {
             >
               Статистика
             </button>
+              </>
+            )}
           </div>
 
           {keysTab === "generate" && (
@@ -1219,6 +1290,7 @@ export default function AdminPage() {
                             <option value="user">User</option>
                             <option value="media">Media</option>
                             <option value="tester">Tester</option>
+                            <option value="support">Support</option>
                             <option value="admin">Admin</option>
                           </select>
                         </td>
@@ -1766,6 +1838,14 @@ export default function AdminPage() {
                         {supportCategoryLabel(t.category)}
                       </span>
                       <span className="text-white/40 text-xs">{t.username}</span>
+                      {t.user_banned ? (
+                        <span
+                          className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-300"
+                          title={t.user_ban_reason || ""}
+                        >
+                          <Prohibit size={10} /> Забанен
+                        </span>
+                      ) : null}
                       {t.csat_rating ? (
                         <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-400/20 text-yellow-200">
                           <Star size={10} weight="fill" /> {t.csat_rating}/5
@@ -1874,6 +1954,20 @@ export default function AdminPage() {
                         Закрыть
                       </button>
                     )}
+                    {!t.user_banned && t.user_id !== user?.id && (
+                      <button
+                        onClick={() => banTicketAuthor(t)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-orange-500/15 text-orange-300 border border-orange-400/25 hover:bg-orange-500/25 transition"
+                      >
+                        <Prohibit size={14} /> Забанить автора
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteSupportTicket(t)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-300 border border-red-400/25 hover:bg-red-500/20 transition"
+                    >
+                      <Trash size={14} /> Удалить тикет
+                    </button>
                   </div>
                 </div>
               ))}

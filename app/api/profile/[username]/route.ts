@@ -58,6 +58,7 @@ export async function GET(
       followingRow,
       authorRatingRow,
       configRows,
+      clanRow,
     ] = await Promise.all([
       queryAll(
         "SELECT achievement_key, unlocked_at FROM user_achievements WHERE user_id = $1",
@@ -100,6 +101,14 @@ export async function GET(
          GROUP BY s.id
          ORDER BY s.created_at DESC
          LIMIT 60`,
+        [userId]
+      ),
+      queryOne(
+        `SELECT c.id, c.name, c.tag, c.emblem, c.color, cm.role
+         FROM clan_members cm
+         JOIN clans c ON c.id = cm.clan_id
+         WHERE cm.user_id = $1
+         LIMIT 1`,
         [userId]
       ),
     ]);
@@ -182,6 +191,16 @@ export async function GET(
         subscription_active: isSubscriptionActive(user.subscription_end),
         is_admin: Number(user.is_admin) === 1 || user.role === "admin",
         is_partner: stats.partnerApproved > 0,
+        clan: clanRow
+          ? {
+              id: Number((clanRow as Record<string, unknown>).id),
+              name: String((clanRow as Record<string, unknown>).name),
+              tag: String((clanRow as Record<string, unknown>).tag),
+              emblem: String((clanRow as Record<string, unknown>).emblem || "🛡️"),
+              color: String((clanRow as Record<string, unknown>).color || "#a78bfa"),
+              role: String((clanRow as Record<string, unknown>).role || "member"),
+            }
+          : null,
         followers: Number(followersRow?.count) || 0,
         following: Number(followingRow?.count) || 0,
         is_following: isFollowing,

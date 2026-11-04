@@ -14,6 +14,8 @@ import {
   type DiscountCodeRow,
 } from "@/lib/discounts";
 import { coinsForPurchase, grantCoins } from "@/lib/coins";
+import { CLAN_XP } from "@/lib/clans";
+import { logClanActivity } from "@/lib/clan-service";
 
 export const dynamic = "force-dynamic";
 
@@ -231,6 +233,21 @@ export async function POST(
         coins = coinsForPurchase(price);
         if (coins > 0) {
           await grantCoins(user.id, coins, "purchase", `Покупка конфига: ${fresh.title}`, client);
+        }
+
+        const clanMember = await client.query(
+          "SELECT clan_id FROM clan_members WHERE user_id = $1",
+          [user.id]
+        );
+        if (clanMember.rows.length) {
+          await logClanActivity(
+            Number(clanMember.rows[0].clan_id),
+            user.id,
+            "purchase",
+            CLAN_XP.purchase,
+            `Покупка конфига: ${fresh.title}`,
+            client
+          );
         }
 
         return Number(debit.rows[0].balance);
