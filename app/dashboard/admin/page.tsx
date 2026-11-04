@@ -114,21 +114,80 @@ export default function AdminPage() {
   const [promos, setPromos] = useState<any[]>([]);
   const [promoSummary, setPromoSummary] = useState<any[]>([]);
   const [promoFilter, setPromoFilter] = useState(0);
+  const [promoSearch, setPromoSearch] = useState("");
   const [promoCode, setPromoCode] = useState("");
   const [promoAmount, setPromoAmount] = useState(50);
   const [promoMaxUses, setPromoMaxUses] = useState(0);
   const [promoMsg, setPromoMsg] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
+  const [bulkAmount, setBulkAmount] = useState(50);
+  const [bulkCount, setBulkCount] = useState(100);
+  const [bulkMaxUses, setBulkMaxUses] = useState(1);
+  const [bulkPrefix, setBulkPrefix] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState("");
+  const [bulkCodes, setBulkCodes] = useState<any[]>([]);
 
-  async function loadPromos(amount = promoFilter) {
+  async function loadPromos(amount = promoFilter, search = promoSearch) {
     try {
-      const res = await fetch(`/api/admin-promo${amount ? `?amount=${amount}` : ""}`);
+      const params = new URLSearchParams();
+      if (amount) params.set("amount", String(amount));
+      if (search.trim()) params.set("q", search.trim());
+      const query = params.toString();
+      const res = await fetch(`/api/admin-promo${query ? `?${query}` : ""}`);
       const data = await res.json();
       if (data.ok) {
         setPromos(data.promos || []);
         if (Array.isArray(data.summary)) setPromoSummary(data.summary);
       }
     } catch {}
+  }
+
+  function downloadPromoCsv(rows: any[], filename: string) {
+    const lines = ["amount,code,max_uses"];
+    for (const row of rows) {
+      lines.push(`${row.amount},${row.code},${row.max_uses ?? 1}`);
+    }
+    const blob = new Blob([`\uFEFF${lines.join("\r\n")}\r\n`], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function generateBulkPromos() {
+    setBulkMsg("");
+    setBulkBusy(true);
+    setBulkCodes([]);
+    try {
+      const res = await fetch("/api/admin-promo/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: bulkAmount,
+          count: bulkCount,
+          max_uses: bulkMaxUses,
+          prefix: bulkPrefix,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBulkMsg(data.error || "Не удалось сгенерировать промокоды");
+        return;
+      }
+      const codes = data.codes || [];
+      setBulkCodes(codes);
+      setBulkMsg(`Создано ${codes.length} промокодов ✓`);
+      await loadPromos(promoFilter, promoSearch);
+    } catch {
+      setBulkMsg("Ошибка сети");
+    } finally {
+      setBulkBusy(false);
+    }
   }
 
   async function createPromo() {
@@ -153,7 +212,7 @@ export default function AdminPage() {
       setPromoCode("");
       setPromoAmount(50);
       setPromoMaxUses(0);
-      await loadPromos(promoFilter);
+      await loadPromos(promoFilter, promoSearch);
     } catch {
       setPromoMsg("Ошибка сети");
     } finally {
@@ -169,7 +228,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      await loadPromos(promoFilter);
+      await loadPromos(promoFilter, promoSearch);
     } catch {}
   }
 
@@ -898,7 +957,7 @@ export default function AdminPage() {
               Отзывы
             </button>
             <button
-              onClick={() => { setKeysTab("promo"); setPromoFilter(0); loadPromos(0); }}
+              onClick={() => { setKeysTab("promo"); setPromoFilter(0); setPromoSearch(""); loadPromos(0, ""); }}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
                 keysTab === "promo"
                   ? "bg-purple-600/80 text-white"
@@ -1932,17 +1991,17 @@ export default function AdminPage() {
               <div className="flex items-center gap-2">
                 <Coin size={22} className="text-white/70" />
                 <h2 className="text-2xl font-bold">
-                  Промокоды ({promoFilter
+                  Промокоды ({promoFilter || promoSearch
                     ? `${promos.length} из ${promoSummary.reduce((n, s) => n + Number(s.total), 0)}`
                     : promoSummary.reduce((n, s) => n + Number(s.total), 0)})
                 </h2>
               </div>
-              <button onClick={() => loadPromos(promoFilter)} className="text-sm text-purple-400 hover:text-purple-300">Обновить</button>
+              <button onClick={() => loadPromos(promoFilter, promoSearch)} className="text-sm text-purple-400 hover:text-purple-300">Обновить</button>
             </div>
 
-            <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex flex-wrap gap-2 mb-4">
               <button
-                onClick={() => { setPromoFilter(0); loadPromos(0); }}
+                onClick={() => { setPromoFilter(0); loadPromos(0, promoSearch); }}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold border transition ${
                   promoFilter === 0
                     ? "bg-purple-600/80 border-purple-400/30 text-white"
@@ -1956,7 +2015,7 @@ export default function AdminPage() {
                 return (
                   <button
                     key={amount}
-                    onClick={() => { setPromoFilter(amount); loadPromos(amount); }}
+                    onClick={() => { setPromoFilter(amount); loadPromos(amount, promoSearch); }}
                     className={`px-4 py-2 rounded-xl text-sm font-semibold border transition ${
                       promoFilter === amount
                         ? "bg-purple-600/80 border-purple-400/30 text-white"
@@ -1967,6 +2026,39 @@ export default function AdminPage() {
                   </button>
                 );
               })}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+              <input
+                value={promoSearch}
+                onChange={(e) => setPromoSearch(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") loadPromos(promoFilter, promoSearch);
+                }}
+                placeholder="Поиск по коду"
+                className="flex-1 bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none uppercase font-mono text-sm"
+              />
+              <button
+                onClick={() => loadPromos(promoFilter, promoSearch)}
+                className="px-5 py-3 rounded-xl text-sm font-semibold bg-white/5 border border-white/10 hover:bg-white/10 transition"
+              >
+                Найти
+              </button>
+              {promoSearch && (
+                <button
+                  onClick={() => { setPromoSearch(""); loadPromos(promoFilter, ""); }}
+                  className="px-5 py-3 rounded-xl text-sm font-semibold bg-white/5 border border-white/10 hover:bg-white/10 transition"
+                >
+                  Сбросить
+                </button>
+              )}
+              <button
+                onClick={() => downloadPromoCsv(promos, `promo-codes-${new Date().toISOString().slice(0, 10)}.csv`)}
+                disabled={promos.length === 0}
+                className="px-5 py-3 rounded-xl text-sm font-semibold bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 transition"
+              >
+                Скачать CSV ({promos.length})
+              </button>
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-6 mb-6">
@@ -2016,6 +2108,81 @@ export default function AdminPage() {
               >
                 {promoLoading ? "Создание..." : "Создать"}
               </button>
+            </div>
+
+            <div className="rounded-3xl border border-purple-400/20 bg-purple-500/[0.06] backdrop-blur-xl p-6 mb-6">
+              <h3 className="text-xl font-bold mb-1">Массовая генерация</h3>
+              <p className="text-white/40 text-sm mb-4">
+                До 1000 кодов за раз. Коды вида <span className="font-mono text-white/70">ПРЕФИКС-XXXXX-XXXXX</span>, дубли исключаются автоматически.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="text-white/40 text-xs mb-1 block">Сумма, ₽</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={bulkAmount || ""}
+                    onChange={(e) => setBulkAmount(Number(e.target.value))}
+                    className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/40 text-xs mb-1 block">Количество</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={1000}
+                    value={bulkCount || ""}
+                    onChange={(e) => setBulkCount(Number(e.target.value))}
+                    className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/40 text-xs mb-1 block">Лимит активаций (0 — ∞)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={bulkMaxUses}
+                    onChange={(e) => setBulkMaxUses(Number(e.target.value))}
+                    className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/40 text-xs mb-1 block">Префикс</label>
+                  <input
+                    value={bulkPrefix}
+                    onChange={(e) => setBulkPrefix(e.target.value.toUpperCase())}
+                    placeholder="SC"
+                    maxLength={8}
+                    className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none uppercase font-mono"
+                  />
+                </div>
+              </div>
+              {bulkMsg && (
+                <p className={`text-sm mb-3 ${bulkMsg.includes("✓") ? "text-green-400" : "text-red-400"}`}>{bulkMsg}</p>
+              )}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={generateBulkPromos}
+                  disabled={bulkBusy || bulkAmount < 1 || bulkCount < 1}
+                  className="px-6 py-3 rounded-xl font-semibold bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition"
+                >
+                  {bulkBusy ? "Генерация..." : `Сгенерировать ${bulkCount || 0}`}
+                </button>
+                {bulkCodes.length > 0 && (
+                  <button
+                    onClick={() =>
+                      downloadPromoCsv(
+                        bulkCodes,
+                        `promo-${bulkAmount}-${new Date().toISOString().slice(0, 10)}.csv`
+                      )
+                    }
+                    className="px-6 py-3 rounded-xl font-semibold bg-white/5 border border-white/10 hover:bg-white/10 transition"
+                  >
+                    Скачать созданные ({bulkCodes.length})
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-3">

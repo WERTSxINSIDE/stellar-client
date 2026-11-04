@@ -10,16 +10,29 @@ export async function GET(req: Request) {
     const admin = await requireAdmin();
     if (!admin) return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
 
-    const amountParam = Number(new URL(req.url).searchParams.get("amount"));
+    const url = new URL(req.url);
+    const amountParam = Number(url.searchParams.get("amount"));
     const amount = Number.isInteger(amountParam) && amountParam > 0 ? amountParam : null;
+    const search = String(url.searchParams.get("q") || "").trim().toUpperCase().slice(0, 64);
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    if (amount) {
+      params.push(amount);
+      conditions.push(`amount = $${params.length}`);
+    }
+    if (search) {
+      params.push(`%${search}%`);
+      conditions.push(`code ILIKE $${params.length}`);
+    }
 
     const promos = await queryAll(
       `SELECT id, code, amount, max_uses, used_count, active, expires_at, created_at
        FROM promo_codes
-       ${amount ? "WHERE amount = $1" : ""}
+       ${conditions.length ? `WHERE ${conditions.join(" AND ")}` : ""}
        ORDER BY amount ASC, created_at DESC, id DESC
        LIMIT 5000`,
-      amount ? [amount] : []
+      params
     );
 
     const summary = await queryAll(
