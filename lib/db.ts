@@ -18,12 +18,15 @@ const SCHEMA_VERSION = "2026-11-05-6";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
-    const exists = await pool.query("SELECT to_regclass('public.app_meta') AS table_name");
-    if (!exists.rows[0]?.table_name) return false;
     const row = await pool.query("SELECT value FROM app_meta WHERE key = 'schema_version'");
     return row.rows[0]?.value === SCHEMA_VERSION;
-  } catch {
-    return false;
+  } catch (e: any) {
+    // Таблицы ещё нет — нужна полная инициализация.
+    if (e?.code === "42P01") return false;
+    // Таймаут/сетевая ошибка: не запускаем тяжёлую инициализацию,
+    // иначе при холодном старте десятки инстансов блокируют друг друга.
+    console.error("DB schema check skipped:", e?.message || e);
+    return true;
   }
 }
 
@@ -39,7 +42,21 @@ async function initDb() {
     client = await pool.connect();
     // Сериализуем инициализацию схемы между процессами/инстансами,
     // иначе параллельные CREATE TABLE ... IF NOT EXISTS могут конфликтовать.
-    await client.query("SELECT pg_advisory_lock(842137642)");
+    // Берём блокировку без ожидания: на холодном старте десятки инстансов
+    // не должны стоять в очереди и упираться в statement timeout.
+    const lock = await client.query("SELECT pg_try_advisory_lock(842137642) AS locked");
+    if (!lock.rows[0]?.locked) {
+      console.log("DB init skipped: another instance is initializing the schema");
+      return;
+    }
+    // Пока ждали соединение, другой инстанс мог уже всё проинициализировать.
+    try {
+      const current = await client.query("SELECT value FROM app_meta WHERE key = 'schema_version'");
+      if (current.rows[0]?.value === SCHEMA_VERSION) return;
+    } catch {
+      // app_meta ещё нет — идём в полную инициализацию
+    }
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS app_meta (
         key   TEXT PRIMARY KEY,
