@@ -86,18 +86,34 @@ function rowToStats(row: Record<string, unknown>): AchievementStats {
  */
 export async function getAchievementLeaderboard(limit = 20) {
   const rows = (await queryAll(
-    `SELECT u.id, u.username, ${STATS_SELECT}
+    `SELECT u.id, u.username, ${STATS_SELECT},
+            ARRAY(
+              SELECT ua.achievement_key FROM user_achievements ua WHERE ua.user_id = u.id
+            ) AS saved_keys
      FROM users u
      WHERE COALESCE(u.banned, 0) = 0`
   )) as Record<string, unknown>[];
 
+  const knownKeys = new Set(ACHIEVEMENTS.map((achievement) => achievement.key));
+
   return rows
     .map((row) => {
       const stats = rowToStats(row);
-      const unlocked = computeAchievements(stats).filter((a) => a.unlocked).length;
+      // Сохранённые достижения тоже учитываем: награды могут быть выданы вручную.
+      const unlocked = new Set(
+        computeAchievements(stats)
+          .filter((achievement) => achievement.unlocked)
+          .map((achievement) => achievement.key)
+      );
+      const savedKeys = Array.isArray(row.saved_keys) ? row.saved_keys : [];
+      for (const key of savedKeys) {
+        const text = String(key);
+        if (knownKeys.has(text)) unlocked.add(text);
+      }
+
       return {
         username: String(row.username),
-        achievements: unlocked,
+        achievements: unlocked.size,
         total: ACHIEVEMENTS.length,
         seconds: stats.playSeconds,
       };
