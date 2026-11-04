@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, CheckCircle, Headset, Ticket } from "@phosphor-icons/react";
+import { ArrowRight, CheckCircle, Ticket } from "@phosphor-icons/react";
 
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
@@ -74,8 +74,8 @@ export default function PricingPage() {
     const isHwid = postPay?.kind === "hwid";
     const subject = isHwid
       ? tr(
-          "Не выполнился сброс HWID после оплаты",
-          "HWID reset not completed after payment"
+          "Не пришёл ключ сброса HWID после оплаты",
+          "HWID reset key not received after payment"
         )
       : tr(
           "Не пришёл промокод после оплаты",
@@ -83,8 +83,8 @@ export default function PricingPage() {
         );
     const body = isHwid
       ? tr(
-          `Оплатил сброс HWID на FunPay${postPay?.amount ? ` ${postPay.amount} ₽` : ""}, но привязка не обновилась.\n\nСсылка на лот / номер заказа: \nВремя оплаты: \n\nПрошу выполнить сброс HWID.`,
-          `I paid for an HWID reset on FunPay${postPay?.amount ? ` ${postPay.amount} ₽` : ""} but the binding was not updated.\n\nLot link / order number: \nPayment time: \n\nPlease reset my HWID.`
+          `Оплатил ключ сброса HWID на FunPay${postPay?.amount ? ` ${postPay.amount} ₽` : ""}, но ключ не пришёл.\n\nСсылка на лот / номер заказа: \nВремя оплаты: \nСпособ оплаты: \n\nПрошу проверить оплату.`,
+          `I paid for an HWID reset key on FunPay${postPay?.amount ? ` ${postPay.amount} ₽` : ""} but did not receive the key.\n\nLot link / order number: \nPayment time: \nPayment method: \n\nPlease check the payment.`
         )
       : tr(
           `Оплатил на FunPay${postPay?.amount ? ` ${postPay.amount} ₽` : ""}, но промокод не пришёл.\n\nСсылка на лот / номер заказа: \nВремя оплаты: \nСпособ оплаты: \n\nПрошу проверить оплату.`,
@@ -107,17 +107,17 @@ export default function PricingPage() {
       return [
         paidStep,
         {
-          title: tr("Написали в поддержку", "Contacted support"),
+          title: tr("Получили ключ сброса HWID", "Received the HWID reset key"),
           text: tr(
-            "Пришлите номер заказа или ссылку на лот — мы проверим оплату и снимем текущую привязку HWID.",
-            "Send the order number or lot link — we will check the payment and clear the current HWID binding."
+            "Продавец отправит ключ в чат FunPay — обычно в течение 1–5 минут. Не закрывайте заказ до получения ключа.",
+            "The seller sends the key in the FunPay chat, usually within 1–5 minutes. Keep the order open until it arrives."
           ),
         },
         {
-          title: tr("Запустили лаунчер заново", "Restarted the launcher"),
+          title: tr("Сбросили HWID", "Reset the HWID"),
           text: tr(
-            "После сброса запустите лаунчер — клиент привяжет компьютер заново автоматически.",
-            "After the reset, launch the client again — it will bind your computer automatically."
+            "Кабинет → «Действия» → «Дополнения» → блок «Сброс HWID». Вставьте ключ и нажмите «Сбросить HWID», затем запустите лаунчер заново.",
+            "Dashboard → “Actions” → “Add-ons” → “HWID reset”. Paste the key, press “Reset HWID”, then relaunch the client."
           ),
         },
       ];
@@ -385,12 +385,12 @@ export default function PricingPage() {
                 {postPay.kind === "hwid"
                   ? postPay.amount
                     ? tr(
-                        `Сброс HWID на ${postPay.amount} ₽ выполняется после оплаты.`,
-                        `A ${postPay.amount} ₽ HWID reset is processed after payment.`
+                        `Ключ сброса HWID на ${postPay.amount} ₽ активируется в три шага.`,
+                        `A ${postPay.amount} ₽ HWID reset key is activated in three steps.`
                       )
                     : tr(
-                        "Сброс HWID выполняется после оплаты.",
-                        "HWID resets are processed after payment."
+                        "Ключ сброса HWID активируется в три шага.",
+                        "An HWID reset key is activated in three steps."
                       )
                   : postPay.kind === "key"
                     ? postPay.amount
@@ -428,37 +428,27 @@ export default function PricingPage() {
               </ol>
 
               <div className="flex flex-col gap-3">
-                {postPay.kind === "hwid" ? (
-                  <Link
-                    href={supportHref}
-                    className="w-full py-3 rounded-xl font-semibold bg-purple-600 hover:bg-purple-500 transition text-center inline-flex items-center justify-center gap-2"
-                  >
-                    <Headset size={18} />
-                    {tr("Написать в поддержку", "Contact support")}
-                  </Link>
-                ) : (
-                  <Link
-                    href={
-                      postPay.kind === "key"
-                        ? "/dashboard/addons"
-                        : "/dashboard?tab=balance"
-                    }
-                    className="w-full py-3 rounded-xl font-semibold bg-purple-600 hover:bg-purple-500 transition text-center inline-flex items-center justify-center gap-2"
-                  >
-                    <Ticket size={18} />
-                    {postPay.kind === "key"
-                      ? tr("Перейти к активации ключа", "Go to key activation")
-                      : tr("Перейти в «Баланс»", "Go to “Balance”")}
-                  </Link>
-                )}
-                {postPay.kind !== "hwid" && (
-                  <Link
-                    href={supportHref}
-                    className="w-full py-3 rounded-xl font-semibold bg-white/5 hover:bg-white/10 border border-white/10 transition text-center"
-                  >
-                    {tr("Код не пришёл — написать в поддержку", "Code didn't arrive — contact support")}
-                  </Link>
-                )}
+                <Link
+                  href={
+                    postPay.kind === "topup"
+                      ? "/dashboard?tab=balance"
+                      : "/dashboard/addons"
+                  }
+                  className="w-full py-3 rounded-xl font-semibold bg-purple-600 hover:bg-purple-500 transition text-center inline-flex items-center justify-center gap-2"
+                >
+                  <Ticket size={18} />
+                  {postPay.kind === "topup"
+                    ? tr("Перейти в «Баланс»", "Go to “Balance”")
+                    : postPay.kind === "hwid"
+                      ? tr("Перейти к сбросу HWID", "Go to HWID reset")
+                      : tr("Перейти к активации ключа", "Go to key activation")}
+                </Link>
+                <Link
+                  href={supportHref}
+                  className="w-full py-3 rounded-xl font-semibold bg-white/5 hover:bg-white/10 border border-white/10 transition text-center"
+                >
+                  {tr("Код не пришёл — написать в поддержку", "Code didn't arrive — contact support")}
+                </Link>
                 <button
                   onClick={() => setPostPay(null)}
                   className="w-full text-sm text-white/40 hover:text-white/70 transition py-1"

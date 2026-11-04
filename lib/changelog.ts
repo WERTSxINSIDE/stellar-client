@@ -99,8 +99,8 @@ export const CHANGELOG: ChangelogEntry[] = [
         en: "Dashboard supports deep links to tabs, e.g. /dashboard?tab=balance.",
       },
       {
-        ru: "Экран после оплаты учитывает тип покупки: пополнение активируется в «Балансе», ключ — в «Действиях → Дополнениях».",
-        en: "The post-payment screen adapts to the purchase type: top-ups activate in “Balance”, keys in “Actions → Add-ons”.",
+        ru: "Экран после оплаты учитывает тип покупки: пополнение активируется в «Балансе», ключ клиента и ключ сброса HWID — в «Действиях → Дополнениях».",
+        en: "The post-payment screen adapts to the purchase type: top-ups activate in “Balance”, client keys and HWID reset keys in “Actions → Add-ons”.",
       },
     ],
   },
