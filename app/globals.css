@@ -346,6 +346,16 @@ body::after {
     animation: var(--site-bg-anim);
 }
 
+/* Когда надета тема сайта, непрозрачные фоны страниц не должны её перекрывать */
+html[data-site-theme] .min-h-screen.bg-\[\#0a0710\],
+html[data-site-theme] .min-h-screen.bg-\[\#07070d\] {
+    background-color: transparent;
+}
+
+html[data-site-theme] .cosmetics-rgb-bg {
+    background-color: transparent;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .cosmic-rgb-text,
     .cosmic-rgb-surface,
