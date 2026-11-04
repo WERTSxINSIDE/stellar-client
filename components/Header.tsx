@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { House, ShoppingCartSimple, Question, Trophy, Headset, Star, BellSimple, Check, UsersThree, Pulse, List, X } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import OnlineBadge from "@/components/OnlineBadge";
 import { useI18n } from "@/lib/i18n";
 import { localizeNotification } from "@/lib/notification-i18n";
 
@@ -242,6 +243,7 @@ export default function Header() {
 
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: "spring", damping: 15, stiffness: 350 }}>
           <div className="flex items-center gap-2 sm:gap-3">
+            <OnlineBadge withLabel />
             <LanguageSwitcher />
             {loggedIn && <NotificationBell />}
             <Link

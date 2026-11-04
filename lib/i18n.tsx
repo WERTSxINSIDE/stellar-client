@@ -16,6 +16,18 @@ type Vars = Record<string, string | number>;
 type Dictionary = Record<string, string>;
 
 const ru: Dictionary = {
+  "status.onlineLabel": "Онлайн",
+  "status.onlineCount": "{count} онлайн",
+  "profile.followers": "Подписчики",
+  "profile.following": "Подписки",
+  "profile.follow": "Подписаться",
+  "profile.followingAction": "Вы подписаны",
+  "profile.followLogin": "Войдите, чтобы подписаться",
+  "profile.followError": "Не удалось изменить подписку",
+  "profile.authorConfigs": "Конфиги автора",
+  "profile.authorConfigsHint": "Опубликованные конфиги этого автора",
+  "profile.noConfigs": "У автора пока нет опубликованных конфигов.",
+  "profile.authorRating": "Рейтинг конфигов",
   "common.loading": "Загрузка...",
   "common.error": "Ошибка",
   "common.close": "Закрыть",
@@ -458,6 +470,18 @@ const ru: Dictionary = {
 };
 
 const en: Dictionary = {
+  "status.onlineLabel": "Online",
+  "status.onlineCount": "{count} online",
+  "profile.followers": "Followers",
+  "profile.following": "Following",
+  "profile.follow": "Follow",
+  "profile.followingAction": "Following",
+  "profile.followLogin": "Sign in to follow",
+  "profile.followError": "Could not update subscription",
+  "profile.authorConfigs": "Author's configs",
+  "profile.authorConfigsHint": "Published configs by this author",
+  "profile.noConfigs": "This author has no published configs yet.",
+  "profile.authorRating": "Config rating",
   "common.loading": "Loading...",
   "common.error": "Error",
   "common.close": "Close",

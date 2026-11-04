@@ -10,6 +10,7 @@ import { useI18n, type Lang } from "@/lib/i18n";
 import { achievementEn } from "@/lib/achievements";
 import {
   ArrowLeft,
+  Coins,
   Copy,
   Check,
   Trophy,
@@ -19,7 +20,12 @@ import {
   ShieldCheck,
   Handshake,
   CircleNotch,
+  StackSimple,
+  Tag,
+  UserCheck,
   UserCircle,
+  UserPlus,
+  UsersThree,
 } from "@phosphor-icons/react";
 
 type ProfileAchievement = {
@@ -32,7 +38,27 @@ type ProfileAchievement = {
   unlocked_at: string | null;
 };
 
+type ProfileConfig = {
+  id: number;
+  type: string;
+  title: string;
+  description: string | null;
+  tags: string[];
+  views: number;
+  sales: number;
+  game: string | null;
+  version: string | null;
+  price: number;
+  discount_percent: number;
+  discount_active: boolean;
+  final_price: number;
+  avg_rating: number;
+  ratings: number;
+  created_at: string | null;
+};
+
 type Profile = {
+  id: number;
   username: string;
   avatar_url: string | null;
   bio: string | null;
@@ -43,6 +69,13 @@ type Profile = {
   subscription_active: boolean;
   is_admin: boolean;
   is_partner: boolean;
+  followers: number;
+  following: number;
+  is_following: boolean;
+  is_self: boolean;
+  author_rating: number;
+  author_ratings: number;
+  sales_total: number;
   stats: {
     seconds: number;
     launches: number;
@@ -52,6 +85,7 @@ type Profile = {
     review_rating: number;
   };
   achievements: ProfileAchievement[];
+  configs: ProfileConfig[];
 };
 
 const RARITY_STYLES: Record<string, string> = {
@@ -108,6 +142,8 @@ export default function PublicProfilePage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followError, setFollowError] = useState("");
 
   useEffect(() => {
     if (!username) return;
@@ -144,6 +180,39 @@ export default function PublicProfilePage() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+    }
+  }
+
+  async function toggleFollow() {
+    if (!profile || followLoading) return;
+    setFollowLoading(true);
+    setFollowError("");
+    try {
+      const res = await fetch(`/api/showcase/authors/${profile.id}/follow`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setFollowError(
+          res.status === 401
+            ? t("profile.followLogin")
+            : data.error || t("profile.followError")
+        );
+        return;
+      }
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              is_following: !!data.following,
+              followers: Number(data.followers) || 0,
+            }
+          : prev
+      );
+    } catch {
+      setFollowError(t("profile.followError"));
+    } finally {
+      setFollowLoading(false);
     }
   }
 
@@ -273,27 +342,57 @@ export default function PublicProfilePage() {
                         )}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={copyLink}
-                        className="self-start sm:self-end flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition shrink-0"
-                      >
-                        {copied ? (
-                          <>
-                            <Check size={16} weight="bold" className="text-green-400" /> {t("profile.copied")}
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={16} /> {t("profile.share")}
-                          </>
+                      <div className="flex flex-wrap items-center gap-2 self-start sm:self-end shrink-0">
+                        {!profile.is_self && (
+                          <button
+                            type="button"
+                            onClick={toggleFollow}
+                            disabled={followLoading}
+                            className={`flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-xl border transition disabled:opacity-60 ${
+                              profile.is_following
+                                ? "bg-white/5 border-white/10 hover:bg-white/10"
+                                : "bg-purple-600 border-purple-500 hover:bg-purple-700"
+                            }`}
+                          >
+                            {followLoading ? (
+                              <CircleNotch size={16} className="animate-spin" />
+                            ) : profile.is_following ? (
+                              <UserCheck size={16} weight="fill" />
+                            ) : (
+                              <UserPlus size={16} weight="fill" />
+                            )}
+                            {profile.is_following
+                              ? t("profile.followingAction")
+                              : t("profile.follow")}
+                          </button>
                         )}
-                      </button>
+
+                        <button
+                          type="button"
+                          onClick={copyLink}
+                          className="flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition shrink-0"
+                        >
+                          {copied ? (
+                            <>
+                              <Check size={16} weight="bold" className="text-green-400" /> {t("profile.copied")}
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={16} /> {t("profile.share")}
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
+
+                    {followError && (
+                      <p className="relative text-xs text-rose-300 mt-3">{followError}</p>
+                    )}
                   </div>
                 </div>
 
                 {/* Статистика */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mt-4">
                   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
                     <div className="flex items-center gap-2 text-white/40 text-xs mb-2">
                       <Clock size={16} /> {t("profile.inClient")}
@@ -333,6 +432,123 @@ export default function PublicProfilePage() {
                       <p className="text-xl font-bold text-white/30">—</p>
                     )}
                   </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <div className="flex items-center gap-2 text-white/40 text-xs mb-2">
+                      <UsersThree size={16} /> {t("profile.followers")}
+                    </div>
+                    <p className="text-xl font-bold">{profile.followers}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <div className="flex items-center gap-2 text-white/40 text-xs mb-2">
+                      <UserPlus size={16} /> {t("profile.following")}
+                    </div>
+                    <p className="text-xl font-bold">{profile.following}</p>
+                  </div>
+                </div>
+
+                {/* Конфиги автора */}
+                <div className="mt-10">
+                  <div className="flex flex-wrap items-end justify-between gap-4 mb-5">
+                    <div>
+                      <h2 className="text-2xl font-bold flex items-center gap-2">
+                        <StackSimple size={22} weight="fill" className="text-purple-300" />
+                        {t("profile.authorConfigs")}
+                      </h2>
+                      <p className="text-white/40 text-sm">{t("profile.authorConfigsHint")}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/45">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Star size={14} weight="fill" className="text-yellow-400" />
+                        {profile.author_rating > 0
+                          ? `${profile.author_rating.toFixed(1)} (${profile.author_ratings})`
+                          : "—"}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Coins size={14} />
+                        {t("community.sales", { count: profile.sales_total })}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <UsersThree size={14} />
+                        {profile.followers}
+                      </span>
+                    </div>
+                  </div>
+
+                  {profile.configs.length === 0 ? (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-10 text-center text-white/40">
+                      {t("profile.noConfigs")}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {profile.configs.map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 flex flex-col gap-3 hover:border-purple-400/30 transition"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <Link
+                                href={`/community/${item.type}/${item.id}`}
+                                className="font-bold hover:text-purple-300 transition line-clamp-1"
+                              >
+                                {item.title}
+                              </Link>
+                              <p className="text-[11px] text-white/40 flex flex-wrap items-center gap-2 mt-1">
+                                {item.game && (
+                                  <span className="inline-flex items-center gap-1 rounded-md border border-purple-400/20 bg-purple-500/10 px-1.5 py-0.5 text-purple-200">
+                                    {t(`community.game.${item.game}`)}
+                                  </span>
+                                )}
+                                {item.version && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Tag size={10} /> {t("community.version", { version: item.version })}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            <span
+                              className={`shrink-0 rounded-lg border px-2 py-1 text-xs font-semibold ${
+                                item.final_price > 0
+                                  ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-300"
+                                  : "border-white/10 bg-white/5 text-white/45"
+                              }`}
+                            >
+                              {item.discount_active && item.discount_percent > 0 && (
+                                <span className="mr-1 text-white/35 line-through">
+                                  {item.price} ₽
+                                </span>
+                              )}
+                              {item.final_price > 0 ? `${item.final_price} ₽` : t("community.free")}
+                            </span>
+                          </div>
+
+                          {item.description && (
+                            <p className="text-sm text-white/50 leading-relaxed line-clamp-2">
+                              {item.description}
+                            </p>
+                          )}
+
+                          <div className="mt-auto flex flex-wrap items-center gap-3 text-[11px] text-white/35">
+                            <span className="inline-flex items-center gap-1">
+                              <Star size={12} weight="fill" className="text-yellow-400" />
+                              {item.avg_rating > 0
+                                ? `${item.avg_rating.toFixed(1)} (${item.ratings})`
+                                : t("community.noRatings")}
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <Coins size={12} />
+                              {t("community.sales", { count: item.sales })}
+                            </span>
+                            {item.discount_active && item.discount_percent > 0 && (
+                              <span className="text-amber-300">
+                                {t("community.discount", { percent: item.discount_percent })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Достижения */}

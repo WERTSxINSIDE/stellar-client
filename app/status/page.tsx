@@ -144,7 +144,7 @@ export default function StatusPage() {
 
   useEffect(() => {
     load();
-    const timer = setInterval(load, 30_000);
+    const timer = setInterval(load, 20_000);
     return () => clearInterval(timer);
   }, [load]);
 
