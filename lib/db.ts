@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-04-1";
+const SCHEMA_VERSION = "2026-11-04-2";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -45,6 +45,16 @@ async function initDb() {
         key   TEXT PRIMARY KEY,
         value TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS telegram_links (
+        user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        chat_id    TEXT NOT NULL,
+        username   TEXT,
+        linked_at  TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_telegram_links_chat ON telegram_links(chat_id);
 
       CREATE TABLE IF NOT EXISTS users (
         id         SERIAL PRIMARY KEY,

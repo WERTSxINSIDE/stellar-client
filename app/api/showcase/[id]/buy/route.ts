@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { addBalanceHistory, queryOne, withTransaction } from "@/lib/db";
 import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
 import { notifyUser } from "@/lib/notify";
+import { escapeTelegramHtml, notifyAdmins } from "@/lib/telegram";
 import { logActivity } from "@/lib/activity";
 import { sellerPayout, discountedPrice } from "@/lib/showcase";
 
@@ -199,6 +200,15 @@ export async function POST(
     ).catch(() => {});
 
     await logActivity(user.id, "purchase", "Покупка конфига", item.title);
+
+    await notifyAdmins(
+      [
+        "💰 <b>Продажа конфига</b>",
+        `«${escapeTelegramHtml(item.title)}» — ${price} ₽`,
+        `Покупатель: ${escapeTelegramHtml(user.username)}`,
+        `Автор: ${escapeTelegramHtml(item.username)}`,
+      ].join("\n")
+    ).catch(() => {});
 
     return NextResponse.json({ ok: true, balance: newBalance, price, seller_amount: payout });
   } catch (error: any) {

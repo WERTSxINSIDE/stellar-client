@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query, queryAll, queryOne } from "@/lib/db";
 import { notifyUser } from "@/lib/notify";
+import { escapeTelegramHtml, notifyAdmins } from "@/lib/telegram";
 import { logAdminAction, findUserForLog } from "@/lib/audit";
 import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
 import {
@@ -179,6 +180,14 @@ export async function POST(req: Request) {
           file.value?.name ?? null,
         ]
       );
+      await notifyAdmins(
+        [
+          `🎫 <b>Новый тикет #${t.id}</b>`,
+          escapeTelegramHtml(subj.slice(0, 200)),
+          `От: ${escapeTelegramHtml(user.username)}`,
+          `Категория: ${escapeTelegramHtml(normalizeSupportCategory(category))}`,
+        ].join("\n")
+      ).catch(() => {});
       return NextResponse.json({ ok: true, id: t.id });
     }
 

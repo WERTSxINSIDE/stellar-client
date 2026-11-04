@@ -1,6 +1,7 @@
 import pool, { type DbExecutor, queryOne } from "./db";
 import { sendMail } from "./email";
 import { escapeHtml, renderEmail } from "./email-template";
+import { sendTelegramToUser } from "./telegram";
 import {
   categoryForType,
   emailAllowed,
@@ -107,4 +108,11 @@ export async function notifyUser(
   if (opts.email) {
     await emailNotification(userId, input);
   }
+
+  // Telegram — необязательный канал: без привязки чата молча пропускается.
+  await sendTelegramToUser(userId, {
+    title: input.title,
+    body: input.body,
+    link: input.link,
+  }).catch(() => {});
 }

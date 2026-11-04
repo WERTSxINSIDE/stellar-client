@@ -172,6 +172,28 @@ export async function POST(req: Request) {
         link: "/community",
       }).catch(() => {});
 
+      // Подписчики автора получают уведомление о новом конфиге.
+      if (item.type === "config") {
+        const followers = (await queryAll(
+          `SELECT follower_id FROM showcase_follows
+           WHERE author_id = $1
+           ORDER BY created_at DESC
+           LIMIT 500`,
+          [item.user_id]
+        )) as { follower_id: number }[];
+
+        await Promise.allSettled(
+          followers.map((follower) =>
+            notifyUser(follower.follower_id, {
+              type: "showcase",
+              title: "Новый конфиг от автора",
+              body: `@${item.username} опубликовал «${item.title}».`,
+              link: `/community/config/${itemId}`,
+            })
+          )
+        );
+      }
+
       await logActivity(
         item.user_id,
         "showcase",

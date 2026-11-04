@@ -46,6 +46,7 @@ import {
   Bell,
   Sparkle,
   Books,
+  TelegramLogo,
 } from "@phosphor-icons/react";
 
 function tx(lang: Lang, ru: string, en: string) {
@@ -321,6 +322,16 @@ export default function Dashboard() {
   const [notif, setNotif] = useState<NotificationData | null>(null);
   const [notifMsg, setNotifMsg] = useState("");
   const [notifLoading, setNotifLoading] = useState<string | null>(null);
+
+  type TelegramState = {
+    enabled: boolean;
+    linked: boolean;
+    username: string | null;
+  };
+
+  const [telegram, setTelegram] = useState<TelegramState | null>(null);
+  const [telegramMsg, setTelegramMsg] = useState("");
+  const [telegramBusy, setTelegramBusy] = useState(false);
   const [avatarDraft, setAvatarDraft] = useState("");
   const [bioDraft, setBioDraft] = useState("");
   const [bannerDraft, setBannerDraft] = useState("");
@@ -421,6 +432,12 @@ export default function Dashboard() {
     fetch("/api/notification-settings")
       .then((r) => r.json())
       .then((d) => d.ok && setNotif({ email: d.email, categories: d.categories, settings: d.settings }))
+      .catch(() => {});
+    fetch("/api/telegram/link")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok) setTelegram({ enabled: !!d.enabled, linked: !!d.linked, username: d.username ?? null });
+      })
       .catch(() => {});
   }, [router]);
 
@@ -729,6 +746,82 @@ export default function Dashboard() {
       setNotifMsg(tr("Ошибка сети", "Network error"));
     } finally {
       setNotifLoading(null);
+    }
+  }
+
+  async function refreshTelegram() {
+    setTelegramMsg("");
+    setTelegramBusy(true);
+    try {
+      const res = await fetch("/api/telegram/link", { cache: "no-store" });
+      const data = await res.json();
+      if (data.ok) {
+        setTelegram({
+          enabled: !!data.enabled,
+          linked: !!data.linked,
+          username: data.username ?? null,
+        });
+        setTelegramMsg(
+          data.linked
+            ? tr("Telegram привязан ✓", "Telegram linked ✓")
+            : tr("Пока не привязан", "Not linked yet")
+        );
+      }
+    } catch {
+      setTelegramMsg(tr("Ошибка сети", "Network error"));
+    } finally {
+      setTelegramBusy(false);
+    }
+  }
+
+  async function connectTelegram() {
+    setTelegramMsg("");
+    setTelegramBusy(true);
+    try {
+      const res = await fetch("/api/telegram/link", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        setTelegramMsg(
+          localizeApiError(data.error, lang) ||
+            tr("Не удалось создать ссылку на бота", "Could not create the bot link")
+        );
+        return;
+      }
+      window.open(data.url, "_blank", "noopener,noreferrer");
+      setTelegramMsg(
+        tr(
+          "Откройте Telegram, нажмите «Start», затем вернитесь и обновите статус.",
+          "Open Telegram, press “Start”, then come back and refresh the status."
+        )
+      );
+    } catch {
+      setTelegramMsg(tr("Ошибка сети", "Network error"));
+    } finally {
+      setTelegramBusy(false);
+    }
+  }
+
+  async function unlinkTelegram() {
+    setTelegramMsg("");
+    setTelegramBusy(true);
+    try {
+      const res = await fetch("/api/telegram/link", { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) {
+        setTelegramMsg(
+          localizeApiError(data.error, lang) ||
+            tr("Не удалось отвязать Telegram", "Could not unlink Telegram")
+        );
+        return;
+      }
+      setTelegram((prev) =>
+        prev ? { ...prev, linked: false, username: null } : prev
+      );
+      setTelegramMsg(tr("Telegram отвязан.", "Telegram unlinked."));
+    } catch {
+      setTelegramMsg(tr("Ошибка сети", "Network error"));
+    } finally {
+      setTelegramBusy(false);
     }
   }
 
@@ -2014,6 +2107,77 @@ export default function Dashboard() {
                   {tr("Выберите, какие события дублировать на почту. В колокольчике в шапке сайта", "Choose which events are also sent by email. Notifications in the bell icon in the site header")}
                   {tr("уведомления приходят всегда.", "are always delivered.")}
                 </p>
+
+                <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-6 mb-6">
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                    <span className="w-10 h-10 rounded-2xl bg-sky-500/15 border border-sky-400/25 flex items-center justify-center text-sky-300">
+                      <TelegramLogo size={22} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-bold">{tr("Telegram-уведомления", "Telegram notifications")}</p>
+                      <p className="text-white/40 text-sm">
+                        {tr(
+                          "Ответы поддержки и новые конфиги авторов приходят в чат — быстрее, чем на почту.",
+                          "Support replies and new author configs arrive in chat — faster than email."
+                        )}
+                      </p>
+                    </div>
+                    {telegram?.linked && (
+                      <span className="ml-auto text-xs px-2.5 py-1 rounded-full border border-green-400/30 bg-green-500/10 text-green-300">
+                        {tr("Привязан", "Linked")}
+                        {telegram.username ? ` · @${telegram.username}` : ""}
+                      </span>
+                    )}
+                  </div>
+
+                  {telegram && !telegram.enabled ? (
+                    <p className="text-sm text-amber-300/80 mt-4">
+                      {tr(
+                        "Telegram пока не настроен администратором. Уведомления в колокольчике и на почте продолжают работать.",
+                        "Telegram is not configured by the administrator yet. Bell and email notifications keep working."
+                      )}
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {telegram?.linked ? (
+                        <>
+                          <button
+                            onClick={refreshTelegram}
+                            disabled={telegramBusy}
+                            className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-50 transition"
+                          >
+                            {tr("Обновить статус", "Refresh status")}
+                          </button>
+                          <button
+                            onClick={unlinkTelegram}
+                            disabled={telegramBusy}
+                            className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-500/15 border border-red-400/30 text-red-300 hover:bg-red-500/25 disabled:opacity-50 transition"
+                          >
+                            {tr("Отвязать", "Unlink")}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={connectTelegram}
+                          disabled={telegramBusy}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-sky-600 hover:bg-sky-500 disabled:opacity-50 transition"
+                        >
+                          <TelegramLogo size={18} />
+                          {tr("Привязать Telegram", "Link Telegram")}
+                        </button>
+                      )}
+                      {telegramBusy && (
+                        <span className="inline-flex items-center text-xs text-white/40">
+                          {tr("Подождите...", "Please wait...")}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {telegramMsg && (
+                    <p className="text-sm text-white/50 mt-3">{telegramMsg}</p>
+                  )}
+                </div>
 
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-6">
                   <div className="flex items-center gap-2 text-white/40 text-sm mb-5">

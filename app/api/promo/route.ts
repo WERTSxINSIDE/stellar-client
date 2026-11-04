@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { notifyUser } from "@/lib/notify";
+import { escapeTelegramHtml, notifyAdmins } from "@/lib/telegram";
 import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,15 @@ export async function POST(req: Request) {
         link: "/dashboard",
       },
       { email: true }
+    ).catch(() => {});
+
+    await notifyAdmins(
+      [
+        "🎟 <b>Активация промокода</b>",
+        `Код: <code>${escapeTelegramHtml(code)}</code>`,
+        `Сумма: ${result.amount} ₽`,
+        `Пользователь: ${escapeTelegramHtml(user.username)} (#${user.id})`,
+      ].join("\n")
     ).catch(() => {});
 
     return NextResponse.json({ ok: true, amount: result.amount, balance: result.balance });
