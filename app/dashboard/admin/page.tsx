@@ -112,17 +112,22 @@ export default function AdminPage() {
 
   // Промокоды
   const [promos, setPromos] = useState<any[]>([]);
+  const [promoSummary, setPromoSummary] = useState<any[]>([]);
+  const [promoFilter, setPromoFilter] = useState(0);
   const [promoCode, setPromoCode] = useState("");
   const [promoAmount, setPromoAmount] = useState(50);
   const [promoMaxUses, setPromoMaxUses] = useState(0);
   const [promoMsg, setPromoMsg] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
 
-  async function loadPromos() {
+  async function loadPromos(amount = promoFilter) {
     try {
-      const res = await fetch("/api/admin-promo");
+      const res = await fetch(`/api/admin-promo${amount ? `?amount=${amount}` : ""}`);
       const data = await res.json();
-      if (data.ok) setPromos(data.promos || []);
+      if (data.ok) {
+        setPromos(data.promos || []);
+        if (Array.isArray(data.summary)) setPromoSummary(data.summary);
+      }
     } catch {}
   }
 
@@ -148,7 +153,7 @@ export default function AdminPage() {
       setPromoCode("");
       setPromoAmount(50);
       setPromoMaxUses(0);
-      await loadPromos();
+      await loadPromos(promoFilter);
     } catch {
       setPromoMsg("Ошибка сети");
     } finally {
@@ -164,7 +169,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      await loadPromos();
+      await loadPromos(promoFilter);
     } catch {}
   }
 
@@ -893,7 +898,7 @@ export default function AdminPage() {
               Отзывы
             </button>
             <button
-              onClick={() => { setKeysTab("promo"); loadPromos(); }}
+              onClick={() => { setKeysTab("promo"); setPromoFilter(0); loadPromos(0); }}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
                 keysTab === "promo"
                   ? "bg-purple-600/80 text-white"
@@ -1923,12 +1928,45 @@ export default function AdminPage() {
 
           {keysTab === "promo" && (
           <div>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Coin size={22} className="text-white/70" />
-                <h2 className="text-2xl font-bold">Промокоды ({promos.length})</h2>
+                <h2 className="text-2xl font-bold">
+                  Промокоды ({promoFilter
+                    ? `${promos.length} из ${promoSummary.reduce((n, s) => n + Number(s.total), 0)}`
+                    : promoSummary.reduce((n, s) => n + Number(s.total), 0)})
+                </h2>
               </div>
-              <button onClick={loadPromos} className="text-sm text-purple-400 hover:text-purple-300">Обновить</button>
+              <button onClick={() => loadPromos(promoFilter)} className="text-sm text-purple-400 hover:text-purple-300">Обновить</button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-6">
+              <button
+                onClick={() => { setPromoFilter(0); loadPromos(0); }}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition ${
+                  promoFilter === 0
+                    ? "bg-purple-600/80 border-purple-400/30 text-white"
+                    : "bg-white/[0.03] border-white/10 text-white/60 hover:text-white"
+                }`}
+              >
+                Все ({promoSummary.reduce((n, s) => n + Number(s.total), 0)})
+              </button>
+              {promoSummary.map((s: any) => {
+                const amount = Number(s.amount);
+                return (
+                  <button
+                    key={amount}
+                    onClick={() => { setPromoFilter(amount); loadPromos(amount); }}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold border transition ${
+                      promoFilter === amount
+                        ? "bg-purple-600/80 border-purple-400/30 text-white"
+                        : "bg-white/[0.03] border-white/10 text-white/60 hover:text-white"
+                    }`}
+                  >
+                    {amount} ₽ ({s.total})
+                  </button>
+                );
+              })}
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-6 mb-6">

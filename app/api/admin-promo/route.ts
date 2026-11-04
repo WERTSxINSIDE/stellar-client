@@ -5,19 +5,34 @@ import { logAdminAction } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const admin = await requireAdmin();
     if (!admin) return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
 
+    const amountParam = Number(new URL(req.url).searchParams.get("amount"));
+    const amount = Number.isInteger(amountParam) && amountParam > 0 ? amountParam : null;
+
     const promos = await queryAll(
       `SELECT id, code, amount, max_uses, used_count, active, expires_at, created_at
        FROM promo_codes
-       ORDER BY created_at DESC
-       LIMIT 200`
+       ${amount ? "WHERE amount = $1" : ""}
+       ORDER BY amount ASC, created_at DESC, id DESC
+       LIMIT 5000`,
+      amount ? [amount] : []
     );
 
-    return NextResponse.json({ ok: true, promos });
+    const summary = await queryAll(
+      `SELECT amount,
+              COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE active = 1)::int AS active,
+              COALESCE(SUM(used_count), 0)::int AS used
+       FROM promo_codes
+       GROUP BY amount
+       ORDER BY amount ASC`
+    );
+
+    return NextResponse.json({ ok: true, promos, summary });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });
   }
