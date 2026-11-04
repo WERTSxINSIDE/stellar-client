@@ -166,16 +166,16 @@ export default function Exchange({
         </div>
       </div>
 
-      <form onSubmit={submit}>
+      <form onSubmit={submit} noValidate>
         <label className="text-white/40 text-xs mb-1 block">
           {direction === "rub_to_sc" ? tr("Сумма в рублях", "Amount in rubles") : tr("Сумма в SC", "Amount in SC")}
         </label>
         <input
-          type="number"
-          min={1}
-          step={1}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
           value={amount}
-          onChange={(event) => setAmount(event.target.value)}
+          onChange={(event) => setAmount(event.target.value.replace(/[^\d]/g, "").slice(0, 9))}
           placeholder="0"
           className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
         />
@@ -209,6 +209,16 @@ export default function Exchange({
                 `остаток ${remainder} SC останется на счету`,
                 `${remainder} SC will stay on your balance`
               )}
+            </span>
+          )}
+          {direction === "rub_to_sc" && value > (data?.balance ?? 0) && (
+            <span className="text-red-300 ml-2">
+              {tr("недостаточно рублей на балансе", "not enough rubles on balance")}
+            </span>
+          )}
+          {direction === "sc_to_rub" && value > (data?.sc_coins ?? 0) && (
+            <span className="text-red-300 ml-2">
+              {tr("недостаточно SC", "not enough SC")}
             </span>
           )}
         </p>
