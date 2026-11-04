@@ -195,6 +195,11 @@ export default function CommunityPage() {
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [bundlesLoading, setBundlesLoading] = useState(false);
   const [buyingBundle, setBuyingBundle] = useState<number | null>(null);
+  const [bundleCodeInput, setBundleCodeInput] = useState<Record<number, string>>({});
+  const [bundleCoupons, setBundleCoupons] = useState<
+    Record<number, { code: string; discount_percent: number; final_price: number }>
+  >({});
+  const [bundleCouponBusy, setBundleCouponBusy] = useState<number | null>(null);
 
   const loadFeed = useCallback(async () => {
     try {
@@ -351,8 +356,11 @@ export default function CommunityPage() {
     }
     setBuyingBundle(bundle.id);
     try {
+      const coupon = bundleCoupons[bundle.id];
       const res = await fetch(`/api/showcase/bundles/${bundle.id}/buy`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(coupon ? { code: coupon.code } : {}),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -368,6 +376,53 @@ export default function CommunityPage() {
       setToast({ ok: false, text: t("common.serverError") });
     } finally {
       setBuyingBundle(null);
+    }
+  }
+
+  async function applyBundleCoupon(bundle: Bundle) {
+    const code = (bundleCodeInput[bundle.id] || "").trim().toUpperCase();
+    if (!code) {
+      setBundleCoupons((prev) => {
+        const next = { ...prev };
+        delete next[bundle.id];
+        return next;
+      });
+      return;
+    }
+    setBundleCouponBusy(bundle.id);
+    try {
+      const params = new URLSearchParams({
+        code,
+        bundle: String(bundle.id),
+        amount: String(Math.round(bundle.final_price)),
+        track: "1",
+      });
+      const res = await fetch(`/api/discount-codes/validate?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setBundleCoupons((prev) => {
+          const next = { ...prev };
+          delete next[bundle.id];
+          return next;
+        });
+        setToast({ ok: false, text: data.error || t("community.buyError") });
+        return;
+      }
+      setBundleCoupons((prev) => ({
+        ...prev,
+        [bundle.id]: {
+          code: data.code.code,
+          discount_percent: Number(data.code.discount_percent) || 0,
+          final_price: Number(data.final_price) || bundle.final_price,
+        },
+      }));
+      setToast({ ok: true, text: data.message || t("community.bundle.bought", { price: data.final_price }) });
+    } catch {
+      setToast({ ok: false, text: t("common.serverError") });
+    } finally {
+      setBundleCouponBusy(null);
     }
   }
 
@@ -943,6 +998,35 @@ export default function CommunityPage() {
                               </span>
                             ) : (
                               <>
+                                <div className="w-full flex gap-2">
+                                  <input
+                                    value={bundleCodeInput[bundle.id] || ""}
+                                    onChange={(e) =>
+                                      setBundleCodeInput((prev) => ({
+                                        ...prev,
+                                        [bundle.id]: e.target.value.toUpperCase(),
+                                      }))
+                                    }
+                                    maxLength={24}
+                                    placeholder={lang === "en" ? "Promo code" : "Промокод"}
+                                    className="min-w-0 flex-1 bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-xs font-mono tracking-wide"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => applyBundleCoupon(bundle)}
+                                    disabled={bundleCouponBusy === bundle.id}
+                                    className="shrink-0 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-40 px-3 py-2 text-xs font-semibold transition"
+                                  >
+                                    {bundleCouponBusy === bundle.id ? "…" : lang === "en" ? "Apply" : "Применить"}
+                                  </button>
+                                </div>
+                                {bundleCoupons[bundle.id] && (
+                                  <span className="text-[11px] text-emerald-300">
+                                    {bundleCoupons[bundle.id].code} · −
+                                    {bundleCoupons[bundle.id].discount_percent}% ·{" "}
+                                    {bundleCoupons[bundle.id].final_price} ₽
+                                  </span>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => buyBundle(bundle)}
@@ -953,7 +1037,8 @@ export default function CommunityPage() {
                                   {buyingBundle === bundle.id
                                     ? t("community.bundle.buying")
                                     : t("community.bundle.buy", {
-                                        price: bundle.final_price,
+                                        price:
+                                          bundleCoupons[bundle.id]?.final_price ?? bundle.final_price,
                                       })}
                                 </button>
                                 {bundle.base_price > bundle.final_price && (

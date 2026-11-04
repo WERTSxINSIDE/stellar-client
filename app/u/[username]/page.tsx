@@ -69,6 +69,12 @@ type Profile = {
   subscription_active: boolean;
   is_admin: boolean;
   is_partner: boolean;
+  cosmetics?: {
+    nickname_color: string | null;
+    profile_theme: string | null;
+    frame: string | null;
+    badge: string | null;
+  } | null;
   followers: number;
   following: number;
   is_following: boolean;
@@ -233,6 +239,20 @@ export default function PublicProfilePage() {
     ? String(profile?.accent_color)
     : "#a855f7";
 
+  const cosmetics = profile?.cosmetics ?? null;
+  const nicknameColor = /^#[0-9a-f]{6}$/i.test(cosmetics?.nickname_color || "")
+    ? String(cosmetics?.nickname_color)
+    : undefined;
+  const profileTheme =
+    cosmetics?.profile_theme && /^(linear-gradient|#[0-9a-f]{6})/i.test(cosmetics.profile_theme)
+      ? cosmetics.profile_theme
+      : null;
+  const avatarFrame =
+    cosmetics?.frame && /^(linear-gradient|#[0-9a-f]{6})/i.test(cosmetics.frame)
+      ? cosmetics.frame
+      : null;
+  const equippedBadge = cosmetics?.badge ? String(cosmetics.badge).slice(0, 4) : null;
+
   return (
     <>
       <Header />
@@ -267,7 +287,10 @@ export default function PublicProfilePage() {
             {!loading && !error && profile && (
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
                 {/* Шапка профиля */}
-                <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl">
+                <div
+                  className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl"
+                  style={profileTheme ? { background: profileTheme } : undefined}
+                >
                   <div className="relative h-32 sm:h-44 w-full overflow-hidden">
                     {profile.banner_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -295,15 +318,19 @@ export default function PublicProfilePage() {
 
                     <div className="relative flex flex-col sm:flex-row sm:items-end gap-5">
                       <div
-                        className="w-20 h-20 rounded-2xl overflow-hidden grid place-items-center text-3xl font-black shrink-0 shadow-lg ring-2 ring-white/20"
-                        style={{ background: `linear-gradient(135deg, ${accent}, #d946ef)` }}
+                        className={`w-20 h-20 rounded-2xl overflow-hidden grid place-items-center text-3xl font-black shrink-0 shadow-lg ring-2 ring-white/20 ${
+                          avatarFrame ? "p-1" : ""
+                        }`}
+                        style={{
+                          background: avatarFrame ?? `linear-gradient(135deg, ${accent}, #d946ef)`,
+                        }}
                       >
                         {profile.avatar_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={profile.avatar_url}
                             alt={profile.username}
-                            className="w-20 h-20 object-cover"
+                            className="w-full h-full object-cover rounded-xl"
                           />
                         ) : (
                           initial(profile.username)
@@ -312,9 +339,17 @@ export default function PublicProfilePage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h1 className="text-3xl md:text-4xl font-extrabold break-words">
+                          <h1
+                            className="text-3xl md:text-4xl font-extrabold break-words"
+                            style={nicknameColor ? { color: nicknameColor } : undefined}
+                          >
                             {profile.username}
                           </h1>
+                          {equippedBadge && (
+                            <span className="text-xl" title={lang === "en" ? "Cosmetic badge" : "Косметический бейдж"}>
+                              {equippedBadge}
+                            </span>
+                          )}
                           {profile.is_admin && (
                             <span className="flex items-center gap-1 text-[11px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30">
                               <ShieldCheck size={13} weight="fill" /> {t("profile.admin")}

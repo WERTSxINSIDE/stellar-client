@@ -18,6 +18,9 @@ import {
   Shield,
   VideoCamera,
   LockKey,
+  Coins,
+  Sparkle,
+  Megaphone,
 } from "@phosphor-icons/react";
 
 type Me = {
@@ -30,6 +33,7 @@ type Me = {
   role: string;
   platform?: string | null;
   sub_gifted?: number;
+  sc_coins?: number;
 } | null;
 
 function formatDate(d: Date) {
@@ -189,6 +193,50 @@ export default function ProfilePage() {
                   {user.hwid || tr("Не привязан", "Not linked")}
                 </p>
               </div>
+            </div>
+
+            <div className="mt-4 grid sm:grid-cols-2 gap-4">
+              <Link
+                href="/dashboard/cosmetics"
+                className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-5 hover:bg-amber-500/15 transition"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-amber-200/70 text-sm mb-2">
+                      <Coins size={18} />
+                      {tr("SC-монеты", "SC coins")}
+                    </div>
+                    <p className="text-2xl font-bold text-amber-200">
+                      {Number(user.sc_coins || 0)} SC
+                    </p>
+                    <p className="text-[11px] text-white/40 mt-1 inline-flex items-center gap-1">
+                      <Sparkle size={12} /> {tr("Открыть магазин косметики", "Open cosmetics shop")}
+                    </p>
+                  </div>
+                  <Sparkle size={26} className="text-amber-300/60" />
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/partner-codes"
+                className="rounded-2xl border border-purple-400/25 bg-purple-500/10 p-5 hover:bg-purple-500/15 transition"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-purple-200/70 text-sm mb-2">
+                      <Megaphone size={18} />
+                      {tr("Коды стримера", "Streamer codes")}
+                    </div>
+                    <p className="text-lg font-semibold text-purple-100">
+                      {tr("Партнёрская программа", "Partner program")}
+                    </p>
+                    <p className="text-[11px] text-white/40 mt-1">
+                      {tr("Ссылки, скидки и статистика", "Links, discounts and stats")}
+                    </p>
+                  </div>
+                  <Megaphone size={26} className="text-purple-300/60" />
+                </div>
+              </Link>
             </div>
           </div>
 

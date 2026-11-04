@@ -27,7 +27,22 @@ const STATS_SELECT = `
   COALESCE((SELECT COUNT(*) FROM bug_reports WHERE user_id = u.id), 0)::int AS bugs,
   COALESCE((SELECT COUNT(*) FROM support_tickets WHERE user_id = u.id), 0)::int AS tickets,
   COALESCE((SELECT COUNT(*) FROM balance_history
-            WHERE user_id = u.id AND type = 'hwid'), 0)::int AS hwid_resets
+            WHERE user_id = u.id AND type = 'hwid'), 0)::int AS hwid_resets,
+  COALESCE(u.sc_coins, 0)::int AS sc_coins,
+  COALESCE((SELECT COUNT(*) FROM user_cosmetics uc WHERE uc.user_id = u.id), 0)::int AS cosmetics_owned,
+  COALESCE((SELECT COUNT(*) FROM review_votes rv
+            JOIN reviews r ON r.id = rv.review_id
+            WHERE r.user_id = u.id AND r.status = 'approved'), 0)::int AS helpful_votes,
+  COALESCE((SELECT SUM(dc.sales_count) FROM discount_codes dc
+            WHERE dc.owner_id = u.id), 0)::int AS coupon_sales,
+  COALESCE((SELECT COUNT(*) FROM showcase_purchases sp
+            WHERE sp.buyer_id = u.id), 0)::int AS showcase_purchases,
+  COALESCE((SELECT COUNT(*) FROM balance_history
+            WHERE user_id = u.id AND type = 'reward'
+              AND created_at >= '2026-11-01' AND created_at < '2026-12-01'), 0)::int AS season_claims,
+  COALESCE((SELECT COUNT(*) FROM balance_history
+            WHERE user_id = u.id AND type = 'reward'
+              AND created_at >= '2026-12-01' AND created_at < '2027-03-01'), 0)::int AS winter_claims
 `;
 
 export function toDate(value: unknown): Date | null {
@@ -77,6 +92,13 @@ function rowToStats(row: Record<string, unknown>): AchievementStats {
     hadSubscription: !!row.subscription_end,
     isLifetime: !!subEnd && subEnd.getTime() - now > LIFETIME_THRESHOLD_MS,
     accountAgeDays: createdAt ? Math.max(0, Math.floor((now - createdAt.getTime()) / DAY_MS)) : 0,
+    scCoins: Number(row.sc_coins) || 0,
+    cosmeticsOwned: Number(row.cosmetics_owned) || 0,
+    helpfulVotes: Number(row.helpful_votes) || 0,
+    couponSales: Number(row.coupon_sales) || 0,
+    showcasePurchases: Number(row.showcase_purchases) || 0,
+    seasonClaims: Number(row.season_claims) || 0,
+    winterClaims: Number(row.winter_claims) || 0,
   };
 }
 
@@ -102,7 +124,7 @@ export async function getAchievementLeaderboard(limit = 20) {
       // Сохранённые достижения тоже учитываем: награды могут быть выданы вручную.
       const unlocked = new Set(
         computeAchievements(stats)
-          .filter((achievement) => achievement.unlocked)
+          .filter((achievement) => achievement.unlocked && achievement.available)
           .map((achievement) => achievement.key)
       );
       const savedKeys = Array.isArray(row.saved_keys) ? row.saved_keys : [];

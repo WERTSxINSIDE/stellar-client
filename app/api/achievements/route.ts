@@ -5,8 +5,12 @@ import { computeAchievements } from "@/lib/achievements";
 import { getAchievementStats } from "@/lib/achievement-stats";
 import { createNotification, emailNotification } from "@/lib/notify";
 import { logActivity } from "@/lib/activity";
+import { grantCoins } from "@/lib/coins";
 
 export const dynamic = "force-dynamic";
+
+/** Сколько SC-монет даём за каждое новое достижение. */
+const ACHIEVEMENT_COINS = 50;
 
 export async function GET() {
   try {
@@ -30,18 +34,33 @@ export async function GET() {
       rows.map((r) => [String(r.achievement_key), r.unlocked_at])
     );
 
-    const newly = computed.filter((a) => a.unlocked && !unlockedMap.has(a.key));
+    const newly = computed.filter(
+      (a) => a.unlocked && a.available && !unlockedMap.has(a.key)
+    );
+
+    let coinsEarned = 0;
 
     if (newly.length) {
       const unlockedAt = new Date().toISOString();
       await withTransaction(async (client) => {
         for (const achievement of newly) {
-          await client.query(
+          const inserted = await client.query(
             `INSERT INTO user_achievements (user_id, achievement_key)
              VALUES ($1, $2)
-             ON CONFLICT (user_id, achievement_key) DO NOTHING`,
+             ON CONFLICT (user_id, achievement_key) DO NOTHING
+             RETURNING achievement_key`,
             [user.id, achievement.key]
           );
+          if (inserted.rows.length) {
+            await grantCoins(
+              user.id,
+              ACHIEVEMENT_COINS,
+              "achievement",
+              `Достижение: ${achievement.title}`,
+              client
+            );
+            coinsEarned += ACHIEVEMENT_COINS;
+          }
         }
       });
       for (const achievement of newly) {
@@ -105,6 +124,7 @@ export async function GET() {
         total: achievements.length,
       },
       newlyUnlocked: newly.map((a) => a.key),
+      coins_earned: coinsEarned,
     });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });

@@ -6,6 +6,14 @@ import { notifyUser } from "@/lib/notify";
 import { escapeTelegramHtml, notifyAdmins } from "@/lib/telegram";
 import { logActivity } from "@/lib/activity";
 import { sellerPayout, discountedPrice } from "@/lib/showcase";
+import {
+  applyCodeDiscount,
+  discountCodeError,
+  normalizeCode,
+  recordCodeUse,
+  type DiscountCodeRow,
+} from "@/lib/discounts";
+import { coinsForPurchase, grantCoins } from "@/lib/coins";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +25,22 @@ class PurchaseError extends Error {
     this.status = status;
   }
 }
+
+type ItemRow = {
+  id: number;
+  user_id: number;
+  type: string;
+  title: string;
+  price: number | null;
+  status: string;
+  discount_percent: number | null;
+  discount_until: string | null;
+  username?: string;
+};
+
+const CODE_SELECT = `SELECT id, owner_id, kind, code, discount_percent, max_uses, used_count,
+                            clicks, signups, sales_count, sales_amount, active, expires_at
+                     FROM discount_codes`;
 
 /** Покупка платного конфига: деньги списываются с покупателя и зачисляются автору. */
 export async function POST(
@@ -45,6 +69,9 @@ export async function POST(
       return NextResponse.json({ error: "Неверный материал" }, { status: 400 });
     }
 
+    const body = (await req.json().catch(() => ({}))) as { code?: unknown };
+    const code = normalizeCode(body.code);
+
     const item = (await queryOne(
       `SELECT s.id, s.user_id, s.type, s.title, s.price, s.status,
               s.discount_percent, s.discount_until, u.username
@@ -52,19 +79,7 @@ export async function POST(
        JOIN users u ON u.id = s.user_id
        WHERE s.id = $1`,
       [itemId]
-    )) as
-      | {
-          id: number;
-          user_id: number;
-          type: string;
-          title: string;
-          price: number | null;
-          status: string;
-          discount_percent: number | null;
-          discount_until: string | null;
-          username: string;
-        }
-      | null;
+    )) as ItemRow | null;
 
     if (!item || item.status !== "approved") {
       return NextResponse.json({ error: "Материал не найден" }, { status: 404 });
@@ -73,20 +88,33 @@ export async function POST(
       return NextResponse.json({ error: "Платить можно только за конфиги" }, { status: 400 });
     }
 
-    const price = discountedPrice(
+    const basePrice = discountedPrice(
       Number(item.price || 0),
       item.discount_percent,
       item.discount_until
     );
-    if (!Number.isInteger(price) || price <= 0) {
+    if (!Number.isInteger(basePrice) || basePrice <= 0) {
       return NextResponse.json({ error: "Этот конфиг бесплатный" }, { status: 400 });
     }
     if (item.user_id === user.id) {
       return NextResponse.json({ error: "Нельзя купить собственный конфиг" }, { status: 400 });
     }
 
-    const payout = sellerPayout(price);
+    let codeRow: DiscountCodeRow | null = null;
+    if (code) {
+      codeRow = (await queryOne(`${CODE_SELECT} WHERE code = $1`, [code])) as DiscountCodeRow | null;
+      const error = discountCodeError(codeRow, user.id, item.user_id);
+      if (error) {
+        return NextResponse.json({ error }, { status: 400 });
+      }
+    }
+
+    const price = codeRow
+      ? applyCodeDiscount(basePrice, codeRow.discount_percent)
+      : basePrice;
+    const codeDiscount = basePrice - price;
     let newBalance = 0;
+    let coins = 0;
 
     try {
       newBalance = await withTransaction(async (client) => {
@@ -99,18 +127,32 @@ export async function POST(
            FOR UPDATE`,
           [itemId]
         );
-        const fresh = locked.rows[0];
+        const fresh = locked.rows[0] as ItemRow | undefined;
         if (!fresh || fresh.status !== "approved") {
           throw new PurchaseError("Материал больше недоступен", 404);
         }
         if (fresh.type !== "config") {
           throw new PurchaseError("Платить можно только за конфиги");
         }
-        const freshPrice = discountedPrice(
+        const freshBase = discountedPrice(
           Number(fresh.price || 0),
           fresh.discount_percent,
           fresh.discount_until
         );
+        if (freshBase !== basePrice) {
+          throw new PurchaseError("Цена изменилась. Обновите страницу и попробуйте снова", 409);
+        }
+
+        let freshCode: DiscountCodeRow | null = null;
+        if (code) {
+          const codeLocked = await client.query(`${CODE_SELECT} WHERE code = $1 FOR UPDATE`, [code]);
+          freshCode = (codeLocked.rows[0] as DiscountCodeRow) || null;
+          const error = discountCodeError(freshCode, user.id, fresh.user_id);
+          if (error) throw new PurchaseError(error);
+        }
+        const freshPrice = freshCode
+          ? applyCodeDiscount(freshBase, freshCode.discount_percent)
+          : freshBase;
         if (freshPrice !== price) {
           throw new PurchaseError("Цена изменилась. Обновите страницу и попробуйте снова", 409);
         }
@@ -140,16 +182,20 @@ export async function POST(
            VALUES ($1, $2, $3, $4)
            ON CONFLICT (item_id, buyer_id) DO NOTHING
            RETURNING id`,
-          [itemId, user.id, item.user_id, price]
+          [itemId, user.id, fresh.user_id, price]
         );
         if (!purchase.rows.length) {
           throw new PurchaseError("Вы уже купили этот конфиг", 409);
         }
 
+        // Партнёрский код оплачивает площадка: автор получает полную цену.
+        const payoutBase =
+          freshCode && freshCode.kind === "partner" ? freshBase : freshPrice;
+        const payout = sellerPayout(payoutBase);
         if (payout > 0) {
           await client.query(
             "UPDATE users SET balance = COALESCE(balance, 0) + $2 WHERE id = $1",
-            [item.user_id, payout]
+            [fresh.user_id, payout]
           );
         }
 
@@ -157,17 +203,34 @@ export async function POST(
           user.id,
           -price,
           "showcase_purchase",
-          `Покупка конфига: ${item.title}`,
+          `Покупка конфига: ${fresh.title}${freshCode ? ` (код ${freshCode.code})` : ""}`,
           client
         );
         if (payout > 0) {
           await addBalanceHistory(
-            item.user_id,
+            fresh.user_id,
             payout,
             "showcase_sale",
-            `Продажа конфига: ${item.title}`,
+            `Продажа конфига: ${fresh.title}`,
             client
           );
+        }
+
+        if (freshCode) {
+          await recordCodeUse(
+            client,
+            freshCode.id,
+            user.id,
+            fresh.user_id,
+            itemId,
+            price,
+            freshBase - freshPrice
+          );
+        }
+
+        coins = coinsForPurchase(price);
+        if (coins > 0) {
+          await grantCoins(user.id, coins, "purchase", `Покупка конфига: ${fresh.title}`, client);
         }
 
         return Number(debit.rows[0].balance);
@@ -179,12 +242,16 @@ export async function POST(
       throw error;
     }
 
+    const payoutPreview = sellerPayout(
+      codeRow && codeRow.kind === "partner" ? basePrice : price
+    );
+
     await notifyUser(
       item.user_id,
       {
         type: "showcase",
         title: "Ваш конфиг купили",
-        body: `«${item.title}» купили за ${price} ₽. На баланс зачислено ${payout} ₽.`,
+        body: `«${item.title}» купили за ${price} ₽. На баланс зачислено ${payoutPreview} ₽.`,
         link: `/community/config/${itemId}`,
       }
     ).catch(() => {});
@@ -194,7 +261,7 @@ export async function POST(
       {
         type: "showcase",
         title: "Покупка конфига",
-        body: `«${item.title}» куплен за ${price} ₽. Скачать можно на странице конфига.`,
+        body: `«${item.title}» куплен за ${price} ₽${coins ? ` и +${coins} SC` : ""}. Скачать можно на странице конфига.`,
         link: `/community/config/${itemId}`,
       }
     ).catch(() => {});
@@ -206,11 +273,20 @@ export async function POST(
         "💰 <b>Продажа конфига</b>",
         `«${escapeTelegramHtml(item.title)}» — ${price} ₽`,
         `Покупатель: ${escapeTelegramHtml(user.username)}`,
-        `Автор: ${escapeTelegramHtml(item.username)}`,
+        `Автор: ${escapeTelegramHtml(String(item.username || ""))}`,
+        ...(codeRow ? [`Код: ${escapeTelegramHtml(codeRow.code)} (−${codeRow.discount_percent}%)`] : []),
       ].join("\n")
     ).catch(() => {});
 
-    return NextResponse.json({ ok: true, balance: newBalance, price, seller_amount: payout });
+    return NextResponse.json({
+      ok: true,
+      balance: newBalance,
+      price,
+      discount: codeDiscount,
+      code: codeRow?.code ?? null,
+      coins,
+      seller_amount: payoutPreview,
+    });
   } catch (error: any) {
     console.error("showcase buy error:", error?.message || error);
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });

@@ -1,8 +1,17 @@
-export type AchievementCategory = "start" | "money" | "activity" | "social" | "loyalty";
+export type AchievementCategory = "start" | "money" | "activity" | "social" | "loyalty" | "secret";
 
 export type AchievementRarity = "common" | "rare" | "epic" | "legendary";
 
 export type AchievementUnit = "count" | "rub" | "seconds" | "days";
+
+export type AchievementSeason = {
+  key: string;
+  title: string;
+  /** ISO date, включительно. */
+  start: string;
+  /** ISO date, включительно (до конца дня). */
+  end: string;
+};
 
 export type AchievementStats = {
   totalSpent: number;
@@ -22,6 +31,13 @@ export type AchievementStats = {
   hadSubscription: boolean;
   isLifetime: boolean;
   accountAgeDays: number;
+  scCoins: number;
+  cosmeticsOwned: number;
+  helpfulVotes: number;
+  couponSales: number;
+  showcasePurchases: number;
+  seasonClaims: number;
+  winterClaims: number;
 };
 
 export type Achievement = {
@@ -34,12 +50,38 @@ export type Achievement = {
   unit: AchievementUnit;
   target: number;
   getProgress: (stats: AchievementStats) => number;
+  /** Секретка: до открытия название и описание скрыты. */
+  hidden?: boolean;
+  /** Сезонное достижение доступно только внутри окна сезона. */
+  season?: AchievementSeason;
 };
 
 export type ComputedAchievement = Omit<Achievement, "getProgress"> & {
   progress: number;
   unlocked: boolean;
+  available: boolean;
 };
+
+/** Сезоны, в которые открываются сезонные достижения. */
+export const ACHIEVEMENT_SEASONS: Record<string, AchievementSeason> = {
+  autumn_2026: {
+    key: "autumn_2026",
+    title: "Осенний марафон",
+    start: "2026-11-01T00:00:00.000Z",
+    end: "2026-11-30T23:59:59.999Z",
+  },
+  winter_2027: {
+    key: "winter_2027",
+    title: "Зимняя легенда",
+    start: "2026-12-01T00:00:00.000Z",
+    end: "2027-02-28T23:59:59.999Z",
+  },
+};
+
+export function seasonActive(season: AchievementSeason, now = new Date()): boolean {
+  const time = now.getTime();
+  return time >= new Date(season.start).getTime() && time <= new Date(season.end).getTime();
+}
 
 function make(
   key: string,
@@ -50,9 +92,10 @@ function make(
   rarity: AchievementRarity,
   unit: AchievementUnit,
   target: number,
-  getProgress: (stats: AchievementStats) => number
+  getProgress: (stats: AchievementStats) => number,
+  extra?: Pick<Achievement, "hidden" | "season">
 ): Achievement {
-  return { key, title, description, icon, category, rarity, unit, target, getProgress };
+  return { key, title, description, icon, category, rarity, unit, target, getProgress, ...extra };
 }
 
 export const ACHIEVEMENTS: Achievement[] = [
@@ -97,6 +140,21 @@ export const ACHIEVEMENTS: Achievement[] = [
   make("media_first", "Контент-мейкер", "Получить одобрение первого видео", "🎬", "social", "rare", "count", 1, (s) => s.mediaApproved),
   make("media_5", "Медиа-звезда", "Получить одобрение 5 видео", "🌟", "social", "epic", "count", 5, (s) => s.mediaApproved),
   make("partner", "Партнёр", "Стать партнёром Stellar Client", "🤵", "social", "epic", "count", 1, (s) => s.partnerApproved),
+
+  // Скрытые достижения
+  make("secret_helpful", "Тихий герой", "Получить 10 отметок «полезно» на своих отзывах", "🫶", "secret", "rare", "count", 10, (s) => s.helpfulVotes, { hidden: true }),
+  make("secret_shopaholic", "Модник", "Собрать 5 предметов косметики", "🎩", "secret", "rare", "count", 5, (s) => s.cosmeticsOwned, { hidden: true }),
+  make("secret_coins", "Скрытый капитал", "Накопить 1 000 SC-монет", "🪙", "secret", "epic", "count", 1000, (s) => s.scCoins, { hidden: true }),
+  make("secret_coupon", "Народный промоутер", "Продать 10 конфигов по своему купону", "📣", "secret", "epic", "count", 10, (s) => s.couponSales, { hidden: true }),
+  make("secret_showcase", "Коллекционер витрины", "Купить 3 конфига у авторов", "🗂️", "secret", "rare", "count", 3, (s) => s.showcasePurchases, { hidden: true }),
+
+  // Сезонные достижения
+  make("season_autumn_2026", "Осенний марафон", "Забрать ежедневную награду осенью 2026", "🍂", "activity", "rare", "count", 1, (s) => s.seasonClaims, {
+    season: ACHIEVEMENT_SEASONS.autumn_2026,
+  }),
+  make("season_winter_2027", "Зимняя легенда", "Забрать ежедневную награду зимой 2026/27", "❄️", "activity", "epic", "count", 1, (s) => s.winterClaims, {
+    season: ACHIEVEMENT_SEASONS.winter_2027,
+  }),
 ];
 
 export const ACHIEVEMENT_EN: Record<string, { title: string; description: string }> = {
@@ -136,6 +194,15 @@ export const ACHIEVEMENT_EN: Record<string, { title: string; description: string
   media_first: { title: "Content maker", description: "Get your first video approved" },
   media_5: { title: "Media star", description: "Get 5 videos approved" },
   partner: { title: "Partner", description: "Become a Stellar Client partner" },
+
+  secret_helpful: { title: "Quiet hero", description: "Get 10 helpful marks on your reviews" },
+  secret_shopaholic: { title: "Fashionista", description: "Collect 5 cosmetics" },
+  secret_coins: { title: "Hidden capital", description: "Save up 1,000 SC coins" },
+  secret_coupon: { title: "People's promoter", description: "Sell 10 configs with your coupon" },
+  secret_showcase: { title: "Showcase collector", description: "Buy 3 configs from authors" },
+
+  season_autumn_2026: { title: "Autumn marathon", description: "Claim a daily reward in autumn 2026" },
+  season_winter_2027: { title: "Winter legend", description: "Claim a daily reward in winter 2026/27" },
 };
 
 /** English copy for an achievement, or null when the language is RU / key is unknown. */
@@ -145,13 +212,19 @@ export function achievementEn(
   return ACHIEVEMENT_EN[key] ?? null;
 }
 
-export function computeAchievements(stats: AchievementStats): ComputedAchievement[] {
+/** Сезонное достижение доступно, если его окно активно (или оно уже открыто). */
+export function achievementAvailable(achievement: Achievement, now = new Date()): boolean {
+  return !achievement.season || seasonActive(achievement.season, now);
+}
+
+export function computeAchievements(stats: AchievementStats, now = new Date()): ComputedAchievement[] {
   return ACHIEVEMENTS.map(({ getProgress, ...meta }) => {
     const value = Math.max(0, Math.floor(getProgress(stats)));
     return {
       ...meta,
       progress: Math.min(value, meta.target),
       unlocked: value >= meta.target,
+      available: achievementAvailable({ ...meta, getProgress }, now),
     };
   });
 }

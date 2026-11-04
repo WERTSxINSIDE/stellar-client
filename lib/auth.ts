@@ -108,7 +108,8 @@ export async function getCurrentUser(): Promise<Omit<User, "password"> | null> {
   if (!token) return null;
 
   const row = await queryOne(
-    `SELECT u.id, u.username, u.email, u.created_at, u.subscription_end, u.hwid, u.is_admin, u.role, u.banned, u.ban_reason, u.balance, u.partner_rank, u.sub_gifted
+    `SELECT u.id, u.username, u.email, u.created_at, u.subscription_end, u.hwid, u.is_admin, u.role, u.banned, u.ban_reason, u.balance, u.partner_rank, u.sub_gifted,
+            u.sc_coins, u.nickname_color, u.profile_theme, u.equipped_frame, u.equipped_badge, u.partner_code
      FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token = $1`,
     [token]

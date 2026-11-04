@@ -153,6 +153,14 @@ export default function ItemClient({ initialItem }: { initialItem: BaseItem }) {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [buying, setBuying] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponError, setCouponError] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discount_percent: number;
+    final_price: number;
+  } | null>(null);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
 
@@ -221,10 +229,52 @@ export default function ItemClient({ initialItem }: { initialItem: BaseItem }) {
     }
   }, [load, initialItem.id]);
 
+  async function applyCoupon() {
+    const code = couponCode.trim().toUpperCase();
+    setCouponError("");
+    if (!code) {
+      setAppliedCoupon(null);
+      return;
+    }
+    setCouponBusy(true);
+    try {
+      const params = new URLSearchParams({
+        code,
+        item: String(item.id),
+        amount: String(Math.round(item.final_price)),
+        track: "1",
+      });
+      const res = await fetch(`/api/discount-codes/validate?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setAppliedCoupon(null);
+        setCouponError(data.error || t("community.buyError"));
+        return;
+      }
+      setAppliedCoupon({
+        code: data.code.code,
+        discount_percent: Number(data.code.discount_percent) || 0,
+        final_price: Number(data.final_price) || item.final_price,
+      });
+      flash(true, data.message || t("community.bought", { price: data.final_price }));
+    } catch {
+      setAppliedCoupon(null);
+      setCouponError(t("common.serverError"));
+    } finally {
+      setCouponBusy(false);
+    }
+  }
+
   async function buy() {
     setBuying(true);
     try {
-      const res = await fetch(`/api/showcase/${item.id}/buy`, { method: "POST" });
+      const res = await fetch(`/api/showcase/${item.id}/buy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(appliedCoupon ? { code: appliedCoupon.code } : {}),
+      });
       const data = await res.json();
       if (!res.ok) {
         flash(
@@ -239,6 +289,8 @@ export default function ItemClient({ initialItem }: { initialItem: BaseItem }) {
         sales: Number(prev.sales || 0) + 1,
       }));
       flash(true, t("community.bought", { price: data.price ?? item.final_price ?? item.price }));
+      setAppliedCoupon(null);
+      setCouponCode("");
       load();
     } catch {
       flash(false, t("common.serverError"));
@@ -565,17 +617,52 @@ export default function ItemClient({ initialItem }: { initialItem: BaseItem }) {
                   <ArrowSquareOut size={17} /> {t("community.watch")}
                 </a>
               ) : isPaid && !item.purchased && !item.is_owner ? (
-                <button
-                  type="button"
-                  onClick={buy}
-                  disabled={buying}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 px-5 py-3 text-sm font-semibold transition"
-                >
-                  <Coins size={17} />
-                  {buying
-                    ? t("community.buying")
-                    : t("community.buyFor", { price: item.final_price })}
-                </button>
+                <div className="w-full flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <input
+                      value={couponCode}
+                      onChange={(e) => {
+                        setCouponCode(e.target.value.toUpperCase());
+                        setCouponError("");
+                      }}
+                      maxLength={24}
+                      placeholder={lang === "en" ? "Author or streamer code" : "Промокод автора или стримера"}
+                      className="min-w-0 flex-1 bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-xs font-mono tracking-wide"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      disabled={couponBusy || !couponCode.trim()}
+                      className="shrink-0 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-40 px-3 py-2 text-xs font-semibold transition"
+                    >
+                      {couponBusy ? "…" : lang === "en" ? "Apply" : "Применить"}
+                    </button>
+                  </div>
+                  {couponError && (
+                    <span className="text-[11px] text-red-300 inline-flex items-center gap-1">
+                      <WarningCircle size={12} /> {couponError}
+                    </span>
+                  )}
+                  {appliedCoupon && (
+                    <span className="text-[11px] text-emerald-300">
+                      {appliedCoupon.code} · −{appliedCoupon.discount_percent}% ·{" "}
+                      {lang === "en" ? "total" : "итого"} {appliedCoupon.final_price} ₽
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={buy}
+                    disabled={buying}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 px-5 py-3 text-sm font-semibold transition"
+                  >
+                    <Coins size={17} />
+                    {buying
+                      ? t("community.buying")
+                      : t("community.buyFor", {
+                          price: appliedCoupon?.final_price ?? item.final_price,
+                        })}
+                  </button>
+                </div>
               ) : (
                 <a
                   href={`/api/showcase/${item.id}/download`}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { addBalanceHistory, query, queryOne, withTransaction, type DbExecutor } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { grantCoins } from "@/lib/coins";
 
 export const dynamic = "force-dynamic";
 
@@ -161,12 +162,14 @@ export async function POST() {
           client
         );
         await saveClaim(user.id, reward.day, today, client);
+        await grantCoins(user.id, 10, "daily_reward", `Ежедневная награда — день ${reward.day}`, client);
 
         return {
           day: reward.day,
-          message: `+${amount}₽ на баланс`,
+          message: `+${amount}₽ на баланс и +10 SC`,
           balance: Number(updated.rows[0]?.balance) || 0,
           finished: nowFinished,
+          coins: 10,
         } as const;
       }
 
@@ -177,12 +180,14 @@ export async function POST() {
         [spins, user.id]
       );
       await saveClaim(user.id, reward.day, today, client);
+      await grantCoins(user.id, 10, "daily_reward", `Ежедневная награда — день ${reward.day}`, client);
 
       return {
         day: reward.day,
-        message: `+${spins} крут${spins === 1 ? "ка" : "ки"} рулетки`,
+        message: `+${spins} крут${spins === 1 ? "ка" : "ки"} рулетки и +10 SC`,
         balance: null,
         finished: nowFinished,
+        coins: 10,
       } as const;
     });
 

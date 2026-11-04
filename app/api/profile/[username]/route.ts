@@ -19,7 +19,8 @@ export async function GET(
     }
 
     const user = (await queryOne(
-      `SELECT id, username, created_at, subscription_end, role, is_admin, avatar_url, bio, banner_url, accent_color
+      `SELECT id, username, created_at, subscription_end, role, is_admin, avatar_url, bio, banner_url, accent_color,
+              nickname_color, profile_theme, equipped_frame, equipped_badge
        FROM users
        WHERE LOWER(username) = LOWER($1)
        LIMIT 1`,
@@ -136,16 +137,24 @@ export async function GET(
 
     const computed = computeAchievements(stats);
     const achievements = computed
-      .filter((a) => a.unlocked || unlockedAt.has(a.key))
+      .filter((a) => a.available || a.unlocked || unlockedAt.has(a.key))
       .map((a) => ({
         key: a.key,
-        title: a.title,
-        description: a.description,
-        icon: a.icon,
+        title: a.hidden && !a.unlocked && !unlockedAt.has(a.key) ? "Секретное достижение" : a.title,
+        description:
+          a.hidden && !a.unlocked && !unlockedAt.has(a.key)
+            ? "Откроется, когда выполните скрытое условие"
+            : a.description,
+        icon: a.hidden && !a.unlocked && !unlockedAt.has(a.key) ? "🔒" : a.icon,
         category: a.category,
         rarity: a.rarity,
+        hidden: !!a.hidden,
+        season: a.season?.title ?? null,
         unlocked_at: unlockedAt.get(a.key) ?? null,
       }));
+    const visibleTotal = computed.filter(
+      (a) => a.available || unlockedAt.has(a.key)
+    ).length;
 
     const createdAt = user.created_at
       ? user.created_at instanceof Date
@@ -162,6 +171,12 @@ export async function GET(
         bio: user.bio ? String(user.bio) : null,
         banner_url: user.banner_url ? String(user.banner_url) : null,
         accent_color: user.accent_color ? String(user.accent_color) : null,
+        cosmetics: {
+          nickname_color: user.nickname_color ? String(user.nickname_color) : null,
+          profile_theme: user.profile_theme ? String(user.profile_theme) : null,
+          frame: user.equipped_frame ? String(user.equipped_frame) : null,
+          badge: user.equipped_badge ? String(user.equipped_badge) : null,
+        },
         created_at: createdAt,
         days_in_club: stats.accountAgeDays,
         subscription_active: isSubscriptionActive(user.subscription_end),
@@ -177,8 +192,8 @@ export async function GET(
         stats: {
           seconds: stats.playSeconds,
           launches: Number(launchRow?.launches) || 0,
-          achievements_unlocked: achievements.length,
-          achievements_total: computed.length,
+          achievements_unlocked: achievements.filter((a) => !!a.unlocked_at).length,
+          achievements_total: visibleTotal,
           reviews: Number(reviewRow?.count) || 0,
           review_rating: Number(reviewRow?.rating) || 0,
         },

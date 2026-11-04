@@ -97,6 +97,7 @@ export async function POST(req: Request) {
 
     const outcome = await withTransaction(async (client) => {
       let referrer: { id: number; username: string; signup_ip: string | null } | null = null;
+      let partnerCodeId: number | null = null;
 
       if (referralName) {
         const found = await client.query(
@@ -104,6 +105,26 @@ export async function POST(req: Request) {
           [referralName]
         );
         referrer = found.rows[0] ?? null;
+
+        // Партнёрские/авторские коды: ссылка ?ref=CODE привязывает к владельцу кода.
+        if (!referrer) {
+          const codeRow = await client.query(
+            `SELECT dc.id, dc.owner_id, u.username, u.signup_ip
+             FROM discount_codes dc
+             JOIN users u ON u.id = dc.owner_id
+             WHERE dc.code = $1 AND dc.active = 1
+             LIMIT 1`,
+            [referralName.toUpperCase()]
+          );
+          if (codeRow.rows[0]) {
+            referrer = {
+              id: Number(codeRow.rows[0].owner_id),
+              username: String(codeRow.rows[0].username),
+              signup_ip: codeRow.rows[0].signup_ip ?? null,
+            };
+            partnerCodeId = Number(codeRow.rows[0].id);
+          }
+        }
       }
 
       // Антифрод: регистрация с того же IP, что у пригласившего, бонусов не даёт.
@@ -130,6 +151,12 @@ export async function POST(req: Request) {
       let milestoneBonus = 0;
 
       if (referrer && referrer.id !== newUserId && !referralFraud) {
+        if (partnerCodeId) {
+          await client.query(
+            "UPDATE discount_codes SET signups = COALESCE(signups, 0) + 1 WHERE id = $1",
+            [partnerCodeId]
+          );
+        }
         await client.query(
           "UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE id = $2",
           [REFERRAL_SIGNUP_BONUS, referrer.id]

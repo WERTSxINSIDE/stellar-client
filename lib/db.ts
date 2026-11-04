@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-04-2";
+const SCHEMA_VERSION = "2026-11-05-1";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -423,6 +423,94 @@ async function initDb() {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS review_votes (
+        review_id  INTEGER NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (review_id, user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS showcase_views (
+        id         SERIAL PRIMARY KEY,
+        item_id    INTEGER NOT NULL REFERENCES showcase_items(id) ON DELETE CASCADE,
+        user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        source     TEXT,
+        referrer   TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS discount_codes (
+        id                 SERIAL PRIMARY KEY,
+        owner_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind               TEXT NOT NULL DEFAULT 'author',
+        code               TEXT UNIQUE NOT NULL,
+        discount_percent   INTEGER NOT NULL DEFAULT 0,
+        max_uses           INTEGER DEFAULT 0,
+        used_count         INTEGER DEFAULT 0,
+        clicks             INTEGER DEFAULT 0,
+        signups            INTEGER DEFAULT 0,
+        sales_count        INTEGER DEFAULT 0,
+        sales_amount       INTEGER DEFAULT 0,
+        active             INTEGER DEFAULT 1,
+        expires_at         TIMESTAMP,
+        created_at         TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS discount_code_uses (
+        id         SERIAL PRIMARY KEY,
+        code_id    INTEGER NOT NULL REFERENCES discount_codes(id) ON DELETE CASCADE,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        seller_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        item_id    INTEGER REFERENCES showcase_items(id) ON DELETE SET NULL,
+        amount     INTEGER NOT NULL DEFAULT 0,
+        discount   INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS showcase_refunds (
+        id          SERIAL PRIMARY KEY,
+        item_id     INTEGER NOT NULL REFERENCES showcase_items(id) ON DELETE CASCADE,
+        buyer_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        seller_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount      INTEGER NOT NULL,
+        reason      TEXT NOT NULL,
+        status      TEXT NOT NULL DEFAULT 'pending',
+        admin_note  TEXT,
+        created_at  TIMESTAMP DEFAULT NOW(),
+        resolved_at TIMESTAMP,
+        resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        UNIQUE (item_id, buyer_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS cosmetic_items (
+        id          SERIAL PRIMARY KEY,
+        key         TEXT UNIQUE NOT NULL,
+        type        TEXT NOT NULL,
+        title       TEXT NOT NULL,
+        description TEXT,
+        price       INTEGER NOT NULL DEFAULT 0,
+        value       TEXT,
+        rarity      TEXT NOT NULL DEFAULT 'common',
+        active      INTEGER DEFAULT 1,
+        created_at  TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS user_cosmetics (
+        user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        cosmetic_key  TEXT NOT NULL REFERENCES cosmetic_items(key) ON DELETE CASCADE,
+        acquired_at   TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (user_id, cosmetic_key)
+      );
+
+      CREATE TABLE IF NOT EXISTS coin_transactions (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount     INTEGER NOT NULL,
+        type       TEXT NOT NULL,
+        note       TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
       CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
       CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
@@ -449,6 +537,16 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_payout_requests_user ON payout_requests(user_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_status_incidents_started ON status_incidents(started_at DESC);
       CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_events(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_review_votes_review ON review_votes(review_id);
+      CREATE INDEX IF NOT EXISTS idx_showcase_views_item ON showcase_views(item_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_views_created ON showcase_views(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_discount_codes_owner ON discount_codes(owner_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_discount_code_uses_code ON discount_code_uses(code_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_discount_code_uses_user ON discount_code_uses(user_id);
+      CREATE INDEX IF NOT EXISTS idx_showcase_refunds_status ON showcase_refunds(status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_refunds_seller ON showcase_refunds(seller_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_coin_transactions_user ON coin_transactions(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_user_cosmetics_user ON user_cosmetics(user_id);
 
 
       CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
@@ -488,6 +586,55 @@ async function initDb() {
     await client.query(`
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN sub_gifted INTEGER DEFAULT 0;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN sc_coins INTEGER DEFAULT 0;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN nickname_color TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN profile_theme TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN equipped_frame TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN equipped_badge TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN partner_code TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN partner_code_at TIMESTAMP;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
     `);
@@ -771,6 +918,27 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_sessions_ip ON sessions(ip);
     `);
 
+    await client.query(`
+      INSERT INTO cosmetic_items (key, type, title, description, price, value, rarity) VALUES
+        ('color_violet', 'nickname_color', 'Фиолетовый неон', 'Цвет ника в профиле и комментариях.', 300, '#a78bfa', 'common'),
+        ('color_ice', 'nickname_color', 'Ледяной', 'Холодный бирюзовый оттенок.', 450, '#67e8f9', 'common'),
+        ('color_gold', 'nickname_color', 'Золотой', 'Для тех, кто любит заметно.', 700, '#facc15', 'rare'),
+        ('color_rose', 'nickname_color', 'Розовый кварц', 'Мягкий розовый цвет ника.', 700, '#f472b6', 'rare'),
+        ('frame_violet', 'frame', 'Аметистовая рамка', 'Градиентная рамка вокруг аватара.', 800, 'linear-gradient(135deg,#7c3aed,#a855f7,#ec4899)', 'rare'),
+        ('frame_fire', 'frame', 'Пламя', 'Огненная рамка для горячих профилей.', 1200, 'linear-gradient(135deg,#f97316,#ef4444,#facc15)', 'epic'),
+        ('frame_aurora', 'frame', 'Северное сияние', 'Переливающаяся рамка.', 1800, 'linear-gradient(135deg,#22d3ee,#a78bfa,#34d399)', 'epic'),
+        ('frame_gold', 'frame', 'Золотая легенда', 'Самая заметная рамка в клубе.', 2500, 'linear-gradient(135deg,#facc15,#f59e0b,#fef3c7)', 'legendary'),
+        ('badge_star', 'badge', 'Звезда', 'Бейдж ⭐ рядом с ником.', 500, '⭐', 'common'),
+        ('badge_flame', 'badge', 'В огне', 'Бейдж 🔥 рядом с ником.', 800, '🔥', 'rare'),
+        ('badge_rocket', 'badge', 'На орбите', 'Бейдж 🚀 рядом с ником.', 1000, '🚀', 'rare'),
+        ('badge_crown', 'badge', 'Корона', 'Бейдж 👑 рядом с ником.', 1500, '👑', 'epic'),
+        ('badge_diamond', 'badge', 'Алмаз', 'Бейдж 💎 рядом с ником.', 1800, '💎', 'epic'),
+        ('theme_midnight', 'theme', 'Полночь', 'Тёмный фиолетовый фон профиля.', 1200, 'linear-gradient(135deg,#0f172a,#312e81,#7c3aed)', 'rare'),
+        ('theme_aurora', 'theme', 'Аврора', 'Бирюзово-фиолетовое свечение.', 1600, 'linear-gradient(135deg,#042f2e,#0e7490,#7c3aed)', 'epic'),
+        ('theme_sakura', 'theme', 'Сакура', 'Тёплый розовый фон профиля.', 2000, 'linear-gradient(135deg,#4c0519,#9d174d,#f472b6)', 'epic')
+      ON CONFLICT (key) DO NOTHING
+    `);
+
     await client.query(
       `INSERT INTO app_meta (key, value) VALUES ('schema_version', $1)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -914,6 +1082,14 @@ export type User = {
   beta_access: number;
   balance: number;
   partner_rank: string;
+  sc_coins?: number;
+  nickname_color?: string | null;
+  profile_theme?: string | null;
+  equipped_frame?: string | null;
+  equipped_badge?: string | null;
+  partner_code?: string | null;
+  partner_code_at?: string | null;
+  sub_gifted?: number;
   twofa_enabled?: number;
   signup_ip?: string | null;
   referral_fraud?: number;

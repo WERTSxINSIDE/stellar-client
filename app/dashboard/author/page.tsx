@@ -14,12 +14,14 @@ import {
   CheckCircle,
   Clock,
   Coins,
+  Copy,
   Eye,
   Gift,
   Percent,
   Plus,
   Sparkle,
   StackSimple,
+  Tag,
   Trash,
   UploadSimple,
   VideoCamera,
@@ -61,6 +63,55 @@ type Totals = {
   rejected: number;
   conversion: number;
   items: number;
+  views_today: number;
+  views_week: number;
+  views_month: number;
+  views_14d: number;
+  sales_14d: number;
+  conversion_14d: number;
+  refunds_amount: number;
+  refunds_pending: number;
+  refunds_count: number;
+};
+
+type SeriesPoint = {
+  day: string;
+  views: number;
+  sales: number;
+  earnings: number;
+};
+
+type SourceRow = {
+  source: string;
+  count: number;
+};
+
+type RefundRow = {
+  id: number;
+  item_id: number;
+  title: string;
+  buyer: string;
+  amount: number;
+  reason: string;
+  status: string;
+  admin_note: string | null;
+  created_at: string;
+};
+
+type Coupon = {
+  id: number;
+  kind: "author" | "partner";
+  code: string;
+  discount_percent: number;
+  max_uses: number;
+  used_count: number;
+  clicks: number;
+  signups: number;
+  sales_count: number;
+  sales_amount: number;
+  active: number;
+  expires_at: string | null;
+  created_at: string;
 };
 
 type Me = { id: number; username: string } | null;
@@ -179,7 +230,19 @@ export default function AuthorPage() {
   const [items, setItems] = useState<AuthorItem[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
+  const [series, setSeries] = useState<SeriesPoint[]>([]);
+  const [sources, setSources] = useState<SourceRow[]>([]);
+  const [refunds, setRefunds] = useState<RefundRow[]>([]);
   const [error, setError] = useState("");
+
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [couponPercent, setCouponPercent] = useState("10");
+  const [couponUses, setCouponUses] = useState("0");
+  const [couponExpires, setCouponExpires] = useState("");
+  const [couponSending, setCouponSending] = useState(false);
+  const [couponError, setCouponError] = useState("");
+  const [couponDone, setCouponDone] = useState("");
+  const [codeCopied, setCodeCopied] = useState<number | null>(null);
 
   const [balance, setBalance] = useState(0);
   const [payouts, setPayouts] = useState<PayoutRequest[]>([]);
@@ -228,6 +291,9 @@ export default function AuthorPage() {
             setItems(Array.isArray(data.items) ? data.items : []);
             setSales(Array.isArray(data.sales) ? data.sales : []);
             setTotals(data.totals || null);
+            setSeries(Array.isArray(data.series) ? data.series : []);
+            setSources(Array.isArray(data.sources) ? data.sources : []);
+            setRefunds(Array.isArray(data.refunds) ? data.refunds : []);
           });
       })
       .catch(() => setError(tr("Ошибка сервера", "Server error")))
@@ -253,6 +319,13 @@ export default function AuthorPage() {
       .then((r) => r.json())
       .then((data) => {
         if (data.ok) setBundles(Array.isArray(data.bundles) ? data.bundles : []);
+      })
+      .catch(() => {});
+
+    fetch("/api/discount-codes", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok) setCoupons(Array.isArray(data.codes) ? data.codes : []);
       })
       .catch(() => {});
   }, [me]);
@@ -429,6 +502,94 @@ export default function AuthorPage() {
     }
   }
 
+  async function createCoupon(e: React.FormEvent) {
+    e.preventDefault();
+    setCouponError("");
+    setCouponDone("");
+    const percent = Number(couponPercent);
+    if (!Number.isInteger(percent) || percent < 1 || percent > 70) {
+      setCouponError(tr("Скидка должна быть от 1% до 70%", "Discount must be between 1% and 70%"));
+      return;
+    }
+    setCouponSending(true);
+    try {
+      const res = await fetch("/api/discount-codes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "author",
+          discount_percent: percent,
+          max_uses: Number(couponUses || 0),
+          expires_at: couponExpires || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCouponError(data.error || tr("Не удалось создать купон", "Could not create coupon"));
+        return;
+      }
+      setCoupons((prev) => [data.code, ...prev]);
+      setCouponDone(tr(`Купон ${data.code.code} создан`, `Coupon ${data.code.code} created`));
+      setCouponExpires("");
+    } catch {
+      setCouponError(tr("Ошибка сервера", "Server error"));
+    } finally {
+      setCouponSending(false);
+    }
+  }
+
+  async function toggleCoupon(coupon: Coupon) {
+    setCouponError("");
+    try {
+      const res = await fetch("/api/discount-codes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: coupon.id, active: !coupon.active }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCouponError(data.error || tr("Не удалось обновить купон", "Could not update coupon"));
+        return;
+      }
+      setCoupons((prev) =>
+        prev.map((entry) =>
+          entry.id === coupon.id ? { ...entry, active: data.active ? 1 : 0 } : entry
+        )
+      );
+    } catch {
+      setCouponError(tr("Ошибка сервера", "Server error"));
+    }
+  }
+
+  async function deleteCoupon(id: number) {
+    setCouponError("");
+    try {
+      const res = await fetch("/api/discount-codes", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCouponError(data.error || tr("Не удалось удалить купон", "Could not delete coupon"));
+        return;
+      }
+      setCoupons((prev) => prev.filter((entry) => entry.id !== id));
+    } catch {
+      setCouponError(tr("Ошибка сервера", "Server error"));
+    }
+  }
+
+  async function copyCode(coupon: Coupon) {
+    try {
+      await navigator.clipboard.writeText(coupon.code);
+      setCodeCopied(coupon.id);
+      setTimeout(() => setCodeCopied(null), 1500);
+    } catch {
+      setCouponError(tr("Не удалось скопировать код", "Could not copy the code"));
+    }
+  }
+
   const configs = items.filter((item) => item.type === "config" && item.status === "approved");
   const methodLabels: Record<string, string> = {
     card: tr("Карта", "Card"),
@@ -509,6 +670,289 @@ export default function AuthorPage() {
                   <Sparkle size={14} /> {tr("Предложить материал", "Suggest material")}
                 </Link>
               </div>
+
+              <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 mb-6">
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+                  <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <ChartLineUp size={20} className="text-sky-300" />
+                      {tr("Аналитика витрины", "Showcase analytics")}
+                    </h2>
+                    <p className="text-white/40 text-sm mt-1">
+                      {tr(
+                        "Просмотры и продажи за последние 14 дней, источники переходов и возвраты.",
+                        "Views and sales over the last 14 days, traffic sources and refunds."
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-white/60">
+                      {tr("Сегодня", "Today")}: <b className="text-white">{totals?.views_today ?? 0}</b>
+                    </span>
+                    <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-white/60">
+                      {tr("7 дней", "7 days")}: <b className="text-white">{totals?.views_week ?? 0}</b>
+                    </span>
+                    <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-white/60">
+                      {tr("30 дней", "30 days")}: <b className="text-white">{totals?.views_month ?? 0}</b>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid lg:grid-cols-[1.6fr_1fr] gap-5">
+                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                    <div className="flex items-center justify-between gap-2 mb-4">
+                      <p className="text-sm font-semibold">{tr("Последние 14 дней", "Last 14 days")}</p>
+                      <p className="text-[11px] text-white/40">
+                        {tr("Просмотры", "Views")} · {tr("Продажи", "Sales")}
+                      </p>
+                    </div>
+                    {series.length === 0 ? (
+                      <p className="text-xs text-white/35 py-6 text-center">
+                        {tr("Пока нет данных.", "No data yet.")}
+                      </p>
+                    ) : (
+                      <div className="flex items-end gap-1.5 h-40">
+                        {series.map((point) => {
+                          const maxViews = Math.max(1, ...series.map((row) => row.views));
+                          const height = Math.max(4, Math.round((point.views / maxViews) * 100));
+                          return (
+                            <div key={point.day} className="flex-1 min-w-0 flex flex-col items-center gap-1">
+                              <div className="relative w-full flex-1 flex items-end">
+                                <div
+                                  className="w-full rounded-t-md bg-gradient-to-t from-purple-600/70 to-sky-400/80"
+                                  style={{ height: `${height}%` }}
+                                  title={`${point.day}: ${point.views} ${tr("просмотров", "views")}, ${point.sales} ${tr("продаж", "sales")}`}
+                                />
+                                {point.sales > 0 && (
+                                  <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[10px] font-bold text-emerald-300">
+                                    {point.sales}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[9px] text-white/30">
+                                {point.day.slice(8)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px]">
+                      <div className="rounded-lg border border-white/10 bg-white/[0.03] py-2">
+                        <p className="text-white/35">{tr("Просмотры", "Views")}</p>
+                        <p className="font-bold text-white/85">{totals?.views_14d ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-white/[0.03] py-2">
+                        <p className="text-white/35">{tr("Продажи", "Sales")}</p>
+                        <p className="font-bold text-white/85">{totals?.sales_14d ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-white/[0.03] py-2">
+                        <p className="text-white/35">{tr("Конверсия", "Conversion")}</p>
+                        <p className="font-bold text-white/85">
+                          {(totals?.conversion_14d ?? 0).toFixed(1)}%
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                      <p className="text-sm font-semibold mb-3">{tr("Источники за 30 дней", "Sources, 30 days")}</p>
+                      {sources.length === 0 ? (
+                        <p className="text-xs text-white/35">{tr("Нет переходов.", "No traffic yet.")}</p>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {sources.map((source) => {
+                            const max = Math.max(1, ...sources.map((row) => row.count));
+                            return (
+                              <div key={source.source} className="text-[11px]">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-white/65 truncate">{source.source}</span>
+                                  <span className="text-white/40">{source.count}</span>
+                                </div>
+                                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full bg-sky-400/70"
+                                    style={{ width: `${Math.round((source.count / max) * 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <p className="text-sm font-semibold">{tr("Возвраты", "Refunds")}</p>
+                        <span className="text-[11px] text-white/40">
+                          {totals?.refunds_amount ?? 0} ₽
+                        </span>
+                      </div>
+                      {refunds.length === 0 ? (
+                        <p className="text-xs text-white/35">
+                          {tr("Возвратов не было.", "No refunds yet.")}
+                        </p>
+                      ) : (
+                        <div className="flex flex-col gap-2 max-h-44 overflow-y-auto pr-1">
+                          {refunds.map((refund) => (
+                            <div key={refund.id} className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[11px] text-white/70 truncate">{refund.title}</span>
+                                <span className="shrink-0 text-[11px] font-semibold">{refund.amount} ₽</span>
+                              </div>
+                              <p className="text-[10px] text-white/35 truncate">
+                                {refund.buyer} · {refund.status} · {fmtDate(refund.created_at, lang)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 mb-6">
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+                  <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <Tag size={20} className="text-amber-300" />
+                      {tr("Купоны автора", "Author coupons")}
+                    </h2>
+                    <p className="text-white/40 text-sm mt-1">
+                      {tr(
+                        "Скидочные коды на ваши конфиги. Скидку оплачиваете вы: выплата считается от цены со скидкой.",
+                        "Discount codes for your configs. You cover the discount: payout is calculated from the discounted price."
+                      )}
+                    </p>
+                  </div>
+                  <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60">
+                    {tr("Активных", "Active")}: <b className="text-white">{coupons.filter((c) => c.active).length}</b>
+                  </span>
+                </div>
+
+                <div className="grid lg:grid-cols-[1fr_1.4fr] gap-5">
+                  <form onSubmit={createCoupon} className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                    <p className="text-sm font-semibold mb-3">{tr("Новый купон", "New coupon")}</p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <label className="text-[11px] text-white/40">
+                        {tr("Скидка, %", "Discount, %")}
+                        <input
+                          type="number"
+                          min={1}
+                          max={70}
+                          value={couponPercent}
+                          onChange={(e) => setCouponPercent(e.target.value)}
+                          className="mt-1 w-full bg-black/40 px-3 py-2.5 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm"
+                        />
+                      </label>
+                      <label className="text-[11px] text-white/40">
+                        {tr("Лимит (0 = без лимита)", "Limit (0 = unlimited)")}
+                        <input
+                          type="number"
+                          min={0}
+                          value={couponUses}
+                          onChange={(e) => setCouponUses(e.target.value)}
+                          className="mt-1 w-full bg-black/40 px-3 py-2.5 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm"
+                        />
+                      </label>
+                    </div>
+                    <label className="text-[11px] text-white/40 block mt-3">
+                      {tr("Действует до (необязательно)", "Valid until (optional)")}
+                      <input
+                        type="date"
+                        value={couponExpires}
+                        onChange={(e) => setCouponExpires(e.target.value)}
+                        className="mt-1 w-full bg-black/40 px-3 py-2.5 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm text-white/80"
+                      />
+                    </label>
+                    {couponError && (
+                      <p className="text-xs text-red-300 mt-2 flex items-center gap-1.5">
+                        <WarningCircle size={14} /> {couponError}
+                      </p>
+                    )}
+                    {couponDone && (
+                      <p className="text-xs text-emerald-300 mt-2 flex items-center gap-1.5">
+                        <CheckCircle size={14} /> {couponDone}
+                      </p>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={couponSending}
+                      className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 px-4 py-2.5 text-sm font-bold text-black transition"
+                    >
+                      <Plus size={15} weight="bold" />
+                      {couponSending ? tr("Создание...", "Creating...") : tr("Создать купон", "Create coupon")}
+                    </button>
+                  </form>
+
+                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                    <p className="text-sm font-semibold mb-3">{tr("Ваши купоны", "Your coupons")}</p>
+                    {coupons.length === 0 ? (
+                      <p className="text-xs text-white/35 py-4">
+                        {tr("Купонов пока нет.", "No coupons yet.")}
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
+                        {coupons.map((coupon) => (
+                          <div key={coupon.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <button
+                                type="button"
+                                onClick={() => copyCode(coupon)}
+                                className="inline-flex items-center gap-1.5 font-mono text-sm font-bold text-amber-200 hover:text-amber-100 transition"
+                                title={tr("Скопировать код", "Copy code")}
+                              >
+                                {coupon.code}
+                                {codeCopied === coupon.id ? (
+                                  <CheckCircle size={13} className="text-emerald-400" />
+                                ) : (
+                                  <Copy size={13} className="text-white/35" />
+                                )}
+                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleCoupon(coupon)}
+                                  className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold transition ${
+                                    coupon.active
+                                      ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-300"
+                                      : "border-white/10 bg-white/5 text-white/40"
+                                  }`}
+                                >
+                                  {coupon.active ? tr("Вкл.", "On") : tr("Выкл.", "Off")}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteCoupon(coupon.id)}
+                                  className="rounded-md border border-red-400/20 bg-red-500/10 p-1 text-red-300 hover:bg-red-500/20 transition"
+                                  title={tr("Удалить", "Delete")}
+                                >
+                                  <Trash size={12} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/40">
+                              <span className="text-amber-300/80">−{coupon.discount_percent}%</span>
+                              <span>
+                                {coupon.used_count}
+                                {coupon.max_uses > 0 ? ` / ${coupon.max_uses}` : ""} {tr("исп.", "uses")}
+                              </span>
+                              <span>{coupon.clicks} {tr("кликов", "clicks")}</span>
+                              <span>{coupon.sales_amount} ₽</span>
+                              {coupon.expires_at && (
+                                <span>{tr("до", "until")} {fmtDate(coupon.expires_at, lang)}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
 
               <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 mb-6">
                 <div className="flex flex-wrap items-start justify-between gap-4 mb-5">

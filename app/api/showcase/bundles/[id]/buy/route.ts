@@ -5,6 +5,14 @@ import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
 import { notifyUser } from "@/lib/notify";
 import { logActivity } from "@/lib/activity";
 import { discountedPrice, sellerPayout } from "@/lib/showcase";
+import {
+  applyCodeDiscount,
+  discountCodeError,
+  normalizeCode,
+  recordCodeUse,
+  type DiscountCodeRow,
+} from "@/lib/discounts";
+import { coinsForPurchase, grantCoins } from "@/lib/coins";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +32,10 @@ type ItemRow = {
   discount_percent: number | null;
   discount_until: string | null;
 };
+
+const CODE_SELECT = `SELECT id, owner_id, kind, code, discount_percent, max_uses, used_count,
+                            clicks, signups, sales_count, sales_amount, active, expires_at
+                     FROM discount_codes`;
 
 /** Покупка набора конфигов со скидкой. */
 export async function POST(
@@ -52,11 +64,17 @@ export async function POST(
       return NextResponse.json({ error: "Неверный набор" }, { status: 400 });
     }
 
+    const body = (await req.json().catch(() => ({}))) as { code?: unknown };
+    const code = normalizeCode(body.code);
+
     let result: {
       balance: number;
       price: number;
       savings: number;
       items: number;
+      discount: number;
+      code: string | null;
+      coins: number;
     };
 
     try {
@@ -132,8 +150,22 @@ export async function POST(
           0,
           Math.min(90, Math.floor(Number(bundle.discount_percent || 0)))
         );
-        const price = Math.max(1, Math.round((basePrice * (100 - percent)) / 100));
-        const payout = sellerPayout(price);
+        const bundlePrice = Math.max(1, Math.round((basePrice * (100 - percent)) / 100));
+
+        let codeRow: DiscountCodeRow | null = null;
+        if (code) {
+          const codeLocked = await client.query(`${CODE_SELECT} WHERE code = $1 FOR UPDATE`, [code]);
+          codeRow = (codeLocked.rows[0] as DiscountCodeRow) || null;
+          const error = discountCodeError(codeRow, user.id, bundle.user_id);
+          if (error) throw new PurchaseError(error);
+        }
+        const finalPrice = codeRow
+          ? applyCodeDiscount(bundlePrice, codeRow.discount_percent)
+          : bundlePrice;
+        const codeDiscount = bundlePrice - finalPrice;
+        const payout = sellerPayout(
+          codeRow && codeRow.kind === "partner" ? bundlePrice : finalPrice
+        );
 
         const existing = await client.query(
           "SELECT id FROM showcase_bundle_purchases WHERE bundle_id = $1 AND buyer_id = $2",
@@ -148,7 +180,7 @@ export async function POST(
            SET balance = COALESCE(balance, 0) - $2
            WHERE id = $1 AND COALESCE(balance, 0) >= $2
            RETURNING balance`,
-          [user.id, price]
+          [user.id, finalPrice]
         );
         if (!debit.rows.length) {
           throw new PurchaseError("Недостаточно средств на балансе");
@@ -158,19 +190,19 @@ export async function POST(
           `INSERT INTO showcase_bundle_purchases (bundle_id, buyer_id, seller_id, price)
            VALUES ($1, $2, $3, $4)
            RETURNING id`,
-          [bundleId, user.id, bundle.user_id, price]
+          [bundleId, user.id, bundle.user_id, finalPrice]
         );
         if (!purchase.rows.length) {
           throw new PurchaseError("Вы уже купили этот набор", 409);
         }
 
         // Распределяем сумму набора между конфигами, чтобы статистика автора была честной.
-        let remaining = price;
+        let remaining = finalPrice;
         const allocations = entries.map((entry, index) => {
           if (index === entries.length - 1) return remaining;
           const share = Math.max(
             0,
-            Math.min(remaining, Math.round((price * entry.finalPrice) / basePrice))
+            Math.min(remaining, Math.round((finalPrice * entry.finalPrice) / basePrice))
           );
           remaining -= share;
           return share;
@@ -194,9 +226,9 @@ export async function POST(
 
         await addBalanceHistory(
           user.id,
-          -price,
+          -finalPrice,
           "showcase_bundle_purchase",
-          `Покупка набора: ${bundle.title}`,
+          `Покупка набора: ${bundle.title}${codeRow ? ` (код ${codeRow.code})` : ""}`,
           client
         );
         if (payout > 0) {
@@ -209,11 +241,37 @@ export async function POST(
           );
         }
 
+        if (codeRow) {
+          await recordCodeUse(
+            client,
+            codeRow.id,
+            user.id,
+            bundle.user_id,
+            null,
+            finalPrice,
+            codeDiscount
+          );
+        }
+
+        const coins = coinsForPurchase(finalPrice);
+        if (coins > 0) {
+          await grantCoins(
+            user.id,
+            coins,
+            "purchase",
+            `Покупка набора: ${bundle.title}`,
+            client
+          );
+        }
+
         return {
           balance: Number(debit.rows[0].balance),
-          price,
-          savings: basePrice - price,
+          price: finalPrice,
+          savings: basePrice - finalPrice,
           items: entries.length,
+          discount: codeDiscount,
+          code: codeRow?.code ?? null,
+          coins,
         };
       });
     } catch (error) {
@@ -257,6 +315,9 @@ export async function POST(
       price: result.price,
       savings: result.savings,
       items: result.items,
+      discount: result.discount,
+      code: result.code,
+      coins: result.coins,
     });
   } catch (error) {
     console.error("showcase bundle buy error:", error);

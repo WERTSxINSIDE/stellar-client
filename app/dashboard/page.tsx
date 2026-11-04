@@ -47,6 +47,8 @@ import {
   Sparkle,
   Books,
   TelegramLogo,
+  Coins,
+  Megaphone,
 } from "@phosphor-icons/react";
 
 function tx(lang: Lang, ru: string, en: string) {
@@ -64,6 +66,7 @@ type Me = {
   is_admin: number;
   balance: number;
   partner_rank: string;
+  sc_coins?: number;
   platform?: string | null;
   avatar_url?: string | null;
   bio?: string | null;
@@ -113,6 +116,9 @@ type AchievementItem = {
   progress: number;
   unlocked: boolean;
   unlocked_at: string | null;
+  hidden?: boolean;
+  season?: string | null;
+  available?: boolean;
 };
 
 const RARITY_STYLES: Record<string, string> = {
@@ -1196,6 +1202,25 @@ export default function Dashboard() {
                     {tr("Мои покупки", "My purchases")}
                   </Link>
 
+                  <Link
+                    href="/dashboard/cosmetics"
+                    className="mt-2 flex items-center gap-3 px-4 py-3 rounded-2xl border border-amber-400/20 bg-amber-500/10 text-sm font-medium text-amber-100/80 hover:text-amber-100 hover:bg-amber-500/15 transition"
+                  >
+                    <Coins size={18} />
+                    <span className="flex-1">{tr("Косметика", "Cosmetics")}</span>
+                    <span className="rounded-md border border-amber-400/25 bg-black/25 px-2 py-0.5 text-[11px] font-bold text-amber-200">
+                      {Number(user?.sc_coins || 0)} SC
+                    </span>
+                  </Link>
+
+                  <Link
+                    href="/dashboard/partner-codes"
+                    className="mt-2 flex items-center gap-3 px-4 py-3 rounded-2xl border border-purple-400/20 bg-purple-500/10 text-sm font-medium text-purple-100/80 hover:text-purple-100 hover:bg-purple-500/15 transition"
+                  >
+                    <Megaphone size={18} />
+                    {tr("Коды стримера", "Streamer codes")}
+                  </Link>
+
                   {/* Колесо фортуны */}
                   <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-5">
                     <div className="flex items-center justify-between mb-4">
@@ -1818,6 +1843,7 @@ export default function Dashboard() {
                       { id: "activity", label: tr("Активность", "Activity"), icon: "🎯" },
                       { id: "loyalty", label: tr("Лояльность", "Loyalty"), icon: "⭐" },
                       { id: "social", label: tr("Сообщество", "Community"), icon: "🤝" },
+                      { id: "secret", label: tr("Секретки", "Secrets"), icon: "🔒" },
                     ].map((cat) => {
                       const items = achievements.items.filter((a) => a.category === cat.id);
                       const done = items.filter((a) => a.unlocked).length;
@@ -1873,6 +1899,16 @@ export default function Dashboard() {
                         Math.round((a.progress / a.target) * 100)
                       );
                       const copy = lang === "en" ? achievementEn(a.key) : null;
+                      const masked = !!a.hidden && !a.unlocked;
+                      const title = masked
+                        ? tr("Секретное достижение", "Secret achievement")
+                        : copy?.title ?? a.title;
+                      const description = masked
+                        ? tr(
+                            "Откроется, когда выполните скрытое условие.",
+                            "Unlocks when you meet the hidden condition."
+                          )
+                        : copy?.description ?? a.description;
                       return (
                         <div
                           key={a.key}
@@ -1888,7 +1924,7 @@ export default function Dashboard() {
                                 a.unlocked ? "bg-white/10" : "bg-white/5 grayscale opacity-60"
                               }`}
                             >
-                              {a.icon}
+                              {masked ? "🔒" : a.icon}
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start gap-2 min-w-0">
@@ -1897,7 +1933,7 @@ export default function Dashboard() {
                                     a.unlocked ? "text-white" : "text-white/60"
                                   }`}
                                 >
-                                  {copy?.title ?? a.title}
+                                  {title}
                                 </p>
                                 {a.unlocked && (
                                   <CheckCircle
@@ -1908,8 +1944,13 @@ export default function Dashboard() {
                                 )}
                               </div>
                               <p className="text-xs text-white/40 leading-relaxed break-words">
-                                {copy?.description ?? a.description}
+                                {description}
                               </p>
+                              {a.season && (
+                                <span className="mt-2 inline-flex items-center rounded-md border border-sky-400/25 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold text-sky-200">
+                                  {a.season}
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -1926,7 +1967,11 @@ export default function Dashboard() {
                               <span>
                                 {a.unlocked
                                   ? tr("Получено", "Unlocked")
-                                  : `${formatAchievementValue(a.progress, a.unit, lang)} / ${formatAchievementValue(a.target, a.unit, lang)}`}
+                                  : masked
+                                    ? tr("Скрытое условие", "Hidden condition")
+                                    : a.available === false
+                                      ? tr("Не в сезоне", "Out of season")
+                                      : `${formatAchievementValue(a.progress, a.unit, lang)} / ${formatAchievementValue(a.target, a.unit, lang)}`}
                               </span>
                               {a.unlocked && a.unlocked_at && (
                                 <span>{formatUnlockDate(a.unlocked_at, lang)}</span>
