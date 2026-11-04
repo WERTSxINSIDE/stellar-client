@@ -97,14 +97,22 @@ export default function Header() {
                   key={item.href}
                   href={item.href}
                   aria-label={t(item.labelKey)}
-                  title={t(item.labelKey)}
-                  className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] transition-colors ${
+                  className={`group relative flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] transition-colors ${
                     active
                       ? "bg-white/[0.07] text-white"
                       : "text-white/55 hover:bg-white/[0.04] hover:text-white"
                   }`}
                 >
                   <Icon size={17} weight={active ? "fill" : "regular"} />
+                  {item.href === "/support" && supportUnread > 0 && (
+                    <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-purple-400" />
+                  )}
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg border border-white/10 bg-[#111114] px-2.5 py-1 text-[11px] font-medium text-white shadow-xl opacity-0 transition duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100"
+                  >
+                    {t(item.labelKey)}
+                  </span>
                 </Link>
               );
             })}
