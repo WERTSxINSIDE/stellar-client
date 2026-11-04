@@ -70,7 +70,7 @@ export async function GET() {
         [user.id]
       ) as Promise<{ cosmetic_key: string }[]>,
       queryOne(
-        `SELECT nickname_color, equipped_frame, equipped_badge, profile_theme, site_theme
+        `SELECT nickname_color, equipped_frame, equipped_badge, profile_theme, site_theme, equipped_game
          FROM users WHERE id = $1`,
         [user.id]
       ) as Promise<Record<string, string | null> | null>,
