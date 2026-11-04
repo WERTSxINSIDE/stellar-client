@@ -31,7 +31,7 @@ export default function PricingPage() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [topupLinks, setTopupLinks] = useState<Record<string, string>>({});
-  const [topupAmounts, setTopupAmounts] = useState<number[]>([5, 10, 20, 50, 150, 200, 300, 400]);
+  const [topupAmounts, setTopupAmounts] = useState<number[]>([10, 20, 50, 150, 200, 300, 400]);
 
   useEffect(() => {
     fetch("/api/topup", { cache: "no-store" })

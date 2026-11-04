@@ -1,7 +1,7 @@
 import { queryAll } from "./db";
 
 /** Суммы пополнения баланса. */
-export const TOPUP_AMOUNTS = [5, 10, 20, 50, 150, 200, 300, 400] as const;
+export const TOPUP_AMOUNTS = [10, 20, 50, 150, 200, 300, 400] as const;
 
 export type TopupAmount = (typeof TOPUP_AMOUNTS)[number];
 
