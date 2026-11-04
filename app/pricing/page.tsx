@@ -31,7 +31,7 @@ export default function PricingPage() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [topupLinks, setTopupLinks] = useState<Record<string, string>>({});
-  const [topupAmounts, setTopupAmounts] = useState<number[]>([50, 150, 200, 300, 400]);
+  const [topupAmounts, setTopupAmounts] = useState<number[]>([5, 10, 20, 50, 150, 200, 300, 400]);
 
   useEffect(() => {
     fetch("/api/topup", { cache: "no-store" })
@@ -129,7 +129,7 @@ export default function PricingPage() {
             <h2 className="text-3xl font-bold mb-1">{t("pricing.topupTitle")}</h2>
             <p className="text-white/45 text-sm max-w-2xl">{t("pricing.topupSubtitle")}</p>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-7">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-7">
               {topupAmounts.map((amount) => {
                 const url = topupLinks[`topup_${amount}_url`];
                 return url ? (

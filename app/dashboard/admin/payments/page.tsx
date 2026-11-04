@@ -14,7 +14,7 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 
-const AMOUNTS = [50, 150, 200, 300, 400];
+const AMOUNTS = [5, 10, 20, 50, 150, 200, 300, 400];
 
 function keyFor(amount: number) {
   return `topup_${amount}_url`;
