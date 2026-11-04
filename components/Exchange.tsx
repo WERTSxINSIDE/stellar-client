@@ -50,7 +50,7 @@ export default function Exchange({
   }, [load]);
 
   const value = Math.floor(Number(amount) || 0);
-  const rate = data?.sc_per_ruble ?? 10;
+  const rate = data?.sc_per_ruble ?? 20;
   const received = direction === "rub_to_sc" ? value * rate : value / rate;
   const valid =
     value > 0 &&
@@ -193,7 +193,9 @@ export default function Exchange({
             {direction === "rub_to_sc" ? `${received} SC` : `${received} ₽`}
           </span>
           {direction === "sc_to_rub" && value > 0 && value % rate !== 0 && (
-            <span className="text-red-300 ml-2">{tr("сумма должна быть кратна 10", "must be a multiple of 10")}</span>
+            <span className="text-red-300 ml-2">
+              {tr(`сумма должна быть кратна ${rate}`, `must be a multiple of ${rate}`)}
+            </span>
           )}
         </p>
 

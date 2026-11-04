@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-05-4";
+const SCHEMA_VERSION = "2026-11-05-5";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -150,9 +150,10 @@ async function initDb() {
       );
 
       CREATE TABLE IF NOT EXISTS daily_rewards (
-        user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-        streak_day INTEGER DEFAULT 0,
-        last_claim DATE
+        user_id       INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        streak_day    INTEGER DEFAULT 0,
+        last_claim    DATE,
+        claimed_total INTEGER DEFAULT 0
       );
 
       CREATE TABLE IF NOT EXISTS support_tickets (
@@ -1012,6 +1013,19 @@ async function initDb() {
         ALTER TABLE support_tickets ADD COLUMN csat_at TIMESTAMP;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE daily_rewards ADD COLUMN claimed_total INTEGER DEFAULT 0;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      UPDATE daily_rewards
+      SET claimed_total = LEAST(GREATEST(COALESCE(streak_day, 0), 0), 7)
+      WHERE COALESCE(claimed_total, 0) = 0 AND COALESCE(streak_day, 0) > 0;
     `);
 
     await client.query(`

@@ -109,8 +109,8 @@ const FAQ: FaqEntry[] = [
     id: "faq-coins",
     question: { ru: "Что такое SC-монеты и как их получить?", en: "What are SC coins and how do I earn them?" },
     answer: {
-      ru: "SC — внутренняя валюта клуба. Монеты дают за ежедневные квесты (до 65 SC в день), ежедневную награду (+10 SC), одобренный отзыв (+25), покупки (1 SC за каждые 10 ₽), достижения (+50) и игру в клиенте (+1 SC за 10 минут, до 30 SC в день). Ещё SC начисляются за приглашённых друзей. Тратить их можно на косметику или обменять на рубли в кабинете.",
-      en: "SC is the club's internal currency. You earn it from daily quests (up to 65 SC/day), the daily reward (+10 SC), approved reviews (+25), purchases (1 SC per 10 ₽), achievements (+50) and playtime (+1 SC per 10 minutes, up to 30 SC/day). Referrals also give SC. Spend it on cosmetics or exchange it for rubles in the dashboard.",
+      ru: "SC — внутренняя валюта клуба. Монеты дают за ежедневные квесты (до 65 SC в день), ежедневную награду (+10 SC, всего 7 получений на аккаунт), одобренный отзыв (+25), покупки (1 SC за каждые 10 ₽), достижения (+50) и игру в клиенте (+1 SC за 10 минут, до 30 SC в день). Ещё SC начисляются за приглашённых друзей. Тратить их можно на косметику или обменять на рубли в кабинете.",
+      en: "SC is the club's internal currency. You earn it from daily quests (up to 65 SC/day), the daily reward (+10 SC, 7 claims per account in total), approved reviews (+25), purchases (1 SC per 10 ₽), achievements (+50) and playtime (+1 SC per 10 minutes, up to 30 SC/day). Referrals also give SC. Spend it on cosmetics or exchange it for rubles in the dashboard.",
     },
     keywords: ["sc", "монеты", "coins", "валюта", "currency", "косметика", "cosmetics", "квесты", "quests"],
   },
@@ -118,8 +118,8 @@ const FAQ: FaqEntry[] = [
     id: "faq-exchange",
     question: { ru: "Как обменять SC на рубли?", en: "How do I exchange SC for rubles?" },
     answer: {
-      ru: "Откройте в кабинете раздел «Обменник». Курс фиксированный: 10 SC = 1 ₽. В рубли можно перевести любую сумму SC, кратную 10. Рубли на SC меняются любой целой суммой. Обмен происходит сразу, комиссии нет.",
-      en: "Open the “Exchange” section in the dashboard. The rate is fixed: 10 SC = 1 ₽. You can convert any SC amount that is a multiple of 10 into rubles. Rubles can be swapped to SC in any whole amount. The exchange is instant and has no fee.",
+      ru: "Откройте в кабинете раздел «Обменник». Курс фиксированный: 20 SC = 1 ₽. В рубли можно перевести любую сумму SC, кратную 20. Рубли на SC меняются любой целой суммой. Обмен происходит сразу, комиссии нет.",
+      en: "Open the “Exchange” section in the dashboard. The rate is fixed: 20 SC = 1 ₽. You can convert any SC amount that is a multiple of 20 into rubles. Rubles can be swapped to SC in any whole amount. The exchange is instant and has no fee.",
     },
     keywords: ["обмен", "exchange", "обменник", "sc в рубли", "рубли в sc", "курс", "rate"],
   },

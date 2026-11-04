@@ -242,7 +242,7 @@ export default function Dashboard() {
   const [giftLoading, setGiftLoading] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [playStats, setPlayStats] = useState<{ seconds: number; launches: number } | null>(null);
-  const [reward, setReward] = useState<{ day: number; claimedToday: boolean; finished: boolean; rewards: RewardInfo[] } | null>(null);
+  const [reward, setReward] = useState<{ day: number; claimedToday: boolean; finished: boolean; claimsLeft: number; limit: number; rewards: RewardInfo[] } | null>(null);
   const [wheel, setWheel] = useState<{ canSpin: boolean; hoursLeft: number; spins: number; cooldownHours: number; prizes: { key: string; label: string; chance: number }[] } | null>(null);
   const [wheelSpin, setWheelSpin] = useState(false);
   const [wheelRot, setWheelRot] = useState(0);
@@ -420,7 +420,7 @@ export default function Dashboard() {
       .then((d) => d.ok && setPlayStats(d.stats));
     fetch("/api/daily-reward")
       .then((r) => r.json())
-      .then((d) => d.ok && setReward({ day: d.day, claimedToday: d.claimedToday, finished: d.finished, rewards: d.rewards }));
+      .then((d) => d.ok && setReward({ day: d.day, claimedToday: d.claimedToday, finished: d.finished, claimsLeft: d.claims_left ?? 0, limit: d.limit ?? 7, rewards: d.rewards }));
     fetch("/api/wheel")
       .then((r) => r.json())
       .then((d) => d.ok && setWheel(d));
@@ -991,7 +991,7 @@ export default function Dashboard() {
         return;
       }
       setRewardMsg(tr(`Награда получена ✓ ${data.message}`, `Reward claimed ✓ ${data.message}`));
-      setReward((prev) => prev ? { ...prev, claimedToday: true, finished: !!data.finished } : prev);
+      setReward((prev) => prev ? { ...prev, claimedToday: true, finished: !!data.finished, claimsLeft: data.claims_left ?? Math.max(0, prev.claimsLeft - 1) } : prev);
       setUser((prev) => {
         if (!prev) return prev;
         return {
@@ -1862,7 +1862,7 @@ export default function Dashboard() {
               <div className="mb-12">
                 <h3 className="text-3xl font-bold mb-1">{tr("Обменник", "Exchange")}</h3>
                 <p className="text-white/40 mb-6">
-                  {tr("Меняйте рубли на SC и обратно. Курс фиксированный: 10 SC = 1 ₽.", "Swap rubles and SC. Fixed rate: 10 SC = 1 ₽.")}
+                  {tr("Меняйте рубли на SC и обратно. Курс фиксированный: 20 SC = 1 ₽.", "Swap rubles and SC. Fixed rate: 20 SC = 1 ₽.")}
                 </p>
                 <Exchange
                   onBalances={({ balance, sc_coins }) =>
@@ -2581,8 +2581,14 @@ export default function Dashboard() {
               {tab === "reward" && (
               <div className="mb-12">
                 <h3 className="text-3xl font-bold mb-1">{tr("Ежедневная награда", "Daily reward")}</h3>
-                <p className="text-white/40 mb-6">
+                <p className="text-white/40 mb-2">
                   {tr("Цикл из 7 наград выдаётся один раз за аккаунт. Пропуск дня не сбрасывает прогресс.", "A cycle of 7 rewards is granted once per account. Skipping a day does not reset progress.")}
+                </p>
+                <p className="text-xs text-white/35 mb-6">
+                  {tr(
+                    `Осталось получений: ${reward?.claimsLeft ?? 0} из ${reward?.limit ?? 7}.`,
+                    `Claims left: ${reward?.claimsLeft ?? 0} of ${reward?.limit ?? 7}.`
+                  )}
                 </p>
 
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-7">

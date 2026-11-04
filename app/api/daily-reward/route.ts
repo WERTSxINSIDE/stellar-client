@@ -7,6 +7,9 @@ import { logClanActivity } from "@/lib/clan-service";
 
 export const dynamic = "force-dynamic";
 
+/** Сколько раз за аккаунт можно забрать ежедневную награду. */
+export const REWARD_CLAIM_LIMIT = 7;
+
 export const REWARDS: {
   day: number;
   type: "balance" | "spin";
@@ -38,33 +41,78 @@ function yesterdayStr(): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
-type RewardRow = { streak_day: number | null; last_claim: string | null };
+type RewardRow = {
+  streak_day: number | null;
+  last_claim: string | null;
+  claimed_total?: number | null;
+};
 
 function stateFromRow(row: RewardRow | null | undefined, today: string, yesterday: string) {
   if (!row) {
-    return { day: 1, claimedToday: false, finished: false };
+    return {
+      day: 1,
+      claimedToday: false,
+      finished: false,
+      claimsUsed: 0,
+      claimsLeft: REWARD_CLAIM_LIMIT,
+    };
   }
 
   const streak = Number(row.streak_day) || 0;
   const last = row.last_claim || null;
+  // Для старых строк без счётчика считаем, что забрано столько же, сколько дней пройдено.
+  const claimsUsed = Math.max(
+    0,
+    Math.min(REWARD_CLAIM_LIMIT, Number(row.claimed_total) || streak)
+  );
 
-  if (streak < 1) {
-    return { day: 1, claimedToday: last === today, finished: false };
+  // Лимит на аккаунт исчерпан — повторов нет
+  if (claimsUsed >= REWARD_CLAIM_LIMIT) {
+    return {
+      day: REWARD_CLAIM_LIMIT,
+      claimedToday: last === today,
+      finished: true,
+      claimsUsed: REWARD_CLAIM_LIMIT,
+      claimsLeft: 0,
+    };
   }
 
-  // Цикл уже пройден полностью — повторов нет
-  if (streak >= 7) {
-    return { day: 7, claimedToday: last === today, finished: true };
+  if (streak < 1) {
+    return {
+      day: 1,
+      claimedToday: last === today,
+      finished: false,
+      claimsUsed,
+      claimsLeft: REWARD_CLAIM_LIMIT - claimsUsed,
+    };
   }
 
   if (last === today) {
-    return { day: streak, claimedToday: true, finished: false };
+    return {
+      day: streak,
+      claimedToday: true,
+      finished: false,
+      claimsUsed,
+      claimsLeft: REWARD_CLAIM_LIMIT - claimsUsed,
+    };
   }
   if (last === yesterday) {
-    return { day: streak + 1, claimedToday: false, finished: false };
+    return {
+      day: streak + 1,
+      claimedToday: false,
+      finished: false,
+      claimsUsed,
+      claimsLeft: REWARD_CLAIM_LIMIT - claimsUsed,
+    };
   }
   // пропуск дня — продолжаем с того же дня, без возврата к 1
-  return { day: streak, claimedToday: false, finished: false };
+  return {
+    day: streak,
+    claimedToday: false,
+    finished: false,
+    claimsUsed,
+    claimsLeft: REWARD_CLAIM_LIMIT - claimsUsed,
+  };
 }
 
 async function saveClaim(
@@ -73,21 +121,32 @@ async function saveClaim(
   today: string,
   db?: DbExecutor
 ) {
-  const text = `INSERT INTO daily_rewards (user_id, streak_day, last_claim) VALUES ($1, $2, $3)
-     ON CONFLICT (user_id) DO UPDATE SET streak_day = $2, last_claim = $3`;
+  const text = `INSERT INTO daily_rewards (user_id, streak_day, last_claim, claimed_total)
+     VALUES ($1, $2, $3, 1)
+     ON CONFLICT (user_id) DO UPDATE SET
+       streak_day = $2,
+       last_claim = $3,
+       claimed_total = LEAST(
+         GREATEST(
+           COALESCE(daily_rewards.claimed_total, 0),
+           COALESCE(daily_rewards.streak_day, 0)
+         ) + 1,
+         $4
+       )`;
 
   if (db) {
-    await db.query(text, [userId, day, today]);
+    await db.query(text, [userId, day, today, REWARD_CLAIM_LIMIT]);
     return;
   }
 
-  await query(text, [userId, day, today]);
+  await query(text, [userId, day, today, REWARD_CLAIM_LIMIT]);
 }
 
 // Какой день цикла сегодня: 1..7, забран ли уже сегодняшний, не завершён ли цикл
 async function getState(userId: number) {
   const row = (await queryOne(
-    "SELECT streak_day, to_char(last_claim, 'YYYY-MM-DD') AS last_claim FROM daily_rewards WHERE user_id = $1",
+    `SELECT streak_day, claimed_total, to_char(last_claim, 'YYYY-MM-DD') AS last_claim
+     FROM daily_rewards WHERE user_id = $1`,
     [userId]
   )) as RewardRow | null;
 
@@ -107,6 +166,9 @@ export async function GET() {
       day: state.day,
       claimedToday: state.claimedToday,
       finished: state.finished,
+      claims_used: state.claimsUsed,
+      claims_left: state.claimsLeft,
+      limit: REWARD_CLAIM_LIMIT,
       rewards: REWARDS,
     });
   } catch {
@@ -127,7 +189,7 @@ export async function POST() {
       await client.query("SELECT pg_advisory_xact_lock($1::bigint)", [user.id]);
 
       const locked = await client.query(
-        `SELECT streak_day, to_char(last_claim, 'YYYY-MM-DD') AS last_claim
+        `SELECT streak_day, claimed_total, to_char(last_claim, 'YYYY-MM-DD') AS last_claim
          FROM daily_rewards WHERE user_id = $1`,
         [user.id]
       );
@@ -135,8 +197,11 @@ export async function POST() {
       const today = todayStr();
       const state = stateFromRow(locked.rows[0], today, yesterdayStr());
 
-      if (state.finished) {
-        return { error: "Все награды уже получены", status: 409 } as const;
+      if (state.finished || state.claimsUsed >= REWARD_CLAIM_LIMIT) {
+        return {
+          error: `Лимит ежедневных наград исчерпан (${REWARD_CLAIM_LIMIT} за аккаунт)`,
+          status: 409,
+        } as const;
       }
       if (state.claimedToday) {
         return { error: "Награда за сегодня уже получена", status: 409 } as const;
@@ -209,6 +274,7 @@ export async function POST() {
           finished: nowFinished,
           coins,
           clan_bonus: clanBonus,
+          claimsUsed: state.claimsUsed + 1,
         } as const;
       }
 
@@ -244,6 +310,7 @@ export async function POST() {
         finished: nowFinished,
         coins,
         clan_bonus: clanBonus,
+        claimsUsed: state.claimsUsed + 1,
       } as const;
     });
 
@@ -258,6 +325,8 @@ export async function POST() {
       balance: result.balance,
       subscription_end: null,
       finished: result.finished,
+      claims_left: Math.max(0, REWARD_CLAIM_LIMIT - result.claimsUsed),
+      limit: REWARD_CLAIM_LIMIT,
     });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });

@@ -4,8 +4,8 @@ import { addBalanceHistory, queryOne, withTransaction } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-/** Курс обмена: 10 SC = 1 ₽. */
-const SC_PER_RUBLE = 10;
+/** Курс обмена: 20 SC = 1 ₽. */
+const SC_PER_RUBLE = 20;
 const MAX_RUB = 100000;
 const MAX_SC = 1000000;
 
@@ -70,7 +70,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `Максимум ${MAX_SC} SC за раз` }, { status: 400 });
       }
       if (amount % SC_PER_RUBLE !== 0) {
-        return NextResponse.json({ error: "Сумма SC должна быть кратна 10" }, { status: 400 });
+        return NextResponse.json(
+          { error: `Сумма SC должна быть кратна ${SC_PER_RUBLE}` },
+          { status: 400 }
+        );
       }
     }
 
