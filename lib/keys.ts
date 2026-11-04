@@ -10,6 +10,20 @@ export const REFERRAL_MILESTONE_STEP = 5;
 /** Размер бонуса за достижение очередной ступени приглашений. */
 export const REFERRAL_MILESTONE_BONUS = 30;
 
+/** SC-бонус пригласившему за каждого валидного приглашённого. */
+export const REFERRAL_SIGNUP_SC = 50;
+
+/** Доля от стоимости ключа, которую пригласивший получает в SC. */
+export const REFERRAL_KEY_SC_PERCENT = 0.1;
+
+/** SC-бонус за каждую ступень приглашений. */
+export const REFERRAL_MILESTONE_SC = 200;
+
+/** Сколько SC дать за активированный приглашённым ключ. */
+export function referralKeySc(price: number): number {
+  return Math.max(10, Math.round(Math.max(0, Number(price) || 0) * REFERRAL_KEY_SC_PERCENT));
+}
+
 /**
  * Цена ключа по длительности — используется, если у ключа не задана цена.
  * Соответствует ценам на /pricing.

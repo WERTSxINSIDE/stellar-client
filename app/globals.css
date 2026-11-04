@@ -54,7 +54,7 @@ body::after {
         background-position: 0% 50%;
     }
     100% {
-        background-position: 300% 50%;
+        background-position: 100% 50%;
     }
 }
 
@@ -87,7 +87,7 @@ body::after {
         background-position: 0 0, 0% 50%;
     }
     100% {
-        background-position: 0 0, 300% 50%;
+        background-position: 0 0, 100% 50%;
     }
 }
 
@@ -346,6 +346,26 @@ body::after {
     animation: var(--site-bg-anim);
 }
 
+.site-theme-deep_space {
+    --site-bg-image: radial-gradient(1.4px 1.4px at 18% 24%, rgba(255, 255, 255, 0.95), transparent 100%),
+        radial-gradient(1px 1px at 72% 58%, rgba(191, 219, 254, 0.85), transparent 100%),
+        radial-gradient(1.4px 1.4px at 44% 82%, rgba(255, 255, 255, 0.8), transparent 100%),
+        radial-gradient(1px 1px at 88% 16%, rgba(196, 181, 253, 0.9), transparent 100%),
+        radial-gradient(1px 1px at 32% 66%, rgba(224, 242, 254, 0.7), transparent 100%),
+        radial-gradient(circle at 18% 16%, rgba(56, 189, 248, 0.28), transparent 55%),
+        radial-gradient(circle at 82% 28%, rgba(139, 92, 246, 0.34), transparent 55%),
+        radial-gradient(circle at 48% 92%, rgba(30, 64, 175, 0.42), transparent 62%),
+        linear-gradient(160deg, #01030c, #060b26 55%, #0a0f36);
+    --site-bg-size: 240px 240px, 320px 320px, 280px 280px, 360px 360px, 300px 300px,
+        180% 180%, 180% 180%, 180% 180%, auto;
+    --site-bg-anim: site-bg-drift 34s ease-in-out infinite alternate;
+    --site-overlay: rgba(1, 3, 12, 0.5);
+    background-color: #01030c;
+    background-image: var(--site-bg-image);
+    background-size: var(--site-bg-size);
+    animation: var(--site-bg-anim);
+}
+
 /* Когда надета тема сайта, непрозрачные фоны страниц не должны её перекрывать */
 html[data-site-theme] .min-h-screen.bg-\[\#0a0710\],
 html[data-site-theme] .min-h-screen.bg-\[\#07070d\] {
@@ -372,7 +392,8 @@ html[data-site-theme] .cosmetics-rgb-bg {
     .site-theme-nebula,
     .site-theme-sunset,
     .site-theme-royal,
-    .site-theme-cosmic {
+    .site-theme-cosmic,
+    .site-theme-deep_space {
         animation: none;
     }
 }

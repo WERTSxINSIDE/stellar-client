@@ -9,6 +9,7 @@ import {
   permissionsFor,
 } from "@/lib/clans";
 import { enrichClan, getClanById, getMembership } from "@/lib/clan-service";
+import { buildClanMissions } from "@/lib/clan-missions";
 
 export const dynamic = "force-dynamic";
 
@@ -120,6 +121,8 @@ export async function GET(_req: Request, { params }: Params) {
         )
       : null;
 
+    const missions = isMember ? await buildClanMissions(clanId, myRole) : null;
+
     return NextResponse.json({
       ok: true,
       clan,
@@ -132,6 +135,7 @@ export async function GET(_req: Request, { params }: Params) {
       my_role: myRole,
       is_member: isMember,
       my_application: myApplication,
+      missions,
       permissions: permissionsFor(myRole),
     });
   } catch {

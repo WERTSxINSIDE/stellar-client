@@ -3,9 +3,12 @@ import { getCurrentUser } from "@/lib/auth";
 import { queryAll, queryOne } from "@/lib/db";
 import {
   REFERRAL_KEY_PERCENT,
+  REFERRAL_KEY_SC_PERCENT,
   REFERRAL_MILESTONE_BONUS,
+  REFERRAL_MILESTONE_SC,
   REFERRAL_MILESTONE_STEP,
   REFERRAL_SIGNUP_BONUS,
+  REFERRAL_SIGNUP_SC,
 } from "@/lib/keys";
 import { SITE_URL } from "@/lib/notify";
 
@@ -34,9 +37,22 @@ export async function GET() {
       [user.id]
     )) as { signup_total: number; key_total: number; milestone_total: number } | null;
 
+    const scTotals = (await queryOne(
+      `SELECT
+         COALESCE(SUM(CASE WHEN type = 'referral_signup' THEN amount ELSE 0 END), 0)::int AS signup_total,
+         COALESCE(SUM(CASE WHEN type = 'referral_key' THEN amount ELSE 0 END), 0)::int AS key_total,
+         COALESCE(SUM(CASE WHEN type = 'referral_milestone' THEN amount ELSE 0 END), 0)::int AS milestone_total
+       FROM coin_transactions
+       WHERE user_id = $1 AND type IN ('referral_signup', 'referral_key', 'referral_milestone')`,
+      [user.id]
+    )) as { signup_total: number; key_total: number; milestone_total: number } | null;
+
     const signupTotal = totals?.signup_total ?? 0;
     const keyTotal = totals?.key_total ?? 0;
     const milestoneTotal = totals?.milestone_total ?? 0;
+    const scSignupTotal = scTotals?.signup_total ?? 0;
+    const scKeyTotal = scTotals?.key_total ?? 0;
+    const scMilestoneTotal = scTotals?.milestone_total ?? 0;
     const validInvited = invited.filter((i) => !i.referral_fraud).length;
     const toNextMilestone =
       REFERRAL_MILESTONE_STEP - (validInvited % REFERRAL_MILESTONE_STEP);
@@ -49,6 +65,9 @@ export async function GET() {
         key_percent: Math.round(REFERRAL_KEY_PERCENT * 100),
         milestone_step: REFERRAL_MILESTONE_STEP,
         milestone_bonus: REFERRAL_MILESTONE_BONUS,
+        signup_sc: REFERRAL_SIGNUP_SC,
+        key_sc_percent: Math.round(REFERRAL_KEY_SC_PERCENT * 100),
+        milestone_sc: REFERRAL_MILESTONE_SC,
       },
       stats: {
         invited: invited.length,
@@ -58,6 +77,10 @@ export async function GET() {
         key_total: keyTotal,
         milestone_total: milestoneTotal,
         total: signupTotal + keyTotal + milestoneTotal,
+        sc_signup_total: scSignupTotal,
+        sc_key_total: scKeyTotal,
+        sc_milestone_total: scMilestoneTotal,
+        sc_total: scSignupTotal + scKeyTotal + scMilestoneTotal,
         next_milestone_in: toNextMilestone === REFERRAL_MILESTONE_STEP ? 0 : toNextMilestone,
       },
       invited,

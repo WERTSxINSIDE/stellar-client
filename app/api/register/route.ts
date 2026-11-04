@@ -5,8 +5,10 @@ import { createSession, getRequestMeta } from "@/lib/auth";
 import { emailVerificationEnabled } from "@/lib/email";
 import {
   REFERRAL_MILESTONE_BONUS,
+  REFERRAL_MILESTONE_SC,
   REFERRAL_MILESTONE_STEP,
   REFERRAL_SIGNUP_BONUS,
+  REFERRAL_SIGNUP_SC,
 } from "@/lib/keys";
 import { notifyUser } from "@/lib/notify";
 import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
@@ -149,6 +151,7 @@ export async function POST(req: Request) {
       const newUserId = Number(result.rows[0].id);
 
       let milestoneBonus = 0;
+      let milestoneSc = 0;
 
       if (referrer && referrer.id !== newUserId && !referralFraud) {
         if (partnerCodeId) {
@@ -164,6 +167,16 @@ export async function POST(req: Request) {
         await client.query(
           "INSERT INTO balance_history (user_id, amount, type, note) VALUES ($1, $2, 'referral', $3)",
           [referrer.id, REFERRAL_SIGNUP_BONUS, `Регистрация по реферальной ссылке: ${username}`]
+        );
+
+        // Параллельная SC-награда за приглашение.
+        await client.query(
+          "UPDATE users SET sc_coins = COALESCE(sc_coins, 0) + $1 WHERE id = $2",
+          [REFERRAL_SIGNUP_SC, referrer.id]
+        );
+        await client.query(
+          "INSERT INTO coin_transactions (user_id, amount, type, note) VALUES ($1, $2, 'referral_signup', $3)",
+          [referrer.id, REFERRAL_SIGNUP_SC, `Реферал: ${username}`]
         );
 
         // Бонус за каждые N успешных приглашений. Учитываем только не фрод.
@@ -184,9 +197,14 @@ export async function POST(req: Request) {
 
         if (target > awarded) {
           milestoneBonus = (target - awarded) * REFERRAL_MILESTONE_BONUS;
+          milestoneSc = (target - awarded) * REFERRAL_MILESTONE_SC;
           await client.query(
             "UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE id = $2",
             [milestoneBonus, referrer.id]
+          );
+          await client.query(
+            "UPDATE users SET sc_coins = COALESCE(sc_coins, 0) + $1 WHERE id = $2",
+            [milestoneSc, referrer.id]
           );
           for (let step = awarded + 1; step <= target; step++) {
             await client.query(
@@ -197,11 +215,19 @@ export async function POST(req: Request) {
                 `${step * REFERRAL_MILESTONE_STEP} приглашённых`,
               ]
             );
+            await client.query(
+              "INSERT INTO coin_transactions (user_id, amount, type, note) VALUES ($1, $2, 'referral_milestone', $3)",
+              [
+                referrer.id,
+                REFERRAL_MILESTONE_SC,
+                `${step * REFERRAL_MILESTONE_STEP} приглашённых (SC)`,
+              ]
+            );
           }
         }
       }
 
-      return { newUserId, referrer, referralFraud, milestoneBonus };
+      return { newUserId, referrer, referralFraud, milestoneBonus, milestoneSc };
     });
 
     await createSession(outcome.newUserId);
@@ -212,7 +238,7 @@ export async function POST(req: Request) {
         outcome.referrer.id,
         {
           type: "referral",
-          title: `+${REFERRAL_SIGNUP_BONUS} ₽ за приглашённого`,
+          title: `+${REFERRAL_SIGNUP_BONUS} ₽ и +${REFERRAL_SIGNUP_SC} SC за приглашённого`,
           body: `${username} зарегистрировался по вашей реферальной ссылке.`,
           link: "/dashboard",
         },
@@ -224,7 +250,7 @@ export async function POST(req: Request) {
           outcome.referrer.id,
           {
             type: "referral",
-            title: `+${outcome.milestoneBonus} ₽ за приглашения`,
+            title: `+${outcome.milestoneBonus} ₽ и +${outcome.milestoneSc} SC за приглашения`,
             body: `Вы пригласили ещё ${REFERRAL_MILESTONE_STEP} человек — бонус за ступень начислен.`,
             link: "/dashboard",
           },

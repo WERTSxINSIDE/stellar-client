@@ -117,6 +117,32 @@ type Invite = {
   username: string;
 };
 
+type ClanMission = {
+  key: string;
+  title_ru: string;
+  title_en: string;
+  desc_ru: string;
+  desc_en: string;
+  icon: string;
+  reward: number;
+  target: number;
+  progress: number;
+  claimed: boolean;
+  claimable: boolean;
+};
+
+type MissionState = {
+  missions: ClanMission[];
+  member_count: number;
+  week_start: string;
+  resets_at: string;
+  week_reward: number;
+  claimed_reward: number;
+  claimable_reward: number;
+  min_members: number;
+  viewer_can_claim: boolean;
+};
+
 type Detail = {
   clan: Clan;
   members: Member[];
@@ -128,10 +154,11 @@ type Detail = {
   my_role: string | null;
   is_member: boolean;
   my_application: { id: number; status: string; created_at: string } | null;
+  missions: MissionState | null;
   permissions: string[];
 };
 
-type Tab = "overview" | "members" | "requests" | "treasury" | "chat" | "settings";
+type Tab = "overview" | "members" | "missions" | "requests" | "treasury" | "chat" | "settings";
 
 const roleOptions = CLAN_ROLES.filter((role) => role !== "leader");
 
@@ -297,6 +324,19 @@ export default function ClanPage() {
     await action(`/api/clans/${clanId}/invites`, { inviteId }, "DELETE");
   }
 
+  async function claimMission(mission: ClanMission) {
+    if (busy || !mission.claimable) return;
+    const result = await action(`/api/clans/${clanId}/missions`, { key: mission.key });
+    if (result) {
+      setNotice(
+        tr(
+          `Награда +${result.reward} SC начислена участникам (${result.distributed})`,
+          `Reward +${result.reward} SC sent to members (${result.distributed})`
+        )
+      );
+    }
+  }
+
   async function treasury(kind: "deposit" | "withdraw") {
     const amount = Math.floor(Number(money));
     if (!Number.isInteger(amount) || amount <= 0) {
@@ -460,6 +500,7 @@ export default function ClanPage() {
     { key: "members", label: tr("Участники", "Members"), icon: <UsersThree size={16} /> },
   ];
   if (data.is_member) {
+    tabs.push({ key: "missions", label: tr("Миссии", "Missions"), icon: <Trophy size={16} /> });
     if (can("review_applications") || can("invite")) {
       tabs.push({ key: "requests", label: tr("Заявки", "Requests"), icon: <UserPlus size={16} /> });
     }
@@ -781,6 +822,140 @@ export default function ClanPage() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {activeTab === "missions" && (
+              <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="font-bold inline-flex items-center gap-2">
+                      <Trophy size={17} className="text-amber-300" />
+                      {tr("Миссии недели", "Weekly missions")}
+                    </h2>
+                    <p className="text-xs text-white/35 mt-1">
+                      {tr(
+                        "Награда достаётся каждому участнику клана. Забрать может офицер и выше.",
+                        "Every clan member gets the reward. Officers and above can claim it."
+                      )}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/[0.07] px-3 py-2 text-right">
+                    <p className="text-[10px] uppercase tracking-wider text-emerald-300/60">
+                      {tr("Можно забрать", "Available")}
+                    </p>
+                    <p className="text-sm font-bold text-emerald-300">
+                      +{data.missions?.claimable_reward ?? 0} SC
+                    </p>
+                  </div>
+                </div>
+
+                {!data.missions ? (
+                  <p className="text-sm text-white/35">{tr("Миссии недоступны.", "Missions are unavailable.")}</p>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/35 mb-4">
+                      <span>
+                        {tr("Сброс", "Reset")}:{" "}
+                        {fmtDate(data.missions.resets_at, lang)}
+                      </span>
+                      <span>
+                        {tr("Участников", "Members")}: {data.missions.member_count}/{data.missions.min_members}
+                      </span>
+                      <span>
+                        {tr("За неделю", "Per week")}: до {data.missions.week_reward} SC
+                      </span>
+                    </div>
+
+                    {data.missions.member_count < data.missions.min_members && (
+                      <p className="mb-4 rounded-xl border border-amber-400/20 bg-amber-500/[0.07] px-3 py-2 text-xs text-amber-200/80">
+                        {tr(
+                          `Для наград нужно минимум ${data.missions.min_members} участника.`,
+                          `At least ${data.missions.min_members} members are required for rewards.`
+                        )}
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {data.missions.missions.map((mission) => {
+                        const percent = Math.min(
+                          100,
+                          Math.round((mission.progress / mission.target) * 100)
+                        );
+                        return (
+                          <div
+                            key={mission.key}
+                            className={`rounded-2xl border p-4 ${
+                              mission.claimed
+                                ? "border-emerald-400/20 bg-emerald-500/[0.04]"
+                                : mission.claimable
+                                  ? "border-purple-400/30 bg-purple-500/[0.06]"
+                                  : "border-white/10 bg-white/[0.02]"
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className="w-9 h-9 shrink-0 rounded-xl bg-white/[0.06] grid place-items-center text-lg">
+                                {mission.icon}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-semibold">
+                                    {lang === "en" ? mission.title_en : mission.title_ru}
+                                  </p>
+                                  <span className="text-[11px] font-semibold text-amber-200">
+                                    +{mission.reward} SC
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-white/40 mt-0.5">
+                                  {lang === "en" ? mission.desc_en : mission.desc_ru}
+                                </p>
+
+                                <div className="mt-2.5 flex items-center gap-2">
+                                  <div className="h-1.5 flex-1 rounded-full bg-white/10 overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full ${
+                                        mission.claimed
+                                          ? "bg-emerald-400"
+                                          : mission.claimable
+                                            ? "bg-purple-400"
+                                            : "bg-white/30"
+                                      }`}
+                                      style={{ width: `${percent}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] tabular-nums text-white/40">
+                                    {mission.progress}/{mission.target}
+                                  </span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => claimMission(mission)}
+                                  disabled={!mission.claimable || busy}
+                                  className={`mt-3 w-full rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                                    mission.claimed
+                                      ? "bg-emerald-500/10 text-emerald-300 cursor-default"
+                                      : mission.claimable
+                                        ? "bg-purple-600 text-white hover:bg-purple-500"
+                                        : "bg-white/[0.05] text-white/30 cursor-not-allowed"
+                                  }`}
+                                >
+                                  {mission.claimed
+                                    ? tr("Получено", "Claimed")
+                                    : mission.claimable
+                                      ? tr("Забрать награду", "Claim reward")
+                                      : !data.missions?.viewer_can_claim
+                                        ? tr("Забирает офицер", "Claimed by an officer")
+                                        : tr("В процессе", "In progress")}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

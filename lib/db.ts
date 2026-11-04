@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-05-3";
+const SCHEMA_VERSION = "2026-11-05-4";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -586,6 +586,25 @@ async function initDb() {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS daily_quest_claims (
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        quest_key  TEXT NOT NULL,
+        quest_date DATE NOT NULL,
+        reward     INTEGER NOT NULL DEFAULT 0,
+        claimed_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (user_id, quest_key, quest_date)
+      );
+
+      CREATE TABLE IF NOT EXISTS clan_mission_claims (
+        clan_id     INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+        mission_key TEXT NOT NULL,
+        week_start  DATE NOT NULL,
+        reward      INTEGER NOT NULL DEFAULT 0,
+        claimed_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        claimed_at  TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (clan_id, mission_key, week_start)
+      );
+
       CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
       CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
@@ -1006,6 +1025,8 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_email_codes_purpose ON email_codes(email, purpose, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_users_hwid ON users(hwid);
       CREATE INDEX IF NOT EXISTS idx_sessions_ip ON sessions(ip);
+      CREATE INDEX IF NOT EXISTS idx_daily_quest_claims_user ON daily_quest_claims(user_id, quest_date);
+      CREATE INDEX IF NOT EXISTS idx_clan_mission_claims_clan ON clan_mission_claims(clan_id, week_start);
     `);
 
     await client.query(`
@@ -1058,6 +1079,7 @@ async function initDb() {
         ('site_sunset', 'site_theme', 'Закат', 'Тёплый оранжево-розовый градиент для всего интерфейса.', 2800, 'sunset', 'epic'),
         ('site_matrix', 'site_theme', 'Матрица', 'Зелёная цифровая сетка и неоновое свечение.', 3200, 'matrix', 'legendary'),
         ('site_royal', 'site_theme', 'Королевский', 'Фиолетовый фон с золотыми акцентами.', 3400, 'royal', 'legendary'),
+        ('site_deep_space', 'site_theme', 'Глубокий космос', 'Тёмное звёздное небо с синими и фиолетовыми туманностями.', 4000, 'deep_space', 'legendary'),
         ('site_cosmic', 'site_theme', 'Космический RGB', 'Анимированный радужный фон на всех страницах сайта.', 9000, 'cosmic', 'cosmic')
       ON CONFLICT (key) DO NOTHING
     `);

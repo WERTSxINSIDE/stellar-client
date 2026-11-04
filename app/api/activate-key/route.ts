@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withTransaction } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { keyPrice, referralKeyBonus } from "@/lib/keys";
+import { keyPrice, referralKeyBonus, referralKeySc } from "@/lib/keys";
 import { notifyUser } from "@/lib/notify";
 import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
 import { safeRefreshUserRisk } from "@/lib/risk";
@@ -81,8 +81,8 @@ export async function POST(req: Request) {
         [user.id, formatDate(now), licenseKey.id]
       );
 
-      // Реферальные 15% от стоимости ключа — пригласившему.
-      let referral: { userId: number; bonus: number } | null = null;
+      // Реферальные 15% от стоимости ключа — пригласившему, плюс SC-бонус.
+      let referral: { userId: number; bonus: number; sc: number } | null = null;
       const referrerId = userResult.rows[0].referred_by
         ? Number(userResult.rows[0].referred_by)
         : null;
@@ -90,6 +90,8 @@ export async function POST(req: Request) {
       if (referrerId && referrerId !== user.id) {
         const price = keyPrice(Number(licenseKey.duration_days), licenseKey.price);
         const bonus = referralKeyBonus(price);
+        const sc = referralKeySc(price);
+
         if (bonus > 0) {
           await client.query(
             "UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE id = $2",
@@ -99,7 +101,21 @@ export async function POST(req: Request) {
             "INSERT INTO balance_history (user_id, amount, type, note) VALUES ($1, $2, 'referral_key', $3)",
             [referrerId, bonus, `15% от ключа, активированного ${user.username}`]
           );
-          referral = { userId: referrerId, bonus };
+        }
+
+        if (sc > 0) {
+          await client.query(
+            "UPDATE users SET sc_coins = COALESCE(sc_coins, 0) + $1 WHERE id = $2",
+            [sc, referrerId]
+          );
+          await client.query(
+            "INSERT INTO coin_transactions (user_id, amount, type, note) VALUES ($1, $2, 'referral_key', $3)",
+            [referrerId, sc, `SC за ключ, активированный ${user.username}`]
+          );
+        }
+
+        if (bonus > 0 || sc > 0) {
+          referral = { userId: referrerId, bonus, sc };
         }
       }
 
@@ -127,8 +143,8 @@ export async function POST(req: Request) {
         result.referral.userId,
         {
           type: "referral",
-          title: `+${result.referral.bonus} ₽ реферальных`,
-          body: `${user.username} активировал ключ, вам начислено 15% от его стоимости.`,
+          title: `+${result.referral.bonus} ₽ и +${result.referral.sc} SC реферальных`,
+          body: `${user.username} активировал ключ, вам начислено 15% от его стоимости и SC-бонус.`,
           link: "/dashboard",
         },
         { email: true }

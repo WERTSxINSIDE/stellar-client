@@ -8,6 +8,8 @@ import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Loader from "@/components/Loader";
+import DailyQuests from "@/components/DailyQuests";
+import Exchange from "@/components/Exchange";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { achievementEn } from "@/lib/achievements";
 import { localizeApiError } from "@/lib/api-error";
@@ -49,6 +51,7 @@ import {
   TelegramLogo,
   Coins,
   Megaphone,
+  ArrowsLeftRight,
 } from "@phosphor-icons/react";
 
 function tx(lang: Lang, ru: string, en: string) {
@@ -277,6 +280,9 @@ export default function Dashboard() {
       key_percent: number;
       milestone_step: number;
       milestone_bonus: number;
+      signup_sc: number;
+      key_sc_percent: number;
+      milestone_sc: number;
     };
     stats: {
       invited: number;
@@ -286,6 +292,10 @@ export default function Dashboard() {
       key_total: number;
       milestone_total: number;
       total: number;
+      sc_signup_total: number;
+      sc_key_total: number;
+      sc_milestone_total: number;
+      sc_total: number;
       next_milestone_in: number;
     };
     invited: { username: string; created_at: string; referral_fraud: number }[];
@@ -372,7 +382,9 @@ export default function Dashboard() {
     const allowed = [
       "account",
       "reward",
+      "quests",
       "balance",
+      "exchange",
       "stats",
       "achievements",
       "history",
@@ -1172,7 +1184,9 @@ export default function Dashboard() {
                     {[
                       { id: "account", label: tr("Аккаунт", "Account"), icon: <User size={18} /> },
                       { id: "reward", label: tr("Ежедневная награда", "Daily reward"), icon: <Gift size={18} />, dot: !!reward && !reward.finished && !reward.claimedToday },
+                      { id: "quests", label: tr("Квесты", "Quests"), icon: <CheckCircle size={18} /> },
                       { id: "balance", label: tr("Баланс", "Balance"), icon: <Wallet size={18} /> },
+                      { id: "exchange", label: tr("Обменник", "Exchange"), icon: <ArrowsLeftRight size={18} /> },
                       { id: "stats", label: tr("Статистика", "Statistics"), icon: <ChartBar size={18} /> },
                       { id: "achievements", label: tr("Достижения", "Achievements"), icon: <Trophy size={18} />, dot: newAchievements.length > 0 },
                       { id: "history", label: tr("История операций", "Transaction history"), icon: <ClockCounterClockwise size={18} /> },
@@ -1844,6 +1858,20 @@ export default function Dashboard() {
               </div>
               )}
 
+              {tab === "exchange" && (
+              <div className="mb-12">
+                <h3 className="text-3xl font-bold mb-1">{tr("Обменник", "Exchange")}</h3>
+                <p className="text-white/40 mb-6">
+                  {tr("Меняйте рубли на SC и обратно. Курс фиксированный: 10 SC = 1 ₽.", "Swap rubles and SC. Fixed rate: 10 SC = 1 ₽.")}
+                </p>
+                <Exchange
+                  onBalances={({ balance, sc_coins }) =>
+                    setUser((prev) => (prev ? { ...prev, balance, sc_coins } : prev))
+                  }
+                />
+              </div>
+              )}
+
               {tab === "stats" && (
               <div className="mb-12">
                 <h3 className="text-3xl font-bold mb-1">{tr("Статистика", "Statistics")}</h3>
@@ -2124,11 +2152,13 @@ export default function Dashboard() {
                         </button>
                       </div>
                       <p className="text-xs text-white/40 mt-3">
-                        {tr("За регистрацию по ссылке —", "For signing up via the link —")} <span className="text-white/70 font-medium">+{referral.rules.signup_bonus} ₽</span>.
+                        {tr("За регистрацию по ссылке —", "For signing up via the link —")} <span className="text-white/70 font-medium">+{referral.rules.signup_bonus} ₽</span>{" "}
+                        {tr("и", "and")} <span className="text-white/70 font-medium">+{referral.rules.signup_sc} SC</span>.
                         {tr("Плюс", "Plus")} <span className="text-white/70 font-medium">{referral.rules.key_percent}%</span> {tr("от стоимости ключа,", "of the key price,")}
                         {tr("который активирует приглашённый. За каждые", "which the invitee activates. For every")}{" "}
                         <span className="text-white/70 font-medium">{referral.rules.milestone_step}</span> {tr("друзей — ещё", "friends — another")}{" "}
-                        <span className="text-white/70 font-medium">+{referral.rules.milestone_bonus} ₽</span>.
+                        <span className="text-white/70 font-medium">+{referral.rules.milestone_bonus} ₽</span>{" "}
+                        {tr("и", "and")} <span className="text-white/70 font-medium">+{referral.rules.milestone_sc} SC</span>.
                       </p>
                     </div>
 
@@ -2160,10 +2190,29 @@ export default function Dashboard() {
                       </div>
                     </div>
 
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                      <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.05] p-4">
+                        <p className="text-white/40 text-xs mb-1">{tr("SC за регистрации", "SC for sign-ups")}</p>
+                        <p className="text-xl font-bold text-amber-200">+{referral.stats.sc_signup_total}</p>
+                      </div>
+                      <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.05] p-4">
+                        <p className="text-white/40 text-xs mb-1">{tr("SC с ключей", "SC from keys")}</p>
+                        <p className="text-xl font-bold text-amber-200">+{referral.stats.sc_key_total}</p>
+                      </div>
+                      <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.05] p-4">
+                        <p className="text-white/40 text-xs mb-1">{tr("SC за ступени", "SC for milestones")}</p>
+                        <p className="text-xl font-bold text-amber-200">+{referral.stats.sc_milestone_total}</p>
+                      </div>
+                      <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.05] p-4">
+                        <p className="text-white/40 text-xs mb-1">{tr("Всего SC", "Total SC")}</p>
+                        <p className="text-xl font-bold text-amber-200">+{referral.stats.sc_total}</p>
+                      </div>
+                    </div>
+
                     <p className="text-xs text-white/40 mb-6">
                       {referral.stats.next_milestone_in === 0
-                        ? tr(`Следующий бонус +${referral.rules.milestone_bonus} ₽ — ещё за ${referral.rules.milestone_step} друзей.`, `Next bonus +${referral.rules.milestone_bonus} ₽ — for ${referral.rules.milestone_step} more friends.`)
-                        : tr(`До следующего бонуса +${referral.rules.milestone_bonus} ₽ осталось пригласить: ${referral.stats.next_milestone_in}.`, `${referral.stats.next_milestone_in} more invites until the next +${referral.rules.milestone_bonus} ₽ bonus.`)}
+                        ? tr(`Следующий бонус +${referral.rules.milestone_bonus} ₽ и +${referral.rules.milestone_sc} SC — ещё за ${referral.rules.milestone_step} друзей.`, `Next bonus +${referral.rules.milestone_bonus} ₽ and +${referral.rules.milestone_sc} SC — for ${referral.rules.milestone_step} more friends.`)
+                        : tr(`До следующего бонуса +${referral.rules.milestone_bonus} ₽ и +${referral.rules.milestone_sc} SC осталось пригласить: ${referral.stats.next_milestone_in}.`, `${referral.stats.next_milestone_in} more invites until the next +${referral.rules.milestone_bonus} ₽ and +${referral.rules.milestone_sc} SC bonus.`)}
                     </p>
 
                     <h4 className="text-lg font-semibold mb-3">{tr("Приглашённые", "Invited users")}</h4>
@@ -2593,6 +2642,16 @@ export default function Dashboard() {
                             : tr(`Получить награду — день ${reward.day}`, `Claim reward — day ${reward.day}`)}
                   </button>
                 </div>
+              </div>
+              )}
+
+              {tab === "quests" && (
+              <div className="mb-12">
+                <DailyQuests
+                  onBalance={(balance) =>
+                    setUser((prev) => (prev ? { ...prev, sc_coins: balance } : prev))
+                  }
+                />
               </div>
               )}
 

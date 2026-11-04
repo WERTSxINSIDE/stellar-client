@@ -109,19 +109,28 @@ const FAQ: FaqEntry[] = [
     id: "faq-coins",
     question: { ru: "Что такое SC-монеты и как их получить?", en: "What are SC coins and how do I earn them?" },
     answer: {
-      ru: "SC — внутренняя валюта клуба. +10 SC дают за ежедневную награду, +25 за одобренный отзыв, 1 SC за каждые 10 ₽ покупки, +50 за новое достижение и +1 SC за каждые 10 минут игры в клиенте (до 30 SC в день). Монеты тратятся на косметику: цвета ника, рамки, бейджи, темы профиля и темы всего сайта.",
-      en: "SC is the club's internal currency. You get +10 SC for a daily reward, +25 for an approved review, 1 SC per 10 ₽ spent, +50 for a new achievement and +1 SC per 10 minutes played in the client (up to 30 SC/day). Coins are spent on cosmetics: nickname colors, frames, badges, profile themes and whole-site themes.",
+      ru: "SC — внутренняя валюта клуба. Монеты дают за ежедневные квесты (до 65 SC в день), ежедневную награду (+10 SC), одобренный отзыв (+25), покупки (1 SC за каждые 10 ₽), достижения (+50) и игру в клиенте (+1 SC за 10 минут, до 30 SC в день). Ещё SC начисляются за приглашённых друзей. Тратить их можно на косметику или обменять на рубли в кабинете.",
+      en: "SC is the club's internal currency. You earn it from daily quests (up to 65 SC/day), the daily reward (+10 SC), approved reviews (+25), purchases (1 SC per 10 ₽), achievements (+50) and playtime (+1 SC per 10 minutes, up to 30 SC/day). Referrals also give SC. Spend it on cosmetics or exchange it for rubles in the dashboard.",
     },
-    keywords: ["sc", "монеты", "coins", "валюта", "currency", "косметика", "cosmetics"],
+    keywords: ["sc", "монеты", "coins", "валюта", "currency", "косметика", "cosmetics", "квесты", "quests"],
+  },
+  {
+    id: "faq-exchange",
+    question: { ru: "Как обменять SC на рубли?", en: "How do I exchange SC for rubles?" },
+    answer: {
+      ru: "Откройте в кабинете раздел «Обменник». Курс фиксированный: 10 SC = 1 ₽. В рубли можно перевести любую сумму SC, кратную 10. Рубли на SC меняются любой целой суммой. Обмен происходит сразу, комиссии нет.",
+      en: "Open the “Exchange” section in the dashboard. The rate is fixed: 10 SC = 1 ₽. You can convert any SC amount that is a multiple of 10 into rubles. Rubles can be swapped to SC in any whole amount. The exchange is instant and has no fee.",
+    },
+    keywords: ["обмен", "exchange", "обменник", "sc в рубли", "рубли в sc", "курс", "rate"],
   },
   {
     id: "faq-clans",
     question: { ru: "Что дают кланы?", en: "What do clans give?" },
     answer: {
-      ru: "Клан объединяет игроков: общий прогресс и уровень, клановый лидерборд, казна и бонус к ежедневным SC за состав. XP клану дают ежедневная награда, покупки, одобренные отзывы, взносы в казну и время в игре: 2 XP за каждые 30 минут (до 20 XP в день). Сообщения в чате XP не дают. Вступить можно по заявке или приглашению, а создать свой клан — на странице «Кланы».",
-      en: "A clan brings players together: shared progress and level, a clan leaderboard, treasury and a daily SC bonus based on composition. Clan XP comes from daily rewards, purchases, approved reviews, treasury deposits and playtime: 2 XP per 30 minutes (up to 20 XP/day). Chat messages give no XP. Join by application or invite, or create your own clan on the “Clans” page.",
+      ru: "Клан объединяет игроков: общий прогресс и уровень, лидерборд, казна и бонус к ежедневным SC за состав. XP клану дают ежедневная награда, покупки, отзывы, взносы в казну и время в игре. Раз в неделю доступны клановые миссии — за них каждый участник получает SC. Забрать награду может офицер и выше, если в клане хотя бы 3 человека. Вступить можно по заявке или приглашению.",
+      en: "A clan brings players together: shared progress and level, a leaderboard, treasury and a daily SC bonus based on composition. Clan XP comes from daily rewards, purchases, reviews, treasury deposits and playtime. Weekly clan missions give SC to every member. An officer or higher can claim the reward once the clan has at least 3 members. Join by application or invite.",
     },
-    keywords: ["клан", "clan", "кланы", "clans", "лидерборд", "leaderboard", "казна", "treasury"],
+    keywords: ["клан", "clan", "кланы", "clans", "миссии", "missions", "лидерборд", "leaderboard", "казна", "treasury"],
   },
   {
     id: "faq-download",
