@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query, queryOne, addBalanceHistory } from "@/lib/db";
+import { addBalanceHistory, withTransaction } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -25,16 +25,43 @@ export async function POST(req: Request) {
 
     if (hwid) {
       const price = 150;
-      const userData = await queryOne("SELECT balance FROM users WHERE id = $1", [user.id]) as { balance: number | null } | undefined;
-      if (!userData) {
-        return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+
+      const result = await withTransaction(async (client) => {
+        const row = await client.query(
+          "SELECT COALESCE(balance, 0) AS balance FROM users WHERE id = $1 FOR UPDATE",
+          [user.id]
+        );
+        if (!row.rows.length) {
+          return { error: "Пользователь не найден", status: 404 } as const;
+        }
+
+        const balance = Number(row.rows[0].balance) || 0;
+        if (balance < price) {
+          return {
+            error: `Недостаточно баланса. Нужно ${price}₽, у вас ${balance}₽`,
+            status: 400,
+          } as const;
+        }
+
+        const updated = await client.query(
+          `UPDATE users SET balance = balance - $1, hwid = NULL
+           WHERE id = $2 AND COALESCE(balance, 0) >= $1
+           RETURNING balance`,
+          [price, user.id]
+        );
+        if (!updated.rows.length) {
+          return { error: "Недостаточно баланса", status: 400 } as const;
+        }
+
+        await addBalanceHistory(user.id, -price, "hwid", "Сброс HWID", client);
+
+        return { balance: Number(updated.rows[0].balance) || 0 } as const;
+      });
+
+      if ("error" in result) {
+        return NextResponse.json({ error: result.error }, { status: result.status });
       }
-      if ((userData.balance || 0) < price) {
-        return NextResponse.json({ error: `Недостаточно баланса. Нужно ${price}₽, у вас ${userData.balance || 0}₽` }, { status: 400 });
-      }
-      await query("UPDATE users SET balance = balance - $1, hwid = NULL WHERE id = $2", [price, user.id]);
-      await addBalanceHistory(user.id, -price, "hwid", "Сброс HWID");
-      return NextResponse.json({ ok: true, balance: (userData.balance || 0) - price });
+      return NextResponse.json({ ok: true, balance: result.balance });
     }
 
     if (!days) {
@@ -46,29 +73,66 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Неизвестный тариф" }, { status: 400 });
     }
 
-    const userData = await queryOne("SELECT balance, subscription_end FROM users WHERE id = $1", [user.id]) as { balance: number | null; subscription_end: string | null } | undefined;
-    if (!userData) {
-      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+    const result = await withTransaction(async (client) => {
+      const row = await client.query(
+        "SELECT COALESCE(balance, 0) AS balance, subscription_end FROM users WHERE id = $1 FOR UPDATE",
+        [user.id]
+      );
+      if (!row.rows.length) {
+        return { error: "Пользователь не найден", status: 404 } as const;
+      }
+
+      const balance = Number(row.rows[0].balance) || 0;
+      if (balance < price) {
+        return {
+          error: `Недостаточно баланса. Нужно ${price}₽, у вас ${balance}₽`,
+          status: 400,
+        } as const;
+      }
+
+      let base: Date;
+      if (row.rows[0].subscription_end) {
+        const current = new Date(String(row.rows[0].subscription_end).replace(" ", "T"));
+        base = current > new Date() ? current : new Date();
+      } else {
+        base = new Date();
+      }
+      base.setDate(base.getDate() + Number(days));
+      const newEnd = base.toISOString().slice(0, 19).replace("T", " ");
+
+      const updated = await client.query(
+        `UPDATE users SET balance = balance - $1, subscription_end = $2, sub_gifted = 0
+         WHERE id = $3 AND COALESCE(balance, 0) >= $1
+         RETURNING balance`,
+        [price, newEnd, user.id]
+      );
+      if (!updated.rows.length) {
+        return { error: "Недостаточно баланса", status: 400 } as const;
+      }
+
+      await addBalanceHistory(
+        user.id,
+        -price,
+        "subscription",
+        `Покупка подписки на ${days} дн.`,
+        client
+      );
+
+      return {
+        balance: Number(updated.rows[0].balance) || 0,
+        subscription_end: newEnd,
+      } as const;
+    });
+
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
-    if ((userData.balance || 0) < price) {
-      return NextResponse.json({ error: `Недостаточно баланса. Нужно ${price}₽, у вас ${userData.balance || 0}₽` }, { status: 400 });
-    }
-
-    let base: Date;
-    if (userData.subscription_end) {
-      const current = new Date(userData.subscription_end.replace(" ", "T"));
-      base = current > new Date() ? current : new Date();
-    } else {
-      base = new Date();
-    }
-    base.setDate(base.getDate() + days);
-    const newEnd = base.toISOString().slice(0, 19).replace("T", " ");
-
-    await query("UPDATE users SET balance = balance - $1, subscription_end = $2, sub_gifted = 0 WHERE id = $3", [price, newEnd, user.id]);
-    await addBalanceHistory(user.id, -price, "subscription", `Покупка подписки на ${days} дн.`);
-
-    return NextResponse.json({ ok: true, balance: (userData.balance || 0) - price, subscription_end: newEnd });
+    return NextResponse.json({
+      ok: true,
+      balance: result.balance,
+      subscription_end: result.subscription_end,
+    });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });
   }

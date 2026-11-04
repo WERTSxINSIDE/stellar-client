@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { query, queryOne, queryAll, addBalanceHistory } from "@/lib/db";
+import { query, queryOne, queryAll, addBalanceHistory, withTransaction } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { logAdminAction, findUserForLog } from "@/lib/audit";
 import bcrypt from "bcrypt";
 
 export async function POST(req: Request) {
@@ -11,6 +12,13 @@ export async function POST(req: Request) {
     }
 
     const { action, user_id, role, ban_reason, days, new_password, new_username } = await req.json();
+
+    const adminUser = admin as { id: number; username: string };
+
+    async function logTarget(name: string, userId?: number | null, details?: string | null) {
+      const target = userId ? await findUserForLog(Number(userId)) : null;
+      await logAdminAction(adminUser, name, target, details ?? null);
+    }
 
     if (action === "list") {
       const users = await queryAll("SELECT id, username, email, role, subscription_end, hwid, is_admin, banned, ban_reason, created_at, balance FROM users ORDER BY id");
@@ -23,6 +31,7 @@ export async function POST(req: Request) {
       if (!validRoles.includes(role)) return NextResponse.json({ error: `Роль должна быть: ${validRoles.join(", ")}` }, { status: 400 });
       const isAdmin = role === "admin" ? 1 : 0;
       await query("UPDATE users SET is_admin = $1, role = $2 WHERE id = $3", [isAdmin, role, user_id]);
+      await logTarget("user.set-role", user_id, `Роль: ${role}`);
       return NextResponse.json({ ok: true });
     }
 
@@ -30,19 +39,23 @@ export async function POST(req: Request) {
       if (!user_id) return NextResponse.json({ error: "Укажите user_id" }, { status: 400 });
       await query("UPDATE users SET banned = 1, ban_reason = $1 WHERE id = $2", [ban_reason || null, user_id]);
       await query("DELETE FROM sessions WHERE user_id = $1", [user_id]);
+      await logTarget("user.ban", user_id, ban_reason || null);
       return NextResponse.json({ ok: true });
     }
 
     if (action === "unban") {
       if (!user_id) return NextResponse.json({ error: "Укажите user_id" }, { status: 400 });
       await query("UPDATE users SET banned = 0, ban_reason = NULL WHERE id = $1", [user_id]);
+      await logTarget("user.unban", user_id);
       return NextResponse.json({ ok: true });
     }
 
     if (action === "delete") {
       if (!user_id) return NextResponse.json({ error: "Укажите user_id" }, { status: 400 });
+      const target = await findUserForLog(Number(user_id));
       await query("DELETE FROM sessions WHERE user_id = $1", [user_id]);
       await query("DELETE FROM users WHERE id = $1", [user_id]);
+      await logAdminAction(admin, "user.delete", target);
       return NextResponse.json({ ok: true });
     }
 
@@ -59,6 +72,7 @@ export async function POST(req: Request) {
         ? new Date(nowMs).toISOString().slice(0, 19).replace("T", " ")
         : new Date(targetMs).toISOString().slice(0, 19).replace("T", " ");
       await query("UPDATE users SET subscription_end = $1 WHERE id = $2", [newEnd, user_id]);
+      await logTarget("user.reduce-subscription", user_id, `-${days} дн., до ${newEnd}`);
       return NextResponse.json({ ok: true, subscription_end: newEnd });
     }
 
@@ -76,6 +90,7 @@ export async function POST(req: Request) {
       base.setDate(base.getDate() + days);
       const newEnd = base.toISOString().slice(0, 19).replace("T", " ");
       await query("UPDATE users SET subscription_end = $1, sub_gifted = 0 WHERE id = $2", [newEnd, user_id]);
+      await logTarget("user.add-subscription", user_id, `+${days} дн., до ${newEnd}`);
       return NextResponse.json({ ok: true, subscription_end: newEnd });
     }
 
@@ -84,6 +99,7 @@ export async function POST(req: Request) {
       if (String(new_password).length < 6) return NextResponse.json({ error: "Пароль минимум 6 символов" }, { status: 400 });
       const hash = await bcrypt.hash(String(new_password), 10);
       await query("UPDATE users SET password = $1 WHERE id = $2", [hash, user_id]);
+      await logTarget("user.change-password", user_id);
       return NextResponse.json({ ok: true });
     }
 
@@ -93,6 +109,7 @@ export async function POST(req: Request) {
       const exists = await queryOne("SELECT id FROM users WHERE LOWER(username) = LOWER($1) AND id != $2", [String(new_username), user_id]);
       if (exists) return NextResponse.json({ error: "Ник уже занят" }, { status: 400 });
       await query("UPDATE users SET username = $1 WHERE id = $2", [String(new_username), user_id]);
+      await logTarget("user.change-username", user_id, `Новый ник: ${String(new_username)}`);
       return NextResponse.json({ ok: true });
     }
 
@@ -100,9 +117,30 @@ export async function POST(req: Request) {
       if (!user_id) return NextResponse.json({ error: "Укажите user_id" }, { status: 400 });
       if (!days && days !== 0) return NextResponse.json({ error: "Укажите сумму" }, { status: 400 });
       const amount = Number(days);
-      if (isNaN(amount) || amount === 0) return NextResponse.json({ error: "Неверная сумма" }, { status: 400 });
-      await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [amount, user_id]);
-      await addBalanceHistory(user_id, amount, "topup", amount > 0 ? "Начисление администратором" : "Списание администратором");
+      if (!Number.isFinite(amount) || !Number.isInteger(amount) || amount === 0) {
+        return NextResponse.json({ error: "Неверная сумма" }, { status: 400 });
+      }
+
+      const updated = await withTransaction(async (client) => {
+        const found = await client.query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [user_id]);
+        if (!found.rows.length) return false;
+
+        await client.query(
+          "UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE id = $2",
+          [amount, user_id]
+        );
+        await addBalanceHistory(
+          user_id,
+          amount,
+          "topup",
+          amount > 0 ? "Начисление администратором" : "Списание администратором",
+          client
+        );
+        return true;
+      });
+
+      if (!updated) return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+      await logTarget("user.add-balance", user_id, `${amount > 0 ? "+" : ""}${amount} ₽`);
       return NextResponse.json({ ok: true });
     }
 

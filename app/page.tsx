@@ -9,6 +9,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Card from "@/components/Card";
 import GridBackground from "@/components/GridBackground";
+import { useI18n } from "@/lib/i18n";
 
 import {
   Eye,
@@ -18,6 +19,7 @@ import {
 } from "@phosphor-icons/react";
 
 export default function Home() {
+  const { t } = useI18n();
   const [ready, setReady] = useState(false);
   const [news, setNews] = useState<any[]>([]);
   const [online, setOnline] = useState<number | null>(null);
@@ -51,7 +53,7 @@ export default function Home() {
             transition={{ duration: 0.7 }}
             className="text-white relative z-10"
           >
-            <section className="min-h-screen px-48 flex items-center relative">
+            <section className="min-h-screen px-4 sm:px-8 lg:px-16 xl:px-48 py-24 flex items-center relative">
               <GridBackground className="absolute inset-0" />
               <div className="relative z-[2] w-full flex items-center justify-center">
                 <motion.div
@@ -61,42 +63,37 @@ export default function Home() {
                   viewport={{ once: true }}
                   className="text-center"
                 >
-                  <h1 className="text-7xl font-extrabold leading-tight mb-8">
-                    О нас
+                  <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold leading-tight mb-6 sm:mb-8">
+                    {t("home.about")}
                   </h1>
 
-                  <p className="text-xl text-white/60 max-w-2xl mb-6 leading-relaxed">
-                    Мы — команда разработчиков, которая создаёт игровой клиент нового поколения.
-                    Наша цель — дать игрокам максимум производительности, стабильности и комфорта
-                    без компромиссов.
+                  <p className="text-base sm:text-xl text-white/60 max-w-2xl mx-auto mb-5 sm:mb-6 leading-relaxed">
+                    {t("home.p1")}
                   </p>
 
-                  <p className="text-lg text-white/45 max-w-2xl mb-12 leading-relaxed">
-                    Stellar Client — это современный клиент с поддержкой самых актуальных версий игры,
-                    продвинутыми модулями, интуитивным интерфейсом и молниеносной скоростью работы.
-                    Мы постоянно обновляем продукт, прислушиваемся к сообществу и делаем всё,
-                    чтобы каждый пользователь получил лучший игровой опыт.
+                  <p className="text-sm sm:text-lg text-white/45 max-w-2xl mx-auto mb-10 sm:mb-12 leading-relaxed">
+                    {t("home.p2")}
                   </p>
 
-                  <div className="grid grid-cols-2 gap-6 mb-14">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6 mb-12 sm:mb-14">
                     <div>
-                      <p className="text-4xl font-bold">{online !== null ? `${online} онлайн` : "50+"}</p>
-                      <p className="text-white/50">Активные пользователи</p>
+                      <p className="text-3xl sm:text-4xl font-bold">{online !== null ? t("home.online", { count: online }) : "50+"}</p>
+                      <p className="text-white/50 text-sm sm:text-base">{t("home.activeUsers")}</p>
                     </div>
                     <div>
-                      <p className="text-4xl font-bold">30%+</p>
-                      <p className="text-white/50">Больше FPS</p>
+                      <p className="text-3xl sm:text-4xl font-bold">30%+</p>
+                      <p className="text-white/50 text-sm sm:text-base">{t("home.moreFps")}</p>
                     </div>
                     <div>
-                      <p className="text-4xl font-bold">24/7</p>
-                      <p className="text-white/50">Поддержка</p>
+                      <p className="text-3xl sm:text-4xl font-bold">24/7</p>
+                      <p className="text-white/50 text-sm sm:text-base">{t("home.support")}</p>
                     </div>
                   </div>
                 </motion.div>
               </div>
             </section>
 
-            <section className="min-h-screen flex items-center px-48 relative">
+            <section className="min-h-screen flex items-center px-4 sm:px-8 lg:px-16 xl:px-48 py-24 relative">
               <motion.div
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -104,36 +101,36 @@ export default function Home() {
                 viewport={{ once: true }}
                 className="w-full"
               >
-                <h1 className="text-6xl font-extrabold mb-10">
-                  Наши преимущества
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold mb-8 sm:mb-10">
+                  {t("home.advantages")}
                 </h1>
 
-                <div className="grid grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8">
                   <Card
                     icon={<Eye size={26} />}
-                    title="Beautiful Visuals"
-                    description="Чистые эффекты, отточенный интерфейс и современный стиль."
+                    title={t("home.visualsTitle")}
+                    description={t("home.visualsDesc")}
                   />
                   <Card
                     icon={<SlidersHorizontal size={26} />}
-                    title="Fully Customizable"
-                    description="Настраивай модули, визуалы, интерфейс и эффекты именно так, как хочешь."
+                    title={t("home.customTitle")}
+                    description={t("home.customDesc")}
                   />
                   <Card
                     icon={<Gauge size={26} />}
-                    title="High Performance"
-                    description="Плавный геймплей, оптимизированный FPS, стабильная работа."
+                    title={t("home.perfTitle")}
+                    description={t("home.perfDesc")}
                   />
                   <Card
                     icon={<ArrowsClockwise size={26} />}
-                    title="Frequent Updates"
-                    description="Новые функции, улучшения и исправления багов на постоянной основе."
+                    title={t("home.updatesTitle")}
+                    description={t("home.updatesDesc")}
                   />
                 </div>
               </motion.div>
             </section>
 
-            <section className="min-h-screen flex items-center justify-center px-48 relative">
+            <section className="min-h-screen flex items-center justify-center px-4 sm:px-8 lg:px-16 xl:px-48 py-24 relative">
               <motion.div
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -141,13 +138,13 @@ export default function Home() {
                 viewport={{ once: true }}
                 className="w-full flex flex-col items-center justify-center"
               >
-                <h1 className="text-6xl font-extrabold mb-12 text-center">
-                  Демонстрация геймплея
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold mb-8 sm:mb-12 text-center">
+                  {t("home.gameplay")}
                 </h1>
 
                 <div className="w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
                   <iframe
-                    className="rounded-2xl w-full h-[450px]"
+                    className="rounded-2xl w-full h-[220px] sm:h-[340px] lg:h-[450px]"
                     src="https://www.youtube.com/embed/dQw4w9WgXcQ"
                     title="Gameplay Video"
                     frameBorder="0"
@@ -159,16 +156,16 @@ export default function Home() {
             </section>
 
             {news.length > 0 && (
-              <section className="py-24 px-48 relative">
+              <section className="py-16 sm:py-24 px-4 sm:px-8 lg:px-16 xl:px-48 relative">
                 <motion.div
                   initial={{ opacity: 0, y: 40 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.7 }}
                   viewport={{ once: true }}
-                  className="text-center mb-16"
+                  className="text-center mb-10 sm:mb-16"
                 >
-                  <h1 className="text-6xl font-extrabold mb-4">Новости</h1>
-                  <p className="text-white/50 text-lg">Последние обновления и события</p>
+                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold mb-4">{t("home.news")}</h1>
+                  <p className="text-white/50 text-base sm:text-lg">{t("home.newsSubtitle")}</p>
                 </motion.div>
 
                 <div className="max-w-4xl mx-auto flex flex-col gap-6">

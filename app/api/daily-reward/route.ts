@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { query, queryOne, addBalanceHistory } from "@/lib/db";
+import { addBalanceHistory, query, queryOne, withTransaction, type DbExecutor } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -35,44 +35,60 @@ function yesterdayStr(): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
-function formatDate(d: Date): string {
-  return d.toISOString().replace("T", " ").slice(0, 19);
-}
+type RewardRow = { streak_day: number | null; last_claim: string | null };
 
-async function saveClaim(userId: number, day: number, today: string) {
-  await query(
-    `INSERT INTO daily_rewards (user_id, streak_day, last_claim) VALUES ($1, $2, $3)
-     ON CONFLICT (user_id) DO UPDATE SET streak_day = $2, last_claim = $3`,
-    [userId, day, today]
-  );
-}
-
-// Какой день цикла сегодня: 1..7, забран ли уже сегодняшний, не завершён ли цикл
-async function getState(userId: number) {
-  const row = await queryOne(
-    "SELECT streak_day, to_char(last_claim, 'YYYY-MM-DD') AS last_claim FROM daily_rewards WHERE user_id = $1",
-    [userId]
-  ) as { streak_day: number; last_claim: string | null } | undefined;
-
+function stateFromRow(row: RewardRow | null | undefined, today: string, yesterday: string) {
   if (!row) {
     return { day: 1, claimedToday: false, finished: false };
   }
 
+  const streak = Number(row.streak_day) || 0;
   const last = row.last_claim || null;
 
-  // Цикл уже пройден полностью — повторов нет
-  if (row.streak_day >= 7) {
-    return { day: 7, claimedToday: last === todayStr(), finished: true };
+  if (streak < 1) {
+    return { day: 1, claimedToday: last === today, finished: false };
   }
 
-  if (last === todayStr()) {
-    return { day: row.streak_day, claimedToday: true, finished: false };
+  // Цикл уже пройден полностью — повторов нет
+  if (streak >= 7) {
+    return { day: 7, claimedToday: last === today, finished: true };
   }
-  if (last === yesterdayStr()) {
-    return { day: row.streak_day + 1, claimedToday: false, finished: false };
+
+  if (last === today) {
+    return { day: streak, claimedToday: true, finished: false };
+  }
+  if (last === yesterday) {
+    return { day: streak + 1, claimedToday: false, finished: false };
   }
   // пропуск дня — продолжаем с того же дня, без возврата к 1
-  return { day: row.streak_day, claimedToday: false, finished: false };
+  return { day: streak, claimedToday: false, finished: false };
+}
+
+async function saveClaim(
+  userId: number,
+  day: number,
+  today: string,
+  db?: DbExecutor
+) {
+  const text = `INSERT INTO daily_rewards (user_id, streak_day, last_claim) VALUES ($1, $2, $3)
+     ON CONFLICT (user_id) DO UPDATE SET streak_day = $2, last_claim = $3`;
+
+  if (db) {
+    await db.query(text, [userId, day, today]);
+    return;
+  }
+
+  await query(text, [userId, day, today]);
+}
+
+// Какой день цикла сегодня: 1..7, забран ли уже сегодняшний, не завершён ли цикл
+async function getState(userId: number) {
+  const row = (await queryOne(
+    "SELECT streak_day, to_char(last_claim, 'YYYY-MM-DD') AS last_claim FROM daily_rewards WHERE user_id = $1",
+    [userId]
+  )) as RewardRow | null;
+
+  return stateFromRow(row, todayStr(), yesterdayStr());
 }
 
 export async function GET() {
@@ -102,49 +118,85 @@ export async function POST() {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    const state = await getState(user.id);
-    if (state.finished) {
-      return NextResponse.json({ error: "Все награды уже получены" }, { status: 409 });
-    }
-    if (state.claimedToday) {
-      return NextResponse.json({ error: "Награда за сегодня уже получена" }, { status: 409 });
-    }
+    const result = await withTransaction(async (client) => {
+      // Сериализуем получение награды конкретным пользователем,
+      // чтобы двойной клик не выдал награду дважды.
+      await client.query("SELECT pg_advisory_xact_lock($1::bigint)", [user.id]);
 
-    const reward = REWARDS[state.day - 1];
-    const today = todayStr();
-    const nowFinished = reward.day >= 7;
-    let message = "";
+      const locked = await client.query(
+        `SELECT streak_day, to_char(last_claim, 'YYYY-MM-DD') AS last_claim
+         FROM daily_rewards WHERE user_id = $1`,
+        [user.id]
+      );
 
-    if (reward.type === "balance") {
-      const amount = reward.amount ?? 0;
-      await query("UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE id = $2", [amount, user.id]);
-      await addBalanceHistory(user.id, amount, "reward", `Ежедневная награда — день ${reward.day}`);
-      const u = await queryOne("SELECT balance FROM users WHERE id = $1", [user.id]) as { balance: number };
-      message = `+${amount}₽ на баланс`;
-      await saveClaim(user.id, reward.day, today);
-      return NextResponse.json({
-        ok: true,
+      const today = todayStr();
+      const state = stateFromRow(locked.rows[0], today, yesterdayStr());
+
+      if (state.finished) {
+        return { error: "Все награды уже получены", status: 409 } as const;
+      }
+      if (state.claimedToday) {
+        return { error: "Награда за сегодня уже получена", status: 409 } as const;
+      }
+
+      const reward = REWARDS[state.day - 1];
+      if (!reward) {
+        return { error: "Награда не найдена", status: 500 } as const;
+      }
+
+      const nowFinished = reward.day >= 7;
+
+      if (reward.type === "balance") {
+        const amount = reward.amount ?? 0;
+        const updated = await client.query(
+          `UPDATE users SET balance = COALESCE(balance, 0) + $1
+           WHERE id = $2 RETURNING balance`,
+          [amount, user.id]
+        );
+        await addBalanceHistory(
+          user.id,
+          amount,
+          "reward",
+          `Ежедневная награда — день ${reward.day}`,
+          client
+        );
+        await saveClaim(user.id, reward.day, today, client);
+
+        return {
+          day: reward.day,
+          message: `+${amount}₽ на баланс`,
+          balance: Number(updated.rows[0]?.balance) || 0,
+          finished: nowFinished,
+        } as const;
+      }
+
+      // крутки рулетки
+      const spins = reward.spins ?? 1;
+      await client.query(
+        "UPDATE users SET spin_count = COALESCE(spin_count, 0) + $1 WHERE id = $2",
+        [spins, user.id]
+      );
+      await saveClaim(user.id, reward.day, today, client);
+
+      return {
         day: reward.day,
-        message,
-        balance: u.balance,
-        subscription_end: null,
+        message: `+${spins} крут${spins === 1 ? "ка" : "ки"} рулетки`,
+        balance: null,
         finished: nowFinished,
-      });
-    }
+      } as const;
+    });
 
-    // крутки рулетки
-    const spins = reward.spins ?? 1;
-    await query("UPDATE users SET spin_count = COALESCE(spin_count, 0) + $1 WHERE id = $2", [spins, user.id]);
-    await saveClaim(user.id, reward.day, today);
-    message = `+${spins} крут${spins === 1 ? "ка" : "ки"} рулетки`;
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
 
     return NextResponse.json({
       ok: true,
-      day: reward.day,
-      message,
-      balance: null,
+      day: result.day,
+      message: result.message,
+      balance: result.balance,
       subscription_end: null,
-      finished: nowFinished,
+      finished: result.finished,
     });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });

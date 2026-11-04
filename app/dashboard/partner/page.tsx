@@ -6,11 +6,14 @@ import Link from "next/link";
 import Image from "next/image";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useI18n, type Lang } from "@/lib/i18n";
 import { ArrowLeft, UsersThree, Check } from "@phosphor-icons/react";
 
 type Platform = "youtube" | "tiktok";
 
 export default function PartnerPage() {
+  const { lang } = useI18n();
+  const tr = (ru: string, en: string) => (lang === "en" ? en : ru);
   const router = useRouter();
   const [platform, setPlatform] = useState<Platform>("youtube");
   const [link, setLink] = useState("");
@@ -40,7 +43,7 @@ export default function PartnerPage() {
     if (sent || sending) return;
     setMsg("");
     if (!link.trim() || !tg.trim() || !views.trim() || !reason.trim()) {
-      setMsg("Пожалуйста, заполните обязательные поля");
+      setMsg(tr("Пожалуйста, заполните обязательные поля", "Please fill in the required fields"));
       return;
     }
     setSending(true);
@@ -59,13 +62,13 @@ export default function PartnerPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setMsg(data.error || "Не удалось отправить заявку");
+        setMsg(data.error || tr("Не удалось отправить заявку", "Could not submit the application"));
         return;
       }
       setSent(true);
-      setMsg("Заявка отправлена ✓ Мы рассмотрим её в ближайшее время");
+      setMsg(tr("Заявка отправлена ✓ Мы рассмотрим её в ближайшее время", "Application submitted ✓ We will review it shortly"));
     } catch {
-      setMsg("Ошибка сети, попробуйте позже");
+      setMsg(tr("Ошибка сети, попробуйте позже", "Network error, try again later"));
     } finally {
       setSending(false);
     }
@@ -86,35 +89,35 @@ export default function PartnerPage() {
             href="/dashboard"
             className="inline-flex items-center gap-2 text-white/50 hover:text-white transition text-sm mb-8"
           >
-            <ArrowLeft size={16} weight="bold" />В кабинет
+            <ArrowLeft size={16} weight="bold" />{tr("В кабинет", "Back to dashboard")}
           </Link>
 
           <p className="text-white/40 text-xs tracking-widest uppercase mb-2">
-            Система Партнёрства
+            {tr("Система Партнёрства", "Partnership System")}
           </p>
           <h1 className="text-5xl font-extrabold mb-3">
             <span className="bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">
-              Стать партнёром
+              {tr("Стать партнёром", "Become a partner")}
             </span>
           </h1>
           <p className="text-white/40 mb-12">
             {platform === "youtube"
-              ? "Заявка на медиа-партнёрство — YouTube"
-              : "Заявка на медиа-партнёрство — TikTok"}
+              ? tr("Заявка на медиа-партнёрство — YouTube", "Media partnership application — YouTube")
+              : tr("Заявка на медиа-партнёрство — TikTok", "Media partnership application — TikTok")}
           </p>
 
           <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-8">
             <div className="flex items-center gap-2 mb-6">
               <UsersThree size={22} className="text-white/70" />
-              <h2 className="text-2xl font-bold">Заявка</h2>
+              <h2 className="text-2xl font-bold">{tr("Заявка", "Application")}</h2>
             </div>
 
             <form onSubmit={submit} className="space-y-5">
               <div>
                 <label className="text-white/40 text-xs mb-1.5 block">
                   {platform === "youtube"
-                    ? "Ссылка на ваш YouTube-канал:"
-                    : "Ссылка на ваш TikTok-аккаунт:"}
+                    ? tr("Ссылка на ваш YouTube-канал:", "Link to your YouTube channel:")
+                    : tr("Ссылка на ваш TikTok-аккаунт:", "Link to your TikTok account:")}
                 </label>
                 <input
                   value={link}
@@ -130,7 +133,7 @@ export default function PartnerPage() {
 
               <div>
                 <label className="text-white/40 text-xs mb-1.5 block">
-                  Ваш Telegram для связи:
+                  {tr("Ваш Telegram для связи:", "Your Telegram for contact:")}
                 </label>
                 <input
                   value={tg}
@@ -143,39 +146,39 @@ export default function PartnerPage() {
               <div>
                 <label className="text-white/40 text-xs mb-1.5 block">
                   {platform === "youtube"
-                    ? "Какие у вас средние просмотры на видео?:"
-                    : "Какие у вас средние просмотры на ролики?:"}
+                    ? tr("Какие у вас средние просмотры на видео?:", "What are your average views per video?:")
+                    : tr("Какие у вас средние просмотры на ролики?:", "What are your average views per video?:")}
                 </label>
                 <input
                   value={views}
                   onChange={(e) => setViews(e.target.value)}
-                  placeholder="Например: 500–1000 в среднем"
+                  placeholder={tr("Например: 500–1000 в среднем", "For example: 500–1000 on average")}
                   className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
                 />
               </div>
 
               <div>
                 <label className="text-white/40 text-xs mb-1.5 block">
-                  Был ли у вас опыт в партнёрстве с другими клиентами?:
+                  {tr("Был ли у вас опыт в партнёрстве с другими клиентами?:", "Have you partnered with other clients before?:")}
                 </label>
                 <textarea
                   value={experience}
                   onChange={(e) => setExperience(e.target.value)}
                   rows={3}
-                  placeholder="Кратко опишите опыт (если есть)"
+                  placeholder={tr("Кратко опишите опыт (если есть)", "Briefly describe your experience (if any)")}
                   className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none resize-none"
                 />
               </div>
 
               <div>
                 <label className="text-white/40 text-xs mb-1.5 block">
-                  Почему вы хотите стать нашим медиа-партнёром?:
+                  {tr("Почему вы хотите стать нашим медиа-партнёром?:", "Why do you want to become our media partner?:")}
                 </label>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={4}
-                  placeholder="Расскажите, почему хотите сотрудничать"
+                  placeholder={tr("Расскажите, почему хотите сотрудничать", "Tell us why you want to work with us")}
                   className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none resize-none"
                 />
               </div>
@@ -196,7 +199,7 @@ export default function PartnerPage() {
                 className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold transition bg-purple-600 hover:bg-purple-700 disabled:opacity-60"
               >
                 <Check size={18} weight="bold" />
-                {sending ? "Отправка..." : sent ? "Заявка отправлена" : "Подать заявку на партнёрство"}
+                {sending ? tr("Отправка...", "Sending...") : sent ? tr("Заявка отправлена", "Application submitted") : tr("Подать заявку на партнёрство", "Apply for partnership")}
               </button>
             </form>
           </div>

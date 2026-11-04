@@ -1,12 +1,73 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import crypto from "crypto";
-import { query, queryOne, User } from "./db";
+import { query, queryAll, queryOne, User } from "./db";
 
 const COOKIE_NAME = "stellar_session";
 
+export type RequestMeta = {
+  userAgent: string | null;
+  ip: string | null;
+};
+
+/** IP и user-agent текущего запроса (за прокси Vercel берём первый x-forwarded-for). */
+export async function getRequestMeta(): Promise<RequestMeta> {
+  try {
+    const h = await headers();
+    const userAgent = (h.get("user-agent") || "").slice(0, 300) || null;
+    const ip =
+      (
+        (h.get("x-forwarded-for") || "").split(",")[0].trim() ||
+        h.get("x-real-ip") ||
+        h.get("cf-connecting-ip") ||
+        ""
+      ).slice(0, 64) || null;
+    return { userAgent, ip };
+  } catch {
+    return { userAgent: null, ip: null };
+  }
+}
+
+/** Короткое человекочитаемое описание браузера/ОС для писем и уведомлений. */
+export function describeUserAgent(userAgent: string | null): string {
+  if (!userAgent) return "Неизвестное устройство";
+  const ua = userAgent.toLowerCase();
+  const os = ua.includes("windows")
+    ? "Windows"
+    : ua.includes("android")
+    ? "Android"
+    : ua.includes("iphone") || ua.includes("ipad")
+    ? "iOS"
+    : ua.includes("mac os")
+    ? "macOS"
+    : ua.includes("linux")
+    ? "Linux"
+    : "";
+  const browser = ua.includes("edg/")
+    ? "Edge"
+    : ua.includes("chrome") && !ua.includes("chromium")
+    ? "Chrome"
+    : ua.includes("firefox")
+    ? "Firefox"
+    : ua.includes("safari") && !ua.includes("chrome")
+    ? "Safari"
+    : "";
+  const label = [os, browser].filter(Boolean).join(" · ");
+  return label || userAgent.slice(0, 80);
+}
+
+export async function getSessionToken(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get(COOKIE_NAME)?.value ?? null;
+}
+
 export async function createSession(userId: number, remember: boolean = true) {
   const token = crypto.randomBytes(32).toString("hex");
-  await query("INSERT INTO sessions (token, user_id) VALUES ($1, $2)", [token, userId]);
+  const { userAgent, ip } = await getRequestMeta();
+
+  await query(
+    "INSERT INTO sessions (token, user_id, user_agent, ip) VALUES ($1, $2, $3, $4)",
+    [token, userId, userAgent, ip]
+  );
 
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
@@ -16,6 +77,29 @@ export async function createSession(userId: number, remember: boolean = true) {
     path: "/",
     maxAge: remember ? 60 * 60 * 24 * 30 : undefined,
   });
+}
+
+/**
+ * Считается ли вход новым устройством.
+ * Первый вход в аккаунт не считаем подозрительным, чтобы не пугать письмом.
+ */
+export async function isNewLoginDevice(userId: number, meta: RequestMeta): Promise<boolean> {
+  const rows = (await queryAll(
+    "SELECT user_agent, ip FROM sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 200",
+    [userId]
+  )) as { user_agent: string | null; ip: string | null }[];
+
+  if (!rows.length) return false;
+
+  if (meta.userAgent) {
+    if (rows.some((r) => r.user_agent === meta.userAgent)) return false;
+    // Старые сессии без user-agent: ориентируемся по IP.
+    if (meta.ip && rows.some((r) => !r.user_agent && r.ip === meta.ip)) return false;
+    return true;
+  }
+
+  if (meta.ip && rows.some((r) => r.ip === meta.ip)) return false;
+  return true;
 }
 
 export async function getCurrentUser(): Promise<Omit<User, "password"> | null> {

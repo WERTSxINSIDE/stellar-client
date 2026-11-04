@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { query, queryOne } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,11 +13,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
 
-    const { duration_days, count = 1 } = await req.json();
+    const { duration_days, count = 1, price } = await req.json();
 
     if (!duration_days || duration_days < 1) {
       return NextResponse.json({ error: "Укажите длительность в днях" }, { status: 400 });
     }
+
+    const keyPriceValue =
+      price === undefined || price === null || price === ""
+        ? null
+        : Math.max(0, Math.round(Number(price)));
 
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     const segments = [7, 4, 4];
@@ -31,9 +37,18 @@ export async function POST(req: Request) {
         const existing = await queryOne("SELECT id FROM keys WHERE key = $1", [key]);
         if (!existing) unique = true;
       }
-      await query("INSERT INTO keys (key, duration_days) VALUES ($1, $2)", [key, duration_days]);
+      await query("INSERT INTO keys (key, duration_days, price) VALUES ($1, $2, $3)", [key, duration_days, keyPriceValue]);
       keys.push(key);
     }
+
+    await logAdminAction(
+      admin,
+      "keys.generate",
+      null,
+      `Сгенерировано ключей: ${keys.length}, срок ${duration_days} дн.${
+        keyPriceValue !== null ? `, цена ${keyPriceValue} ₽` : ""
+      }`
+    );
 
     return NextResponse.json({ ok: true, keys });
   } catch {

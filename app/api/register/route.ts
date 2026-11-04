@@ -1,12 +1,25 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import { query, queryOne } from "@/lib/db";
-import { createSession } from "@/lib/auth";
+import { query, queryOne, withTransaction } from "@/lib/db";
+import { createSession, getRequestMeta } from "@/lib/auth";
 import { emailVerificationEnabled } from "@/lib/email";
+import {
+  REFERRAL_MILESTONE_BONUS,
+  REFERRAL_MILESTONE_STEP,
+  REFERRAL_SIGNUP_BONUS,
+} from "@/lib/keys";
+import { notifyUser } from "@/lib/notify";
+import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
+import { safeRefreshUserRisk } from "@/lib/risk";
+import {
+  DISPOSABLE_EMAIL_ERROR,
+  isDisposableEmail,
+} from "@/lib/disposable-emails";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 export async function POST(req: Request) {
   try {
-    const { username, email, password, code } = await req.json();
+    const { username, email, password, code, ref, turnstile_token } = await req.json();
 
     if (!username || !email || !password) {
       return NextResponse.json({ error: "Заполните все поля" }, { status: 400 });
@@ -16,6 +29,27 @@ export async function POST(req: Request) {
     }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return NextResponse.json({ error: "Некорректный email" }, { status: 400 });
+    }
+    if (isDisposableEmail(email)) {
+      return NextResponse.json({ error: DISPOSABLE_EMAIL_ERROR }, { status: 400 });
+    }
+
+    // Не даём массово создавать аккаунты с одного IP и на один email.
+    const limited = await enforceRateLimit(req, [
+      { scope: "register:ip", identifier: getClientIp(req), limit: 8, windowMs: 60 * 60_000 },
+      {
+        scope: "register:email",
+        identifier: String(email).toLowerCase(),
+        limit: 3,
+        windowMs: 60 * 60_000,
+      },
+    ]);
+    if (limited) return limited;
+
+    // Капча проверяется только если заданы ключи Turnstile.
+    const captcha = await verifyTurnstile(turnstile_token, getClientIp(req));
+    if (!captcha.ok) {
+      return NextResponse.json({ error: captcha.error }, { status: 400 });
     }
 
     const exists = await queryOne("SELECT id FROM users WHERE username = $1 OR email = $2", [username, email]);
@@ -32,7 +66,7 @@ export async function POST(req: Request) {
 
       const row = await queryOne(
         `SELECT id, code, attempts, EXTRACT(EPOCH FROM (NOW() - created_at))::int AS age
-         FROM email_codes WHERE email = $1 ORDER BY created_at DESC LIMIT 1`,
+         FROM email_codes WHERE email = $1 AND purpose = 'register' ORDER BY created_at DESC LIMIT 1`,
         [lower]
       ) as any;
 
@@ -54,16 +88,124 @@ export async function POST(req: Request) {
         );
       }
 
-      await query("DELETE FROM email_codes WHERE email = $1", [lower]);
+      await query("DELETE FROM email_codes WHERE email = $1 AND purpose = 'register'", [lower]);
     }
 
+    const referralName = typeof ref === "string" ? ref.trim() : "";
+    const { ip: signupIp } = await getRequestMeta();
     const hash = await bcrypt.hash(password, 10);
-    const result = await query(
-      "INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id",
-      [username, email, hash]
-    );
 
-    await createSession(result.rows[0].id);
+    const outcome = await withTransaction(async (client) => {
+      let referrer: { id: number; username: string; signup_ip: string | null } | null = null;
+
+      if (referralName) {
+        const found = await client.query(
+          "SELECT id, username, signup_ip FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1 FOR UPDATE",
+          [referralName]
+        );
+        referrer = found.rows[0] ?? null;
+      }
+
+      // Антифрод: регистрация с того же IP, что у пригласившего, бонусов не даёт.
+      let referralFraud = false;
+      if (referrer && signupIp) {
+        if (referrer.signup_ip && referrer.signup_ip === signupIp) {
+          referralFraud = true;
+        } else {
+          const sameIp = await client.query(
+            "SELECT 1 FROM sessions WHERE user_id = $1 AND ip = $2 LIMIT 1",
+            [referrer.id, signupIp]
+          );
+          if (sameIp.rows.length) referralFraud = true;
+        }
+      }
+
+      const result = await client.query(
+        `INSERT INTO users (username, email, password, referred_by, signup_ip, referral_fraud)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [username, email, hash, referrer?.id ?? null, signupIp, referralFraud ? 1 : 0]
+      );
+      const newUserId = Number(result.rows[0].id);
+
+      let milestoneBonus = 0;
+
+      if (referrer && referrer.id !== newUserId && !referralFraud) {
+        await client.query(
+          "UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE id = $2",
+          [REFERRAL_SIGNUP_BONUS, referrer.id]
+        );
+        await client.query(
+          "INSERT INTO balance_history (user_id, amount, type, note) VALUES ($1, $2, 'referral', $3)",
+          [referrer.id, REFERRAL_SIGNUP_BONUS, `Регистрация по реферальной ссылке: ${username}`]
+        );
+
+        // Бонус за каждые N успешных приглашений. Учитываем только не фрод.
+        const counted = await client.query(
+          `SELECT COUNT(*)::int AS invited
+           FROM users WHERE referred_by = $1 AND COALESCE(referral_fraud, 0) = 0`,
+          [referrer.id]
+        );
+        const invited = Number(counted.rows[0]?.invited ?? 0);
+
+        const awardedRow = await client.query(
+          `SELECT COUNT(*)::int AS awarded
+           FROM balance_history WHERE user_id = $1 AND type = 'referral_milestone'`,
+          [referrer.id]
+        );
+        const awarded = Number(awardedRow.rows[0]?.awarded ?? 0);
+        const target = Math.floor(invited / REFERRAL_MILESTONE_STEP);
+
+        if (target > awarded) {
+          milestoneBonus = (target - awarded) * REFERRAL_MILESTONE_BONUS;
+          await client.query(
+            "UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE id = $2",
+            [milestoneBonus, referrer.id]
+          );
+          for (let step = awarded + 1; step <= target; step++) {
+            await client.query(
+              "INSERT INTO balance_history (user_id, amount, type, note) VALUES ($1, $2, 'referral_milestone', $3)",
+              [
+                referrer.id,
+                REFERRAL_MILESTONE_BONUS,
+                `${step * REFERRAL_MILESTONE_STEP} приглашённых`,
+              ]
+            );
+          }
+        }
+      }
+
+      return { newUserId, referrer, referralFraud, milestoneBonus };
+    });
+
+    await createSession(outcome.newUserId);
+    await safeRefreshUserRisk(outcome.newUserId, signupIp);
+
+    if (outcome.referrer && outcome.referrer.id !== outcome.newUserId && !outcome.referralFraud) {
+      await notifyUser(
+        outcome.referrer.id,
+        {
+          type: "referral",
+          title: `+${REFERRAL_SIGNUP_BONUS} ₽ за приглашённого`,
+          body: `${username} зарегистрировался по вашей реферальной ссылке.`,
+          link: "/dashboard",
+        },
+        { email: true }
+      ).catch(() => {});
+
+      if (outcome.milestoneBonus > 0) {
+        await notifyUser(
+          outcome.referrer.id,
+          {
+            type: "referral",
+            title: `+${outcome.milestoneBonus} ₽ за приглашения`,
+            body: `Вы пригласили ещё ${REFERRAL_MILESTONE_STEP} человек — бонус за ступень начислен.`,
+            link: "/dashboard",
+          },
+          { email: true }
+        ).catch(() => {});
+      }
+    }
+
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });

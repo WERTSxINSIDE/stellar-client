@@ -6,14 +6,18 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import GridBackground from "@/components/GridBackground";
+import Turnstile from "@/components/Turnstile";
+import { useI18n } from "@/lib/i18n";
 
 export default function RegisterPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [refName, setRefName] = useState("");
 
   const [codeEnabled, setCodeEnabled] = useState(false);
   const [code, setCode] = useState("");
@@ -21,12 +25,18 @@ export default function RegisterPage() {
   const [codeMsg, setCodeMsg] = useState("");
   const [codeErr, setCodeErr] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/email-code")
       .then((r) => r.json())
       .then((d) => setCodeEnabled(!!d.enabled))
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) setRefName(ref.trim().slice(0, 64));
   }, []);
 
   useEffect(() => {
@@ -40,7 +50,7 @@ export default function RegisterPage() {
     setCodeMsg("");
     setCodeErr(false);
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      setCodeMsg("Сначала введите корректный email");
+      setCodeMsg(t("auth.enterValidEmail"));
       setCodeErr(true);
       return;
     }
@@ -53,14 +63,14 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setCodeMsg(data.error || "Не удалось отправить код");
+        setCodeMsg(data.error || t("auth.sendCodeError"));
         setCodeErr(true);
       } else {
-        setCodeMsg(`Код отправлен на ${email}`);
+        setCodeMsg(t("auth.codeSent", { email }));
         setCooldown(60);
       }
     } catch {
-      setCodeMsg("Ошибка сервера");
+      setCodeMsg(t("common.serverError"));
       setCodeErr(true);
     } finally {
       setCodeLoading(false);
@@ -75,17 +85,24 @@ export default function RegisterPage() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, code: code.trim() }),
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+          code: code.trim(),
+          ref: refName || undefined,
+          turnstile_token: turnstileToken || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Ошибка регистрации");
+        setError(data.error || t("auth.registerError"));
         return;
       }
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError("Не удалось подключиться к серверу");
+      setError(t("common.connectionError"));
     } finally {
       setLoading(false);
     }
@@ -95,15 +112,21 @@ export default function RegisterPage() {
     <>
       <Header />
 
-      <main className="min-h-screen w-full text-white relative overflow-hidden flex items-center justify-center px-6 pt-32">
+      <main className="min-h-screen w-full text-white relative overflow-hidden flex items-center justify-center px-4 sm:px-6 pt-28 sm:pt-32 pb-16">
         <GridBackground className="absolute inset-0 z-0 pointer-events-none" />
         <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/40 via-black/60 to-black/80 pointer-events-none" />
 
-        <div className="relative z-20 w-full max-w-lg bg-black/30 backdrop-blur-xl rounded-3xl border border-white/10 p-10 shadow-2xl">
-          <h1 className="text-4xl font-bold text-center mb-3">Регистрация</h1>
+        <div className="relative z-20 w-full max-w-lg bg-black/30 backdrop-blur-xl rounded-3xl border border-white/10 p-6 sm:p-10 shadow-2xl">
+          <h1 className="text-3xl sm:text-4xl font-bold text-center mb-3">{t("auth.registerTitle")}</h1>
           <p className="text-center text-white/60 mb-10">
-            Создайте новый аккаунт
+            {t("auth.registerSubtitle")}
           </p>
+
+          {refName && (
+            <div className="mb-6 rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm text-purple-200">
+              {t("auth.referralInvited", { name: refName })}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <input
@@ -122,7 +145,7 @@ export default function RegisterPage() {
                   maxLength={6}
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder="Код из письма (6 цифр)"
+                  placeholder={t("auth.codePlaceholder")}
                   className="flex-1 min-w-0 bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none tracking-widest"
                 />
                 <button
@@ -132,10 +155,10 @@ export default function RegisterPage() {
                   className="shrink-0 px-4 py-4 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 transition"
                 >
                   {codeLoading
-                    ? "Отправка..."
+                    ? t("auth.sending")
                     : cooldown > 0
-                      ? `${cooldown} сек`
-                      : "Получить код"}
+                      ? t("auth.seconds", { count: cooldown })
+                      : t("auth.getCode")}
                 </button>
               </div>
             )}
@@ -147,7 +170,7 @@ export default function RegisterPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Имя пользователя"
+              placeholder={t("auth.username")}
               className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
             />
 
@@ -155,9 +178,11 @@ export default function RegisterPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Пароль"
+              placeholder={t("auth.password")}
               className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
             />
+
+            <Turnstile onToken={setTurnstileToken} className="flex justify-center" />
 
             {error && (
               <p className="text-red-400 text-sm text-center">{error}</p>
@@ -168,16 +193,16 @@ export default function RegisterPage() {
               disabled={loading}
               className="mt-4 py-4 rounded-xl font-semibold transition bg-purple-600 hover:bg-purple-700 disabled:opacity-60"
             >
-              {loading ? "Создание..." : "Создать аккаунт"}
+              {loading ? t("auth.creating") : t("auth.createAccount")}
             </button>
 
             <p className="text-center mt-3 text-white/50">
-              Уже есть аккаунт?{" "}
+              {t("auth.alreadyHave")}{" "}
               <Link
                 href="/login"
                 className="text-purple-400 hover:text-purple-300"
               >
-                Войти
+                {t("auth.signInLink")}
               </Link>
             </p>
           </form>

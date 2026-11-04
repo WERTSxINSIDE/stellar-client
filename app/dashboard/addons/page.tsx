@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useI18n, type Lang } from "@/lib/i18n";
 import {
   ArrowLeft,
   Key,
@@ -18,6 +19,8 @@ import {
 type Me = { id: number; username: string; email: string } | null;
 
 export default function AddonsPage() {
+  const { lang } = useI18n();
+  const tr = (ru: string, en: string) => (lang === "en" ? en : ru);
   const router = useRouter();
   const [user, setUser] = useState<Me>(null);
 
@@ -61,11 +64,11 @@ export default function AddonsPage() {
   async function activate() {
     setKeyMsg("");
     if (!captchaDone) {
-      setKeyMsg("Сначала пройдите проверку");
+      setKeyMsg(tr("Сначала пройдите проверку", "Please complete the verification first"));
       return;
     }
     if (!licenseKey.trim()) {
-      setKeyMsg("Введите ключ");
+      setKeyMsg(tr("Введите ключ", "Enter a key"));
       return;
     }
     try {
@@ -76,13 +79,13 @@ export default function AddonsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setKeyMsg(data.error || "Ошибка активации");
+        setKeyMsg(data.error || tr("Ошибка активации", "Activation error"));
         return;
       }
-      setKeyMsg(`Ключ активирован! Подписка: +${data.duration_days} дней ✓`);
+      setKeyMsg(tr(`Ключ активирован! Подписка: +${data.duration_days} дней ✓`, `Key activated! Subscription: +${data.duration_days} days ✓`));
       setLicenseKey("");
     } catch {
-      setKeyMsg("Не удалось подключиться к серверу");
+      setKeyMsg(tr("Не удалось подключиться к серверу", "Could not connect to the server"));
     }
   }
 
@@ -92,12 +95,12 @@ export default function AddonsPage() {
     setPassErr(false);
     if (pass1.length < 6) {
       setPassErr(true);
-      setPassMsg("Пароль должен быть не меньше 6 символов");
+      setPassMsg(tr("Пароль должен быть не меньше 6 символов", "Password must be at least 6 characters"));
       return;
     }
     if (pass1 !== pass2) {
       setPassErr(true);
-      setPassMsg("Пароли не совпадают");
+      setPassMsg(tr("Пароли не совпадают", "Passwords do not match"));
       return;
     }
     setPassLoading(true);
@@ -110,15 +113,15 @@ export default function AddonsPage() {
       const data = await res.json();
       if (!res.ok) {
         setPassErr(true);
-        setPassMsg(data.error || "Ошибка смены пароля");
+        setPassMsg(data.error || tr("Ошибка смены пароля", "Password change error"));
         return;
       }
       setPass1("");
       setPass2("");
-      setPassMsg("Пароль изменён ✓");
+      setPassMsg(tr("Пароль изменён ✓", "Password changed ✓"));
     } catch {
       setPassErr(true);
-      setPassMsg("Не удалось подключиться к серверу");
+      setPassMsg(tr("Не удалось подключиться к серверу", "Could not connect to the server"));
     } finally {
       setPassLoading(false);
     }
@@ -127,7 +130,7 @@ export default function AddonsPage() {
   async function resetHwid() {
     setHwidMsg("");
     if (!hwidKey.trim()) {
-      setHwidMsg("Введите ключ");
+      setHwidMsg(tr("Введите ключ", "Enter a key"));
       return;
     }
     setHwidLoading(true);
@@ -139,13 +142,13 @@ export default function AddonsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setHwidMsg(data.error || "Ошибка сброса");
+        setHwidMsg(data.error || tr("Ошибка сброса", "Reset error"));
         return;
       }
-      setHwidMsg("HWID сброшен ✓");
+      setHwidMsg(tr("HWID сброшен ✓", "HWID reset ✓"));
       setHwidKey("");
     } catch {
-      setHwidMsg("Не удалось подключиться к серверу");
+      setHwidMsg(tr("Не удалось подключиться к серверу", "Could not connect to the server"));
     } finally {
       setHwidLoading(false);
     }
@@ -166,19 +169,19 @@ export default function AddonsPage() {
             href="/dashboard"
             className="inline-flex items-center gap-2 text-white/50 hover:text-white transition text-sm mb-8"
           >
-            <ArrowLeft size={16} weight="bold" />В кабинет
+            <ArrowLeft size={16} weight="bold" />{tr("В кабинет", "Back to dashboard")}
           </Link>
 
           <p className="text-white/40 text-xs tracking-widest uppercase mb-2">
-            Аккаунт
+            {tr("Аккаунт", "Account")}
           </p>
           <h1 className="text-5xl font-extrabold mb-3">
             <span className="bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">
-              Дополнения
+              {tr("Дополнения", "Add-ons")}
             </span>
           </h1>
           <p className="text-white/40 mb-12">
-            Активация ключа и настройки безопасности аккаунта.
+            {tr("Активация ключа и настройки безопасности аккаунта.", "Key activation and account security settings.")}
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -186,10 +189,10 @@ export default function AddonsPage() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Key size={22} className="text-white/70" />
-                <h2 className="text-2xl font-bold">Активировать ключ</h2>
+                <h2 className="text-2xl font-bold">{tr("Активировать ключ", "Activate a key")}</h2>
               </div>
               <p className="text-white/40 mb-5">
-                Введи ключ, чтобы продлить доступ.
+                {tr("Введи ключ, чтобы продлить доступ.", "Enter a key to extend your access.")}
               </p>
 
               <div className="relative mb-4">
@@ -225,10 +228,10 @@ export default function AddonsPage() {
                   </span>
                   <span className="text-sm font-medium">
                     {captchaLoading
-                      ? "Проверка..."
+                      ? tr("Проверка...", "Checking...")
                       : captchaDone
-                        ? "Успешно."
-                        : "Подтвердите, что вы человек"}
+                        ? tr("Успешно.", "Success.")
+                        : tr("Подтвердите, что вы человек", "Confirm you are human")}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-black/50 leading-tight text-right">
@@ -236,7 +239,7 @@ export default function AddonsPage() {
                   <div>
                     EUPHORIA
                     <br />
-                    <span className="underline">Конфиденциальность • Справка</span>
+                    <span className="underline">{tr("Конфиденциальность • Справка", "Privacy • Help")}</span>
                   </div>
                 </div>
               </button>
@@ -256,7 +259,7 @@ export default function AddonsPage() {
                 className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold transition bg-purple-600 hover:bg-purple-700"
               >
                 <Check size={18} weight="bold" />
-                Активировать
+                {tr("Активировать", "Activate")}
               </button>
             </div>
 
@@ -264,10 +267,10 @@ export default function AddonsPage() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Lock size={22} className="text-white/70" />
-                <h2 className="text-2xl font-bold">Сменить пароль</h2>
+                <h2 className="text-2xl font-bold">{tr("Сменить пароль", "Change password")}</h2>
               </div>
               <p className="text-white/40 mb-5">
-                Новый пароль для входа в аккаунт.
+                {tr("Новый пароль для входа в аккаунт.", "A new password for signing in to your account.")}
               </p>
 
               <form onSubmit={changePassword} className="flex flex-col gap-4">
@@ -280,7 +283,7 @@ export default function AddonsPage() {
                     type="password"
                     value={pass1}
                     onChange={(e) => setPass1(e.target.value)}
-                    placeholder="Новый пароль"
+                    placeholder={tr("Новый пароль", "New password")}
                     className="w-full bg-black/40 pl-11 pr-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
                   />
                 </div>
@@ -293,7 +296,7 @@ export default function AddonsPage() {
                     type="password"
                     value={pass2}
                     onChange={(e) => setPass2(e.target.value)}
-                    placeholder="Повтор пароля"
+                    placeholder={tr("Повтор пароля", "Repeat password")}
                     className="w-full bg-black/40 pl-11 pr-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
                   />
                 </div>
@@ -314,7 +317,7 @@ export default function AddonsPage() {
                   className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold transition bg-purple-600 hover:bg-purple-700 disabled:opacity-60"
                 >
                   <ArrowClockwise size={18} weight="bold" />
-                  {passLoading ? "Сохранение..." : "Сменить пароль"}
+                  {passLoading ? tr("Сохранение...", "Saving...") : tr("Сменить пароль", "Change password")}
                 </button>
               </form>
             </div>
@@ -324,10 +327,10 @@ export default function AddonsPage() {
           <div className="mt-8">
             <div className="flex items-center gap-2 mb-1">
               <Fingerprint size={22} className="text-white/70" />
-              <h2 className="text-2xl font-bold">Сброс HWID</h2>
+              <h2 className="text-2xl font-bold">{tr("Сброс HWID", "HWID reset")}</h2>
             </div>
             <p className="text-white/40 mb-5">
-              Введи ключ для сброса привязки железа. Цена: 150 ₽.
+              {tr("Введи ключ для сброса привязки железа. Цена: 150 ₽.", "Enter a key to reset the hardware binding. Price: 150 ₽.")}
             </p>
 
             <div className="relative mb-4">
@@ -359,7 +362,7 @@ export default function AddonsPage() {
               className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-semibold transition bg-purple-600 hover:bg-purple-700 disabled:opacity-60"
             >
               <Fingerprint size={18} weight="bold" />
-              {hwidLoading ? "Сброс..." : "Сбросить HWID"}
+              {hwidLoading ? tr("Сброс...", "Resetting...") : tr("Сбросить HWID", "Reset HWID")}
             </button>
           </div>
         </div>

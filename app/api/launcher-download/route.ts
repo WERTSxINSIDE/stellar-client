@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server";
+import { LAUNCHER_DOWNLOAD_URL } from "@/lib/launcher";
 
-const GOOGLE_DRIVE_URL = "https://drive.google.com/uc?export=download&id=1aTDsNJiaJVAYsJ7WYJUnR6PUQ0I7oMZV"
-
-export async function GET(req: NextRequest) {
-  return NextResponse.redirect(GOOGLE_DRIVE_URL)
+export async function GET() {
+  return NextResponse.redirect(LAUNCHER_DOWNLOAD_URL);
 }

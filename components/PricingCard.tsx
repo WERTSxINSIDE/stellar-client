@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import TiltCard from "./TiltCard";
+import { useI18n } from "@/lib/i18n";
 
 type PricingCardProps = {
   title: string;
@@ -19,6 +20,7 @@ export default function PricingCard({
   href,
   onClick,
 }: PricingCardProps) {
+  const { t } = useI18n();
   const cardContent = (
     <div
       className="
@@ -42,12 +44,12 @@ export default function PricingCard({
           alt={title}
           width={400}
           height={400}
-          className="rounded-2xl transition-transform duration-500 group-hover:scale-105"
+          className="rounded-2xl w-full h-auto transition-transform duration-500 group-hover:scale-105"
         />
       </div>
 
       <h2 className="text-xl font-semibold text-white mb-1">{title}</h2>
-      <p className="text-sm text-white/60 mb-6">Цена: {price}</p>
+      <p className="text-sm text-white/60 mb-6">{t("pricing.price", { price })}</p>
 
       <div
         className="
@@ -55,7 +57,7 @@ export default function PricingCard({
           group-hover:bg-purple-500 transition-colors text-center
         "
       >
-        Купить
+        {t("nav.buy")}
       </div>
     </div>
   );
@@ -67,7 +69,7 @@ export default function PricingCard({
       transition={{ type: "spring", damping: 18, stiffness: 160 }}
       viewport={{ once: true, amount: 0.3 }}
     >
-      <TiltCard max={9} className="w-[300px]">
+      <TiltCard max={9} className="w-full max-w-[300px]">
         {href ? (
           <a href={href} target="_blank" rel="noopener noreferrer">
             {cardContent}

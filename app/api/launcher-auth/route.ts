@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { query, queryOne, User } from "@/lib/db";
+import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
+import { safeRefreshUserRisk } from "@/lib/risk";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,17 @@ export async function POST(req: Request) {
     if (!username || !password) {
       return NextResponse.json({ success: false, error: "Введите логин и пароль" }, { status: 400 });
     }
+
+    const limited = await enforceRateLimit(req, [
+      { scope: "launcher-auth:ip", identifier: getClientIp(req), limit: 30, windowMs: 5 * 60_000 },
+      {
+        scope: "launcher-auth:account",
+        identifier: String(username).trim().toLowerCase(),
+        limit: 10,
+        windowMs: 10 * 60_000,
+      },
+    ]);
+    if (limited) return limited;
 
     const user = await queryOne("SELECT * FROM users WHERE LOWER(username) = LOWER($1)", [username]) as User | undefined;
 
@@ -26,6 +39,8 @@ export async function POST(req: Request) {
     if (user.banned) {
       return NextResponse.json({ success: false, error: user.ban_reason || "Ваш аккаунт заблокирован" }, { status: 403 });
     }
+
+    await safeRefreshUserRisk(user.id, getClientIp(req));
 
     const subEnd = user.subscription_end ? new Date(user.subscription_end.replace(" ", "T")) : null;
     const hasActiveSub = subEnd && subEnd > new Date();

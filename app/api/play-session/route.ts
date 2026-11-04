@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
+import { logActivityOnce } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const { username, action } = await req.json();
+    const body = await req.json();
+    const username = String(body?.username || "").trim();
+    const action = String(body?.action || "").trim();
+    const sessionId = Number(body?.session_id);
     if (!username || !action) {
       return NextResponse.json({ error: "Нужен username и action" }, { status: 400 });
     }
@@ -21,12 +25,14 @@ export async function POST(req: Request) {
         "INSERT INTO play_sessions (user_id, started_at) VALUES ($1, NOW()) RETURNING id",
         [user.id]
       );
+      await logActivityOnce(user.id, "launch", "Запуск клиента", null, 10);
       return NextResponse.json({ ok: true, session_id: res.rows[0].id });
     }
 
     if (action === "end") {
-      const { session_id } = await req.json();
-      if (!session_id) return NextResponse.json({ error: "Нужен session_id" }, { status: 400 });
+      if (!Number.isInteger(sessionId) || sessionId <= 0) {
+        return NextResponse.json({ error: "Нужен session_id" }, { status: 400 });
+      }
 
       const res = await query(
         `UPDATE play_sessions
@@ -34,7 +40,7 @@ export async function POST(req: Request) {
              seconds = EXTRACT(EPOCH FROM (NOW() - started_at))::int
          WHERE id = $1 AND user_id = $2 AND ended_at IS NULL
          RETURNING seconds`,
-        [session_id, user.id]
+        [sessionId, user.id]
       );
       if (!res.rows.length) return NextResponse.json({ ok: true, seconds: 0 });
       return NextResponse.json({ ok: true, seconds: res.rows[0].seconds });

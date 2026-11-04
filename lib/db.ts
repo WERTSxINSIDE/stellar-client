@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Pool, type PoolClient } from "pg";
 
 const connectionString = process.env.DATABASE_URL || "";
 const isPooler = connectionString.includes("pooler.supabase.com");
@@ -12,9 +12,40 @@ const pool = new Pool({
   allowExitOnIdle: true,
 });
 
+// Меняем при изменении схемы ниже. Пока версия совпадает,
+// инициализация пропускается — это сильно ускоряет холодный старт.
+const SCHEMA_VERSION = "2026-11-04-1";
+
+async function isSchemaUpToDate(): Promise<boolean> {
+  try {
+    const exists = await pool.query("SELECT to_regclass('public.app_meta') AS table_name");
+    if (!exists.rows[0]?.table_name) return false;
+    const row = await pool.query("SELECT value FROM app_meta WHERE key = 'schema_version'");
+    return row.rows[0]?.value === SCHEMA_VERSION;
+  } catch {
+    return false;
+  }
+}
+
 async function initDb() {
   try {
-    await pool.query(`
+    if (await isSchemaUpToDate()) return;
+  } catch {
+    // если проверка не удалась — идём в полную инициализацию
+  }
+
+  let client: PoolClient | null = null;
+  try {
+    client = await pool.connect();
+    // Сериализуем инициализацию схемы между процессами/инстансами,
+    // иначе параллельные CREATE TABLE ... IF NOT EXISTS могут конфликтовать.
+    await client.query("SELECT pg_advisory_lock(842137642)");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS app_meta (
+        key   TEXT PRIMARY KEY,
+        value TEXT
+      );
+
       CREATE TABLE IF NOT EXISTS users (
         id         SERIAL PRIMARY KEY,
         username   TEXT UNIQUE NOT NULL,
@@ -27,6 +58,10 @@ async function initDb() {
         banned     INTEGER DEFAULT 0,
         ban_reason TEXT,
         beta_access INTEGER DEFAULT 0,
+        avatar_url TEXT,
+        bio TEXT,
+        banner_url TEXT,
+        accent_color TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       );
 
@@ -111,11 +146,34 @@ async function initDb() {
       );
 
       CREATE TABLE IF NOT EXISTS support_tickets (
+        id             SERIAL PRIMARY KEY,
+        user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        subject        TEXT NOT NULL,
+        category       TEXT DEFAULT 'other',
+        status         TEXT DEFAULT 'open',
+        user_unread    INTEGER DEFAULT 0,
+        admin_unread   INTEGER DEFAULT 0,
+        last_message_by TEXT,
+        csat_rating    INTEGER,
+        csat_comment   TEXT,
+        csat_at        TIMESTAMP,
+        created_at     TIMESTAMP DEFAULT NOW(),
+        updated_at     TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS support_templates (
         id         SERIAL PRIMARY KEY,
-        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        subject    TEXT NOT NULL,
-        status     TEXT DEFAULT 'open',
+        title      TEXT NOT NULL,
+        body       TEXT NOT NULL,
+        category   TEXT,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key        TEXT PRIMARY KEY,
+        value      TEXT,
         updated_at TIMESTAMP DEFAULT NOW()
       );
 
@@ -131,12 +189,14 @@ async function initDb() {
       );
 
       CREATE TABLE IF NOT EXISTS support_messages (
-        id         SERIAL PRIMARY KEY,
-        ticket_id  INTEGER NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
-        user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        is_admin   INTEGER DEFAULT 0,
-        body       TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
+        id             SERIAL PRIMARY KEY,
+        ticket_id      INTEGER NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+        user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        is_admin       INTEGER DEFAULT 0,
+        body           TEXT NOT NULL,
+        attachment_url TEXT,
+        attachment_name TEXT,
+        created_at     TIMESTAMP DEFAULT NOW()
       );
 
       CREATE TABLE IF NOT EXISTS reviews (
@@ -148,7 +208,237 @@ async function initDb() {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS user_achievements (
+        user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        achievement_key TEXT NOT NULL,
+        unlocked_at     TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (user_id, achievement_key)
+      );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type       TEXT NOT NULL DEFAULT 'info',
+        title      TEXT NOT NULL,
+        body       TEXT,
+        link       TEXT,
+        read_at    TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS promo_codes (
+        id         SERIAL PRIMARY KEY,
+        code       TEXT UNIQUE NOT NULL,
+        amount     INTEGER NOT NULL,
+        max_uses   INTEGER DEFAULT 0,
+        used_count INTEGER DEFAULT 0,
+        active     INTEGER DEFAULT 1,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS promo_uses (
+        id         SERIAL PRIMARY KEY,
+        promo_id   INTEGER NOT NULL REFERENCES promo_codes(id) ON DELETE CASCADE,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount     INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE (promo_id, user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS notification_settings (
+        user_id             INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        email_security      INTEGER DEFAULT 1,
+        email_referral      INTEGER DEFAULT 1,
+        email_support       INTEGER DEFAULT 1,
+        email_achievements  INTEGER DEFAULT 1,
+        email_other         INTEGER DEFAULT 1,
+        unsubscribe_token   TEXT UNIQUE,
+        updated_at          TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS admin_actions (
+        id              SERIAL PRIMARY KEY,
+        admin_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        admin_username  TEXT,
+        action          TEXT NOT NULL,
+        target_user_id  INTEGER,
+        target_username TEXT,
+        details         TEXT,
+        created_at      TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS rate_limits (
+        key        TEXT PRIMARY KEY,
+        count      INTEGER NOT NULL DEFAULT 0,
+        expires_at TIMESTAMP NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS risk_events (
+        id          SERIAL PRIMARY KEY,
+        user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type        TEXT NOT NULL,
+        severity    INTEGER NOT NULL DEFAULT 1,
+        details     TEXT,
+        status      TEXT NOT NULL DEFAULT 'open',
+        created_at  TIMESTAMP DEFAULT NOW(),
+        resolved_at TIMESTAMP,
+        resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS showcase_items (
+        id           SERIAL PRIMARY KEY,
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type         TEXT NOT NULL,
+        title        TEXT NOT NULL,
+        description  TEXT,
+        url          TEXT,
+        file_name    TEXT,
+        file_data    TEXT,
+        price        INTEGER DEFAULT 0,
+        tags         TEXT[] DEFAULT '{}',
+        status       TEXT NOT NULL DEFAULT 'pending',
+        reward       INTEGER DEFAULT 0,
+        admin_note   TEXT,
+        views        INTEGER DEFAULT 0,
+        created_at   TIMESTAMP DEFAULT NOW(),
+        approved_at  TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS showcase_ratings (
+        id           SERIAL PRIMARY KEY,
+        item_id      INTEGER NOT NULL REFERENCES showcase_items(id) ON DELETE CASCADE,
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        rating       INTEGER NOT NULL,
+        comment      TEXT,
+        author_reply TEXT,
+        reply_at     TIMESTAMP,
+        created_at   TIMESTAMP DEFAULT NOW(),
+        updated_at   TIMESTAMP DEFAULT NOW(),
+        UNIQUE (item_id, user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS showcase_purchases (
+        id         SERIAL PRIMARY KEY,
+        item_id    INTEGER NOT NULL REFERENCES showcase_items(id) ON DELETE CASCADE,
+        buyer_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        seller_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        price      INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE (item_id, buyer_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS showcase_favorites (
+        item_id    INTEGER NOT NULL REFERENCES showcase_items(id) ON DELETE CASCADE,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (item_id, user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS showcase_versions (
+        id         SERIAL PRIMARY KEY,
+        item_id    INTEGER NOT NULL REFERENCES showcase_items(id) ON DELETE CASCADE,
+        version    TEXT NOT NULL,
+        changelog  TEXT,
+        file_name  TEXT,
+        file_data  TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS showcase_follows (
+        follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        author_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at  TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (follower_id, author_id),
+        CHECK (follower_id <> author_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS showcase_bundles (
+        id               SERIAL PRIMARY KEY,
+        user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title            TEXT NOT NULL,
+        description      TEXT,
+        discount_percent INTEGER NOT NULL DEFAULT 10,
+        status           TEXT NOT NULL DEFAULT 'approved',
+        created_at       TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS showcase_bundle_items (
+        bundle_id INTEGER NOT NULL REFERENCES showcase_bundles(id) ON DELETE CASCADE,
+        item_id   INTEGER NOT NULL REFERENCES showcase_items(id) ON DELETE CASCADE,
+        PRIMARY KEY (bundle_id, item_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS showcase_bundle_purchases (
+        id         SERIAL PRIMARY KEY,
+        bundle_id  INTEGER NOT NULL REFERENCES showcase_bundles(id) ON DELETE CASCADE,
+        buyer_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        seller_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        price      INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE (bundle_id, buyer_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS payout_requests (
+        id           SERIAL PRIMARY KEY,
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount       INTEGER NOT NULL,
+        method       TEXT NOT NULL,
+        details      TEXT NOT NULL,
+        status       TEXT NOT NULL DEFAULT 'pending',
+        admin_note   TEXT,
+        processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at   TIMESTAMP DEFAULT NOW(),
+        processed_at TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS status_incidents (
+        id          SERIAL PRIMARY KEY,
+        title       TEXT NOT NULL,
+        body        TEXT,
+        severity    TEXT NOT NULL DEFAULT 'minor',
+        status      TEXT NOT NULL DEFAULT 'investigating',
+        started_at  TIMESTAMP DEFAULT NOW(),
+        resolved_at TIMESTAMP,
+        created_at  TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS activity_events (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        type       TEXT NOT NULL,
+        title      TEXT NOT NULL,
+        details    TEXT,
+        is_public  INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
       CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
+      CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, read_at);
+      CREATE INDEX IF NOT EXISTS idx_admin_actions_created ON admin_actions(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_promo_uses_user ON promo_uses(user_id);
+      CREATE INDEX IF NOT EXISTS idx_promo_uses_promo ON promo_uses(promo_id);
+      CREATE INDEX IF NOT EXISTS idx_rate_limits_expires ON rate_limits(expires_at);
+      CREATE INDEX IF NOT EXISTS idx_risk_events_user ON risk_events(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_risk_events_status ON risk_events(status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_status ON showcase_items(status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_type ON showcase_items(type, status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_user ON showcase_items(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_ratings_item ON showcase_ratings(item_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_purchases_item ON showcase_purchases(item_id);
+      CREATE INDEX IF NOT EXISTS idx_showcase_purchases_buyer ON showcase_purchases(buyer_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_purchases_seller ON showcase_purchases(seller_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_favorites_user ON showcase_favorites(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_versions_item ON showcase_versions(item_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_follows_author ON showcase_follows(author_id);
+      CREATE INDEX IF NOT EXISTS idx_showcase_bundles_user ON showcase_bundles(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_showcase_bundle_items_item ON showcase_bundle_items(item_id);
+      CREATE INDEX IF NOT EXISTS idx_payout_requests_status ON payout_requests(status, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_payout_requests_user ON payout_requests(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_status_incidents_started ON status_incidents(started_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_events(created_at DESC);
 
 
       CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
@@ -160,85 +450,382 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_play_sessions_user ON play_sessions(user_id);
       CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id);
       CREATE INDEX IF NOT EXISTS idx_support_messages_ticket ON support_messages(ticket_id);
+      CREATE INDEX IF NOT EXISTS idx_support_templates_created ON support_templates(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_bug_reports_user ON bug_reports(user_id);
     `);
 
-    await pool.query(`
+    await client.query(`
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN balance INTEGER DEFAULT 0;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
     `);
 
-    await pool.query(`
+    await client.query(`
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN partner_rank TEXT DEFAULT 'Младший партнёр';
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
     `);
 
-    await pool.query(`
+    await client.query(`
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN last_gift_at TIMESTAMP;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
     `);
 
-    await pool.query(`
+    await client.query(`
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN sub_gifted INTEGER DEFAULT 0;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
     `);
 
-    await pool.query(`
+    await client.query(`
       DO $$ BEGIN
         ALTER TABLE partner_applications ADD COLUMN admin_note TEXT;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
     `);
 
-    await pool.query(`
+    await client.query(`
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN spin_count INTEGER DEFAULT 0;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
     `);
 
-    await pool.query(`
+    await client.query(`
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN last_wheel_at TIMESTAMP;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
     `);
 
-    await pool.query(`
+    await client.query(`
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN twofa_enabled INTEGER DEFAULT 0;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
     `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN referred_by INTEGER;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN signup_ip TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN referral_fraud INTEGER DEFAULT 0;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN avatar_url TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN bio TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN banner_url TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN accent_color TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE support_tickets ADD COLUMN user_unread INTEGER DEFAULT 0;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE support_tickets ADD COLUMN admin_unread INTEGER DEFAULT 0;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE support_tickets ADD COLUMN last_message_by TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE support_messages ADD COLUMN attachment_url TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE support_messages ADD COLUMN attachment_name TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE keys ADD COLUMN price INTEGER;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE sessions ADD COLUMN user_agent TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE sessions ADD COLUMN ip TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE email_codes ADD COLUMN purpose TEXT DEFAULT 'register';
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN last_ip TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN last_seen_at TIMESTAMP;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN risk_score INTEGER DEFAULT 0;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN risk_flags TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE showcase_items ADD COLUMN price INTEGER DEFAULT 0;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE showcase_items ADD COLUMN tags TEXT[] DEFAULT '{}';
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE showcase_items ADD COLUMN game TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE showcase_items ADD COLUMN version TEXT DEFAULT '1.0';
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE showcase_items ADD COLUMN discount_percent INTEGER DEFAULT 0;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE showcase_items ADD COLUMN discount_until TIMESTAMP;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE showcase_ratings ADD COLUMN comment TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE showcase_ratings ADD COLUMN author_reply TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE showcase_ratings ADD COLUMN reply_at TIMESTAMP;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE showcase_ratings ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE support_tickets ADD COLUMN category TEXT DEFAULT 'other';
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE support_tickets ADD COLUMN csat_rating INTEGER;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE support_tickets ADD COLUMN csat_comment TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE support_tickets ADD COLUMN csat_at TIMESTAMP;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_showcase_tags ON showcase_items USING GIN(tags);
+      CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status, category, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_support_templates_created ON support_templates(created_at DESC);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by);
+      CREATE INDEX IF NOT EXISTS idx_email_codes_purpose ON email_codes(email, purpose, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_users_hwid ON users(hwid);
+      CREATE INDEX IF NOT EXISTS idx_sessions_ip ON sessions(ip);
+    `);
+
+    await client.query(
+      `INSERT INTO app_meta (key, value) VALUES ('schema_version', $1)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [SCHEMA_VERSION]
+    );
+
     console.log("DB tables initialized");
   } catch (e: any) {
     console.error("DB init error:", e.message);
+  } finally {
+    if (client) {
+      try {
+        await client.query("SELECT pg_advisory_unlock(842137642)");
+      } catch {
+        // соединение могло закрыться — не критично
+      }
+      client.release();
+    }
   }
 }
 
-initDb();
+const initPromise = initDb();
 
 export async function query(text: string, params?: any[]) {
+  await initPromise;
   const result = await pool.query(text, params);
   return result;
 }
 
 export async function queryOne(text: string, params?: any[]) {
+  await initPromise;
   const result = await pool.query(text, params);
   return result.rows[0] ?? null;
 }
 
 export async function queryAll(text: string, params?: any[]) {
+  await initPromise;
   const result = await pool.query(text, params);
   return result.rows;
+}
+
+/**
+ * Выполняет набор запросов в одной транзакции.
+ * При ошибке (или раннем throw) изменения откатываются, соединение возвращается в пул.
+ */
+export type DbExecutor = Pick<PoolClient, "query">;
+
+export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  await initPromise;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("DB rollback error:", rollbackError);
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export const PARTNER_VIDEOS_YOUTUBE = 7;
@@ -254,23 +841,26 @@ export function partnerThresholds(platform?: string | null) {
   };
 }
 
-export async function recomputePartnerRank(userId: number) {
-  const pa = await queryOne(
+export async function recomputePartnerRank(userId: number, db: DbExecutor = pool) {
+  await initPromise;
+  const paResult = await db.query(
     `SELECT platform FROM partner_applications
      WHERE user_id = $1 AND status = 'approved'
      ORDER BY created_at DESC LIMIT 1`,
     [userId]
   );
+  const pa = paResult.rows[0] ?? null;
   const platform = (pa?.platform as string) ?? null;
   const { videos: videoThreshold, views: viewsThreshold } = partnerThresholds(platform);
 
-  const stat = await queryOne(
+  const statResult = await db.query(
     `SELECT COUNT(*)::int AS approved,
             COALESCE(SUM(reward), 0)::int AS earned,
             COALESCE(SUM(views), 0)::int AS total_views
      FROM media_submissions WHERE user_id = $1 AND status = 'approved'`,
     [userId]
   );
+  const stat = statResult.rows[0] ?? null;
   const approved = (stat?.approved as number) ?? 0;
   const earned = (stat?.earned as number) ?? 0;
   const totalViews = (stat?.total_views as number) ?? 0;
@@ -280,12 +870,19 @@ export async function recomputePartnerRank(userId: number) {
       ? "Партнёр"
       : "Младший партнёр";
 
-  await query("UPDATE users SET partner_rank = $1 WHERE id = $2", [rank, userId]);
+  await db.query("UPDATE users SET partner_rank = $1 WHERE id = $2", [rank, userId]);
   return { rank, approved, earned, totalViews, videoThreshold, viewsThreshold, platform };
 }
 
-export async function addBalanceHistory(userId: number, amount: number, type: string, note?: string) {
-  await pool.query(
+export async function addBalanceHistory(
+  userId: number,
+  amount: number,
+  type: string,
+  note?: string,
+  db: DbExecutor = pool
+) {
+  await initPromise;
+  await db.query(
     "INSERT INTO balance_history (user_id, amount, type, note) VALUES ($1, $2, $3, $4)",
     [userId, amount, type, note || null]
   );
@@ -308,6 +905,12 @@ export type User = {
   balance: number;
   partner_rank: string;
   twofa_enabled?: number;
+  signup_ip?: string | null;
+  referral_fraud?: number;
+  avatar_url?: string | null;
+  bio?: string | null;
+  banner_url?: string | null;
+  accent_color?: string | null;
   created_at: string;
 };
 

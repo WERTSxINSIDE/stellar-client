@@ -6,8 +6,10 @@ import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FAQCard from "@/components/FAQCard";
+import { useI18n } from "@/lib/i18n";
 
 export default function FAQPage() {
+  const { t } = useI18n();
   return (
     <>
       <Header />
@@ -43,23 +45,23 @@ export default function FAQPage() {
           </motion.h1>
 
           <FAQCard
-            question="Как запустить клиент?"
-            answer="Сначала скачайте лаунчер и откройте его. В появившемся окне вы увидите поле, где можно задать выделение оперативной памяти. Рекомендуем выделять не больше 8 ГБ. После этого нажмите кнопку «Старт» и дождитесь загрузки клиента."
+            question={t("faq.q1")}
+            answer={t("faq.a1")}
           />
 
           <FAQCard
-            question="Как загрузить конфиг в клиент?"
-            answer="Чтобы загрузить конфиг, сначала запустите клиент хотя бы один раз. Затем перейдите в директорию: C:\\stellar\\configs и поместите ваш файл конфига в эту папку."
+            question={t("faq.q2")}
+            answer={t("faq.a2")}
           />
 
           <FAQCard
-            question="Как создать собственный скрипт для клиента?"
-            answer="Чтобы создать свой скрипт, сначала нужно прочитать документацию. В ней есть примеры использования, хуки событий и описание API. Обязательно следуйте рекомендациям по разработке, чтобы обеспечить совместимость."
+            question={t("faq.q3")}
+            answer={t("faq.a3")}
           />
 
           <FAQCard
-            question="Как связаться с техподдержкой?"
-            answer="Есть 2 способа связаться с поддержкой: написать овнеру клиента в личку в Telegram, либо написать в поддержку на сайте."
+            question={t("faq.q4")}
+            answer={t("faq.a4")}
           />
         </section>
       </main>

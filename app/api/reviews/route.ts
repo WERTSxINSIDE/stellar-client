@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 import { query, queryAll, queryOne } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -75,7 +76,25 @@ export async function PUT(req: Request) {
     const { action, id } = await req.json();
     if (!id || (action !== "approve" && action !== "reject")) return NextResponse.json({ error: "Неверные данные" }, { status: 400 });
 
-    await query("UPDATE reviews SET status = $1 WHERE id = $2", [action === "approve" ? "approved" : "rejected", id]);
+    if (action === "approve") {
+      const updated = await query(
+        `UPDATE reviews SET status = 'approved'
+         WHERE id = $1 AND status <> 'approved'
+         RETURNING user_id, rating`,
+        [id]
+      );
+      const row = updated.rows[0];
+      if (row) {
+        await logActivity(
+          Number(row.user_id),
+          "review",
+          "Новый отзыв на сайте",
+          String(row.rating)
+        );
+      }
+    } else {
+      await query("UPDATE reviews SET status = 'rejected' WHERE id = $1", [id]);
+    }
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });

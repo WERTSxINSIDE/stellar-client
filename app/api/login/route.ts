@@ -3,13 +3,34 @@ import bcrypt from "bcrypt";
 import { queryOne, User } from "@/lib/db";
 import { createSession } from "@/lib/auth";
 import { issueVerificationCode } from "@/lib/email-codes";
+import { alertNewLogin, checkLoginDevice } from "@/lib/login-alerts";
+import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
+import { safeRefreshUserRisk } from "@/lib/risk";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 export async function POST(req: Request) {
   try {
-    const { login, password, remember } = await req.json();
+    const { login, password, remember, turnstile_token } = await req.json();
 
     if (!login || !password) {
       return NextResponse.json({ error: "Введите логин и пароль" }, { status: 400 });
+    }
+
+    // Защита от перебора: отдельно по IP и по конкретному аккаунту.
+    const limited = await enforceRateLimit(req, [
+      { scope: "login:ip", identifier: getClientIp(req), limit: 25, windowMs: 5 * 60_000 },
+      {
+        scope: "login:account",
+        identifier: String(login).trim().toLowerCase(),
+        limit: 8,
+        windowMs: 10 * 60_000,
+      },
+    ]);
+    if (limited) return limited;
+
+    const captcha = await verifyTurnstile(turnstile_token, getClientIp(req));
+    if (!captcha.ok) {
+      return NextResponse.json({ error: captcha.error }, { status: 400 });
     }
 
     const user = await queryOne(
@@ -30,13 +51,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: user.ban_reason || "Ваш аккаунт заблокирован" }, { status: 403 });
     }
 
+    // Фиксируем IP входа и пересчитываем риск (HWID/IP-кластеры).
+    await safeRefreshUserRisk(user.id, getClientIp(req));
+
     if (user.twofa_enabled) {
-      const res = await issueVerificationCode(user.email);
+      const res = await issueVerificationCode(user.email, "login");
       if (!res.ok) return NextResponse.json({ error: res.error || "Не удалось отправить код" }, { status: res.status || 502 });
       return NextResponse.json({ ok: true, twofa: true });
     }
 
+    const { meta, isNew } = await checkLoginDevice(user.id);
     await createSession(user.id, remember !== false);
+    if (isNew) {
+      await alertNewLogin(user.id, meta).catch(() => {});
+    }
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });

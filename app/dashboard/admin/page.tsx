@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-  import {
+import {
   ArrowLeft,
   Key,
   Fingerprint,
@@ -23,7 +23,18 @@ import Footer from "@/components/Footer";
   Coin,
   Headset,
   Star,
+  Sparkle,
+  FileText,
+  DownloadSimple,
+  ChatCircleText,
+  Pulse,
+  Bank,
 } from "@phosphor-icons/react";
+import {
+  SUPPORT_CATEGORIES,
+  isImageAttachment,
+  supportCategoryLabel,
+} from "@/lib/support";
 
 type Me = {
   id: number;
@@ -52,7 +63,7 @@ export default function AdminPage() {
 
   // Все ключи
   const [allKeys, setAllKeys] = useState<any[]>([]);
-  const [keysTab, setKeysTab] = useState<"generate" | "list" | "users" | "news" | "media" | "support" | "bugs" | "reviews">("generate");
+  const [keysTab, setKeysTab] = useState<"generate" | "list" | "users" | "news" | "media" | "support" | "bugs" | "reviews" | "promo">("generate");
 
   // Пользователи
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -67,6 +78,14 @@ export default function AdminPage() {
   // Поддержка
   const [supportTickets, setSupportTickets] = useState<any[]>([]);
   const [supportReplies, setSupportReplies] = useState<Record<number, string>>({});
+  const [supportCsat, setSupportCsat] = useState<{ avg: number; count: number } | null>(null);
+  const [supportCategoryFilter, setSupportCategoryFilter] = useState("all");
+  const [supportStatusFilter, setSupportStatusFilter] = useState("all");
+  const [supportTemplates, setSupportTemplates] = useState<any[]>([]);
+  const [templateTitle, setTemplateTitle] = useState("");
+  const [templateBody, setTemplateBody] = useState("");
+  const [templateMsg, setTemplateMsg] = useState("");
+  const [templateBusy, setTemplateBusy] = useState(false);
 
   // Заявки на медиа-партнёрство
   const [partnerRejectNote, setPartnerRejectNote] = useState<string>("");
@@ -90,6 +109,64 @@ export default function AdminPage() {
   // Отзывы
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [reviewBusy, setReviewBusy] = useState(false);
+
+  // Промокоды
+  const [promos, setPromos] = useState<any[]>([]);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoAmount, setPromoAmount] = useState(50);
+  const [promoMaxUses, setPromoMaxUses] = useState(0);
+  const [promoMsg, setPromoMsg] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+
+  async function loadPromos() {
+    try {
+      const res = await fetch("/api/admin-promo");
+      const data = await res.json();
+      if (data.ok) setPromos(data.promos || []);
+    } catch {}
+  }
+
+  async function createPromo() {
+    setPromoMsg("");
+    setPromoLoading(true);
+    try {
+      const res = await fetch("/api/admin-promo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: promoCode,
+          amount: promoAmount,
+          max_uses: promoMaxUses,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPromoMsg(data.error || "Не удалось создать промокод");
+        return;
+      }
+      setPromoMsg("Промокод создан ✓");
+      setPromoCode("");
+      setPromoAmount(50);
+      setPromoMaxUses(0);
+      await loadPromos();
+    } catch {
+      setPromoMsg("Ошибка сети");
+    } finally {
+      setPromoLoading(false);
+    }
+  }
+
+  async function disablePromo(id: number) {
+    if (!confirm("Отключить промокод?")) return;
+    try {
+      await fetch("/api/admin-promo", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      await loadPromos();
+    } catch {}
+  }
 
   async function loadStats() {
     setStatsLoading(true);
@@ -263,6 +340,62 @@ export default function AdminPage() {
       const res = await fetch("/api/support?all=1");
       const data = await res.json();
       if (data.tickets) setSupportTickets(data.tickets);
+      if (data.csat) setSupportCsat(data.csat);
+    } catch {}
+  }
+
+  async function loadTemplates() {
+    try {
+      const res = await fetch("/api/support-templates");
+      const data = await res.json();
+      if (data.ok) setSupportTemplates(Array.isArray(data.templates) ? data.templates : []);
+    } catch {}
+  }
+
+  function insertTemplate(ticketId: number, body: string) {
+    setSupportReplies((prev) => ({
+      ...prev,
+      [ticketId]: prev[ticketId] ? `${prev[ticketId]} ${body}` : body,
+    }));
+  }
+
+  async function saveTemplate() {
+    if (templateTitle.trim().length < 2 || templateBody.trim().length < 2) {
+      setTemplateMsg("Заполните название и текст шаблона");
+      return;
+    }
+    setTemplateBusy(true);
+    setTemplateMsg("");
+    try {
+      const res = await fetch("/api/support-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: templateTitle.trim(), body: templateBody.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTemplateMsg(data.error || "Не удалось сохранить шаблон");
+        return;
+      }
+      setTemplateTitle("");
+      setTemplateBody("");
+      setTemplateMsg("Шаблон сохранён ✓");
+      loadTemplates();
+    } catch {
+      setTemplateMsg("Ошибка сервера");
+    } finally {
+      setTemplateBusy(false);
+    }
+  }
+
+  async function deleteTemplate(id: number) {
+    try {
+      await fetch("/api/support-templates", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      loadTemplates();
     } catch {}
   }
 
@@ -299,6 +432,7 @@ export default function AdminPage() {
       loadMedia();
       loadPartnerApps();
       loadSupport();
+      loadTemplates();
     }
   }, [user]);
 
@@ -602,6 +736,14 @@ export default function AdminPage() {
     navigator.clipboard.writeText(keys.join("\n"));
   }
 
+  const visibleSupportTickets = supportTickets.filter((ticket: any) => {
+    if (supportCategoryFilter !== "all" && supportCategoryLabel(ticket.category) !== supportCategoryFilter) {
+      return false;
+    }
+    if (supportStatusFilter !== "all" && ticket.status !== supportStatusFilter) return false;
+    return true;
+  });
+
   if (loading) return null;
 
   return (
@@ -614,12 +756,50 @@ export default function AdminPage() {
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/60 via-black/70 to-black pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-6 pt-36 pb-24">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 text-white/50 hover:text-white transition text-sm mb-8"
-          >
-            <ArrowLeft size={16} weight="bold" />В кабинет
-          </Link>
+          <div className="flex flex-wrap items-center gap-3 mb-8">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 text-white/50 hover:text-white transition text-sm"
+            >
+              <ArrowLeft size={16} weight="bold" />В кабинет
+            </Link>
+            <Link
+              href="/dashboard/admin/logs"
+              className="inline-flex items-center gap-2 text-purple-300 hover:text-purple-200 transition text-sm px-4 py-2 rounded-xl bg-white/5 border border-white/10"
+            >
+              <ShieldCheck size={16} /> Журнал действий
+            </Link>
+            <Link
+              href="/dashboard/admin/risk"
+              className="inline-flex items-center gap-2 text-red-300 hover:text-red-200 transition text-sm px-4 py-2 rounded-xl bg-red-500/10 border border-red-400/20"
+            >
+              <WarningCircle size={16} /> Риск-скор
+            </Link>
+            <Link
+              href="/dashboard/admin/showcase"
+              className="inline-flex items-center gap-2 text-purple-300 hover:text-purple-200 transition text-sm px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-400/20"
+            >
+              <Sparkle size={16} /> Витрина
+            </Link>
+            <Link
+              href="/dashboard/admin/payments"
+              className="inline-flex items-center gap-2 text-emerald-300 hover:text-emerald-200 transition text-sm px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-400/20"
+            >
+              <Coin size={16} /> Пополнения
+            </Link>
+            <Link
+              href="/dashboard/admin/payouts"
+              className="inline-flex items-center gap-2 text-sky-300 hover:text-sky-200 transition text-sm px-4 py-2 rounded-xl bg-sky-500/10 border border-sky-400/20"
+            >
+              <Bank size={16} /> Выплаты авторам
+            </Link>
+            <Link
+              href="/dashboard/admin/status"
+              className="inline-flex items-center gap-2 text-purple-300 hover:text-purple-200 transition text-sm px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-400/20"
+            >
+              <Pulse size={16} /> Статус
+            </Link>
+          </div>
 
           <p className="text-white/40 text-xs tracking-widest uppercase mb-2">
             Управление
@@ -711,6 +891,16 @@ export default function AdminPage() {
               }`}
             >
               Отзывы
+            </button>
+            <button
+              onClick={() => { setKeysTab("promo"); loadPromos(); }}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition ${
+                keysTab === "promo"
+                  ? "bg-purple-600/80 text-white"
+                  : "text-white/60 hover:text-white"
+              }`}
+            >
+              Промокоды
             </button>
             <button
               onClick={() => { setKeysTab("stats" as any); }}
@@ -1383,10 +1573,16 @@ export default function AdminPage() {
 
           {keysTab === "support" && (
           <div>
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Headset size={22} className="text-white/70" />
-                <h2 className="text-2xl font-bold">Тикеты ({supportTickets.length})</h2>
+                <h2 className="text-2xl font-bold">Тикеты ({visibleSupportTickets.length})</h2>
+                {supportCsat && supportCsat.count > 0 && (
+                  <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-yellow-500/10 border border-yellow-400/25 text-yellow-200">
+                    <Star size={12} weight="fill" /> CSAT {supportCsat.avg.toFixed(1)}/5 ·{" "}
+                    {supportCsat.count}
+                  </span>
+                )}
               </div>
               <button
                 onClick={loadSupport}
@@ -1396,18 +1592,123 @@ export default function AdminPage() {
               </button>
             </div>
 
+            <div className="flex flex-wrap gap-2 mb-5">
+              <select
+                value={supportCategoryFilter}
+                onChange={(e) => setSupportCategoryFilter(e.target.value)}
+                className="bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm text-white/75"
+              >
+                <option value="all">Все категории</option>
+                {SUPPORT_CATEGORIES.map((entry) => (
+                  <option key={entry.id} value={entry.label}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={supportStatusFilter}
+                onChange={(e) => setSupportStatusFilter(e.target.value)}
+                className="bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm text-white/75"
+              >
+                <option value="all">Все статусы</option>
+                <option value="open">Открыт</option>
+                <option value="pending">Ждёт игрока</option>
+                <option value="closed">Закрыт</option>
+              </select>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 mb-5">
+              <div className="flex items-center gap-2 mb-3">
+                <ChatCircleText size={18} className="text-purple-300" />
+                <p className="text-sm font-semibold">Шаблоны ответов</p>
+              </div>
+
+              {supportTemplates.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {supportTemplates.map((tpl: any) => (
+                    <span
+                      key={tpl.id}
+                      className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-white/60"
+                    >
+                      {tpl.title}
+                      <button
+                        type="button"
+                        onClick={() => deleteTemplate(tpl.id)}
+                        aria-label="Удалить шаблон"
+                        className="text-white/30 hover:text-red-300 transition"
+                      >
+                        <Trash size={13} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid md:grid-cols-[220px_1fr_auto] gap-2">
+                <input
+                  value={templateTitle}
+                  onChange={(e) => setTemplateTitle(e.target.value)}
+                  maxLength={80}
+                  placeholder="Название шаблона"
+                  className="bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm"
+                />
+                <input
+                  value={templateBody}
+                  onChange={(e) => setTemplateBody(e.target.value)}
+                  maxLength={3000}
+                  placeholder="Текст ответа"
+                  className="bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={saveTemplate}
+                  disabled={templateBusy}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition"
+                >
+                  <Plus size={14} /> Добавить
+                </button>
+              </div>
+              {templateMsg && (
+                <p
+                  className={`text-xs mt-2 ${
+                    templateMsg.includes("✓") ? "text-emerald-300" : "text-red-300"
+                  }`}
+                >
+                  {templateMsg}
+                </p>
+              )}
+            </div>
+
             <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto">
-              {supportTickets.map((t: any) => (
+              {visibleSupportTickets.map((t: any) => (
                 <div key={t.id} className="bg-black/30 rounded-xl p-4 border border-white/5">
                   <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-white/90 text-sm">{t.subject}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        t.status === "closed" ? "bg-white/10 text-white/50" : "bg-green-500/20 text-green-300"
+                        t.status === "closed"
+                          ? "bg-white/10 text-white/50"
+                          : t.status === "pending"
+                            ? "bg-amber-500/15 text-amber-300"
+                            : "bg-green-500/20 text-green-300"
                       }`}>
-                        {t.status === "closed" ? "Закрыт" : "Открыт"}
+                        {t.status === "closed"
+                          ? "Закрыт"
+                          : t.status === "pending"
+                            ? "Ждёт ответа игрока"
+                            : "Открыт"}
+                      </span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
+                        {supportCategoryLabel(t.category)}
                       </span>
                       <span className="text-white/40 text-xs">{t.username}</span>
+                      {t.csat_rating ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-400/20 text-yellow-200">
+                          <Star size={10} weight="fill" /> {t.csat_rating}/5
+                        </span>
+                      ) : t.status === "closed" ? (
+                        <span className="text-[11px] text-white/25">без оценки</span>
+                      ) : null}
                     </div>
                     <span className="text-white/30 text-xs">#{t.id} · {t.created_at?.slice(0, 10)}</span>
                   </div>
@@ -1421,11 +1722,67 @@ export default function AdminPage() {
                           {m.is_admin ? "Поддержка" : "Пользователь"}
                         </p>
                         <p className="text-white/80 text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                        {m.attachment_url && (
+                          isImageAttachment(m.attachment_url) ? (
+                            <a
+                              href={m.attachment_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block mt-2 max-w-xs rounded-lg overflow-hidden border border-white/10 hover:border-purple-400/40 transition"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={m.attachment_url}
+                                alt={m.attachment_name || "Вложение"}
+                                className="w-full max-h-56 object-contain bg-black/40"
+                                loading="lazy"
+                              />
+                            </a>
+                          ) : (
+                            <a
+                              href={m.attachment_url}
+                              download={m.attachment_name || undefined}
+                              className="mt-2 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white/60 hover:text-white hover:border-purple-400/40 transition"
+                            >
+                              <FileText size={15} className="text-purple-300" />
+                              <span className="max-w-[200px] truncate">
+                                {m.attachment_name || "Файл"}
+                              </span>
+                              <DownloadSimple size={13} />
+                            </a>
+                          )
+                        )}
                       </div>
                     ))}
                   </div>
 
+                  {t.csat_comment && (
+                    <p className="text-xs text-white/40 mb-2">
+                      Комментарий к оценке: {t.csat_comment}
+                    </p>
+                  )}
+
                   <div className="flex flex-wrap gap-2">
+                    {supportTemplates.length > 0 && (
+                      <select
+                        defaultValue=""
+                        onChange={(e) => {
+                          const tpl = supportTemplates.find(
+                            (entry: any) => String(entry.id) === e.target.value
+                          );
+                          if (tpl) insertTemplate(t.id, tpl.body);
+                          e.currentTarget.value = "";
+                        }}
+                        className="bg-black/40 px-3 py-2 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-xs text-white/60"
+                      >
+                        <option value="">Шаблон…</option>
+                        {supportTemplates.map((tpl: any) => (
+                          <option key={tpl.id} value={tpl.id}>
+                            {tpl.title}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <input
                       value={supportReplies[t.id] ?? ""}
                       onChange={(e) => setSupportReplies((prev) => ({ ...prev, [t.id]: e.target.value }))}
@@ -1456,7 +1813,7 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
-              {supportTickets.length === 0 && (
+              {visibleSupportTickets.length === 0 && (
                 <p className="text-white/30 text-center py-8">Тикетов нет</p>
               )}
             </div>
@@ -1560,6 +1917,101 @@ export default function AdminPage() {
                 </div>
               ))}
               {reviewsList.length === 0 && <p className="text-white/30 text-center py-8">Отзывов нет</p>}
+            </div>
+          </div>
+          )}
+
+          {keysTab === "promo" && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Coin size={22} className="text-white/70" />
+                <h2 className="text-2xl font-bold">Промокоды ({promos.length})</h2>
+              </div>
+              <button onClick={loadPromos} className="text-sm text-purple-400 hover:text-purple-300">Обновить</button>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-6 mb-6">
+              <h3 className="text-xl font-bold mb-1">Создать промокод</h3>
+              <p className="text-white/40 text-sm mb-4">
+                Промокод начисляет только бонус на баланс. Подписку и её срок он не продлевает.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="text-white/40 text-xs mb-1 block">Код</label>
+                  <input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="STELLAR50"
+                    className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/40 text-xs mb-1 block">Бонус, ₽</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={promoAmount || ""}
+                    onChange={(e) => setPromoAmount(Number(e.target.value))}
+                    className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-white/40 text-xs mb-1 block">Лимит активаций (0 — без лимита)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={promoMaxUses || ""}
+                    onChange={(e) => setPromoMaxUses(Number(e.target.value))}
+                    placeholder="0"
+                    className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+                  />
+                </div>
+              </div>
+              {promoMsg && (
+                <p className={`text-sm mb-3 ${promoMsg.includes("✓") ? "text-green-400" : "text-red-400"}`}>{promoMsg}</p>
+              )}
+              <button
+                onClick={createPromo}
+                disabled={promoLoading || !promoCode.trim() || promoAmount < 1}
+                className="px-6 py-3 rounded-xl font-semibold bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition"
+              >
+                {promoLoading ? "Создание..." : "Создать"}
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {promos.map((p: any) => (
+                <div key={p.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex items-center justify-between gap-4 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono font-semibold text-white/90">{p.code}</span>
+                      <span className="font-semibold text-green-300">+{p.amount} ₽</span>
+                      <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                        p.active
+                          ? "bg-green-500/15 border-green-400/30 text-green-300"
+                          : "bg-white/5 border-white/10 text-white/40"
+                      }`}>
+                        {p.active ? "Активен" : "Отключён"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/40 mt-1">
+                      Использовано: {p.used_count}{Number(p.max_uses) > 0 ? ` / ${p.max_uses}` : " (без лимита)"}
+                      {p.expires_at ? ` · до ${String(p.expires_at).slice(0, 10)}` : ""}
+                      {` · создан ${String(p.created_at).slice(0, 10)}`}
+                    </p>
+                  </div>
+                  {p.active ? (
+                    <button
+                      onClick={() => disablePromo(p.id)}
+                      className="shrink-0 px-4 py-2 rounded-xl text-xs font-semibold bg-red-500/15 border border-red-400/30 text-red-300 hover:bg-red-500/25 transition"
+                    >
+                      Отключить
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+              {promos.length === 0 && <p className="text-white/30 text-center py-8">Промокодов нет</p>}
             </div>
           </div>
           )}

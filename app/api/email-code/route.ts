@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { query, queryOne } from "@/lib/db";
 import { emailVerificationEnabled, sendVerificationCode } from "@/lib/email";
+import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
+import {
+  DISPOSABLE_EMAIL_ERROR,
+  isDisposableEmail,
+} from "@/lib/disposable-emails";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +23,20 @@ export async function POST(req: Request) {
     if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return NextResponse.json({ error: "Некорректный email" }, { status: 400 });
     }
+    if (isDisposableEmail(email)) {
+      return NextResponse.json({ error: DISPOSABLE_EMAIL_ERROR }, { status: 400 });
+    }
+
+    const limited = await enforceRateLimit(req, [
+      { scope: "email-code:ip", identifier: getClientIp(req), limit: 10, windowMs: 10 * 60_000 },
+      {
+        scope: "email-code:email",
+        identifier: String(email).toLowerCase(),
+        limit: 5,
+        windowMs: 60 * 60_000,
+      },
+    ]);
+    if (limited) return limited;
 
     if (!emailVerificationEnabled()) {
       return NextResponse.json({ ok: true, disabled: true });
@@ -28,7 +47,7 @@ export async function POST(req: Request) {
     const recent = await queryOne(
       `SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX(created_at))), 9999)::int AS since_last,
               COUNT(*)::int AS hourly
-       FROM email_codes WHERE email = $1 AND created_at > NOW() - INTERVAL '1 hour'`,
+       FROM email_codes WHERE email = $1 AND purpose = 'register' AND created_at > NOW() - INTERVAL '1 hour'`,
       [lower]
     ) as any;
 

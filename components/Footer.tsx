@@ -1,25 +1,28 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useI18n } from "@/lib/i18n";
 
 const columns = [
   {
-    title: "Платформа",
+    title: "footer.platform",
     links: [
-      { label: "Главная", href: "/" },
-      { label: "Покупка", href: "/pricing" },
-      { label: "FAQ", href: "/faq" },
+      { label: "footer.home", href: "/" },
+      { label: "footer.buy", href: "/pricing" },
+      { label: "footer.community", href: "/community" },
+      { label: "footer.status", href: "/status" },
+      { label: "footer.faq", href: "/faq" },
     ],
   },
   {
-    title: "Аккаунт",
+    title: "footer.account",
     links: [
-      { label: "Вход", href: "/login" },
-      { label: "Регистрация", href: "/register" },
+      { label: "footer.login", href: "/login" },
+      { label: "footer.register", href: "/register" },
     ],
   },
   {
-    title: "Контакты",
+    title: "footer.contacts",
     links: [
       { label: "Telegram", href: "https://t.me/+YSGwKHFMrQAxZWVi", external: true },
       {
@@ -30,10 +33,10 @@ const columns = [
     ],
   },
   {
-    title: "Правовое",
+    title: "footer.legal",
     links: [
-      { label: "Пользовательское соглашение", href: "/legal/user-agreement" },
-      { label: "Лицензионное соглашение", href: "/legal/eula" },
+      { label: "footer.userAgreement", href: "/legal/user-agreement" },
+      { label: "footer.eula", href: "/legal/eula" },
     ],
   },
 ];
@@ -61,6 +64,7 @@ const linkVar = {
 };
 
 export default function Footer() {
+  const { t } = useI18n();
   return (
     <motion.footer
       initial={{ opacity: 0, y: 20 }}
@@ -81,25 +85,25 @@ export default function Footer() {
         initial="hidden"
         whileInView="show"
         viewport={{ once: true, amount: 0.3 }}
-        className="relative z-10 px-48 py-20 flex justify-between items-start text-white/70"
+        className="relative z-10 px-4 sm:px-8 lg:px-16 xl:px-48 py-12 sm:py-16 lg:py-20 flex flex-col lg:flex-row lg:justify-between items-start gap-10 text-white/70"
       >
         <motion.div variants={colVar} className="flex flex-col gap-3 max-w-xs">
           <h3 className="text-xl font-semibold text-white">Stellar Client</h3>
           <p className="text-sm text-white/50 leading-relaxed">
             © {new Date().getFullYear()} Stellar Client.
             <br />
-            Все права защищены.
+            {t("footer.rights")}
           </p>
         </motion.div>
 
-        <div className="flex gap-20">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:flex gap-8 sm:gap-10 lg:gap-16 xl:gap-20 w-full lg:w-auto">
           {columns.map((col) => (
             <motion.div
               key={col.title}
               variants={colVar}
               className="flex flex-col gap-3"
             >
-              <h4 className="text-lg font-semibold text-white">{col.title}</h4>
+              <h4 className="text-lg font-semibold text-white">{t(col.title)}</h4>
               {col.links.map((link) => (
                 <motion.a
                   key={link.label}
@@ -114,7 +118,7 @@ export default function Footer() {
                   className="relative inline-block w-fit text-white/60"
                 >
                   <span className="relative">
-                    {link.label}
+                    {t(link.label)}
                     <motion.span
                       className="absolute -bottom-0.5 left-0 h-px bg-purple-300"
                       initial={{ width: 0 }}

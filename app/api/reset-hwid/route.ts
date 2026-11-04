@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { query, queryOne } from "@/lib/db";
+import { withTransaction } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { safeRefreshUserRisk } from "@/lib/risk";
 
 export async function POST(req: Request) {
   try {
@@ -14,23 +15,40 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Введите ключ" }, { status: 400 });
     }
 
-    const licenseKey = await queryOne("SELECT * FROM keys WHERE key = $1", [key.trim().toUpperCase()]) as any;
+    const result = await withTransaction(async (client) => {
+      // Блокируем ключ, чтобы его нельзя было использовать дважды одновременно.
+      const keyResult = await client.query(
+        "SELECT * FROM keys WHERE key = $1 FOR UPDATE",
+        [key.trim().toUpperCase()]
+      );
+      const licenseKey = keyResult.rows[0];
 
-    if (!licenseKey) {
-      return NextResponse.json({ error: "Ключ не найден" }, { status: 404 });
+      if (!licenseKey) {
+        return { error: "Ключ не найден", status: 404 } as const;
+      }
+      if (licenseKey.activated_by) {
+        return { error: "Ключ уже был использован", status: 409 } as const;
+      }
+      if (licenseKey.duration_days !== 0) {
+        return { error: "Это ключ подписки, а не сброса HWID", status: 400 } as const;
+      }
+
+      const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+
+      await client.query("UPDATE users SET hwid = NULL WHERE id = $1", [user.id]);
+      await client.query(
+        "UPDATE keys SET activated_by = $1, activated_at = $2 WHERE id = $3",
+        [user.id, now, licenseKey.id]
+      );
+
+      return { ok: true } as const;
+    });
+
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
-    if (licenseKey.activated_by) {
-      return NextResponse.json({ error: "Ключ уже был использован" }, { status: 409 });
-    }
-
-    if (licenseKey.duration_days !== 0) {
-      return NextResponse.json({ error: "Это ключ подписки, а не сброса HWID" }, { status: 400 });
-    }
-
-    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
-    await query("UPDATE users SET hwid = NULL WHERE id = $1", [user.id]);
-    await query("UPDATE keys SET activated_by = $1, activated_at = $2 WHERE id = $3", [user.id, now, licenseKey.id]);
+    await safeRefreshUserRisk(user.id);
 
     return NextResponse.json({ ok: true });
   } catch {

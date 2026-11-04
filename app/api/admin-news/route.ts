@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
     }
 
     await query("INSERT INTO news (title, content, tag) VALUES ($1, $2, $3)", [title, content, tag || "Новость"]);
+    await logAdminAction(admin, "news.create", null, `${tag || "Новость"}: ${title}`);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });
@@ -34,6 +36,7 @@ export async function DELETE(req: Request) {
     const { id } = await req.json();
 
     await query("DELETE FROM news WHERE id = $1", [id]);
+    await logAdminAction(admin, "news.delete", null, `Новость #${id}`);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });

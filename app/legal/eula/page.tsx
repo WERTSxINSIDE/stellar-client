@@ -7,8 +7,9 @@ import { ArrowLeft } from "@phosphor-icons/react";
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useI18n } from "@/lib/i18n";
 
-const sections = [
+const sectionsRu = [
   {
     title: "1. Предоставление лицензии",
     items: [
@@ -57,7 +58,59 @@ const sections = [
   },
 ];
 
+const sectionsEn = [
+  {
+    title: "1. License grant",
+    items: [
+      "Limited license. The rights holder grants you a non-exclusive, non-transferable, revocable license to install and personally use the Program for non-commercial purposes on your devices.",
+      "Ownership. All intellectual property rights, source code, design and the Stellar Client brand belong exclusively to the developers of the Program.",
+    ],
+  },
+  {
+    title: "2. Usage restrictions",
+    intro: "You are strictly prohibited from:",
+    items: [
+      "Copying, distributing, selling or renting the Program to third parties.",
+      "Modifying, decompiling, disassembling or attempting to extract the source code of the Program (unless expressly permitted by the open license of individual components).",
+      "Using the Program to circumvent third-party service rules (including creating or using prohibited cheats/hacks that violate third-party game server rules).",
+      "Using the Program to commit any illegal actions.",
+    ],
+  },
+  {
+    title: "3. Disclaimer of warranties",
+    items: [
+      "“As is”. The Program is provided on an “as is” basis. The developers do not guarantee that the Program will operate uninterrupted, error-free, or be fully compatible with any third-party software or updates of third-party games (for example, Minecraft).",
+      "Risks. You use the Program entirely at your own risk.",
+    ],
+  },
+  {
+    title: "4. Limitation of liability",
+    items: [
+      "Damages. The Stellar Client developers are under no circumstances liable for any direct, indirect or incidental damages.",
+      "Bans. The developers are not liable for bans of your game accounts on third-party servers caused by the use of the Program.",
+    ],
+  },
+  {
+    title: "5. Updates and changes",
+    items: [
+      "Automatic updates. The Program may automatically download and install updates to improve stability or add new features.",
+      "Changes to terms. The developers reserve the right to change the terms of this Agreement at any time. Continued use of the Program after changes means you agree to the new version of the EULA.",
+    ],
+  },
+  {
+    title: "6. Termination",
+    items: [
+      "The Agreement is effective until terminated.",
+      "You may terminate it at any time by deleting the Program from all your devices.",
+      "The developers have the right to revoke the license and block access to the Program if you violate any clause of this Agreement.",
+    ],
+  },
+];
+
 export default function EulaPage() {
+  const { t, lang } = useI18n();
+  const sections = lang === "en" ? sectionsEn : sectionsRu;
+
   return (
     <>
       <Header />
@@ -76,7 +129,7 @@ export default function EulaPage() {
               href="/"
               className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition mb-8"
             >
-              <ArrowLeft size={16} /> На главную
+              <ArrowLeft size={16} /> {t("support.backHome")}
             </Link>
 
             <motion.h1
@@ -85,7 +138,9 @@ export default function EulaPage() {
               transition={{ duration: 0.6 }}
               className="text-3xl sm:text-4xl font-extrabold mb-4"
             >
-              Лицензионное соглашение с конечным пользователем (EULA)
+              {lang === "en"
+                ? "End User License Agreement (EULA)"
+                : "Лицензионное соглашение с конечным пользователем (EULA)"}
             </motion.h1>
 
             <motion.div
@@ -95,12 +150,31 @@ export default function EulaPage() {
               className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-7 sm:p-9 space-y-8"
             >
               <div className="space-y-3 text-white/70 leading-relaxed">
-                <p>Перед установкой или использованием Stellar Client внимательно ознакомьтесь с условиями настоящего Соглашения.</p>
-                <p>
-                  Используя, устанавливая или запуская Stellar Client (далее — «Программа»), вы соглашаетесь со всеми
-                  условиями настоящего Соглашения. Если вы не согласны с условиями — не устанавливайте и не
-                  используйте Программу.
-                </p>
+                {lang === "en" ? (
+                  <>
+                    <p>
+                      Please read the terms of this Agreement carefully before installing or
+                      using Stellar Client.
+                    </p>
+                    <p>
+                      By using, installing or launching Stellar Client (the “Program”), you agree
+                      to all terms of this Agreement. If you do not agree to the terms, do not
+                      install or use the Program.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      Перед установкой или использованием Stellar Client внимательно ознакомьтесь
+                      с условиями настоящего Соглашения.
+                    </p>
+                    <p>
+                      Используя, устанавливая или запуская Stellar Client (далее — «Программа»), вы
+                      соглашаетесь со всеми условиями настоящего Соглашения. Если вы не согласны с
+                      условиями — не устанавливайте и не используйте Программу.
+                    </p>
+                  </>
+                )}
               </div>
 
               {sections.map((s) => (

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useI18n, type Lang } from "@/lib/i18n";
 import { ArrowLeft, CircleNotch, ClockCounterClockwise } from "@phosphor-icons/react";
 
 type PrizeInfo = {
@@ -28,13 +29,32 @@ type WheelState = {
 
 const COLORS = ["#7c3aed", "#4338ca"];
 
+function prizeLabel(key: string, fallback: string, lang: Lang) {
+  if (lang !== "en") return fallback;
+  if (key === "hwid") return "HWID reset";
+  if (key === "lifetime") return "Lifetime";
+  const hours = key.match(/^sub_(\d+)h$/);
+  if (hours) return `${hours[1]} hour${hours[1] === "1" ? "" : "s"} of subscription`;
+  const days = key.match(/^sub_(\d+)d$/);
+  if (days) return `${days[1]} day${days[1] === "1" ? "" : "s"} of subscription`;
+  const balance = key.match(/^balance_(\d+)$/);
+  if (balance) return `+${balance[1]} ₽`;
+  return fallback;
+}
+
 function shortLabel(label: string) {
-  const s = label.replace(" подписки", "").replace("HWID сброс", "HWID");
+  const s = label
+    .replace(" подписки", "")
+    .replace(" of subscription", "")
+    .replace("HWID сброс", "HWID")
+    .replace("HWID reset", "HWID");
   if (s.includes("₽")) return s.replace(" ₽", "₽");
   return s.length > 10 ? s.slice(0, 9) + "..." : s;
 }
 
 export default function WheelPage() {
+  const { lang } = useI18n();
+  const tr = (ru: string, en: string) => (lang === "en" ? en : ru);
   const router = useRouter();
   const [state, setState] = useState<WheelState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +91,7 @@ export default function WheelPage() {
       const res = await fetch("/api/wheel", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Ошибка");
+        setError(data.error || tr("Ошибка", "Error"));
         setSpinning(false);
         await refresh();
         return;
@@ -87,16 +107,16 @@ export default function WheelPage() {
 
       const delay = 4200;
       setTimeout(() => {
-        setResult(data.prize.label);
+        setResult(prizeLabel(data.prize.key, data.prize.label, lang));
         setSpinning(false);
         refresh();
         resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, delay);
     } catch {
-      setError("Ошибка сервера");
+      setError(tr("Ошибка сервера", "Server error"));
       setSpinning(false);
     }
-  }, [state, spinning, rotation]);
+    }, [state, spinning, rotation, lang]);
 
   async function refresh() {
     const r = await fetch("/api/wheel");
@@ -114,14 +134,14 @@ export default function WheelPage() {
           href="/dashboard"
           className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition mb-6"
         >
-          <ArrowLeft size={16} /> Назад в дашборд
+          <ArrowLeft size={16} /> {tr("Назад в дашборд", "Back to dashboard")}
         </Link>
 
         <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-extrabold">Колесо фортуны</h1>
+          <h1 className="text-3xl sm:text-4xl font-extrabold">{tr("Колесо фортуны", "Wheel of fortune")}</h1>
           <p className="text-white/40 mt-2">
-            Бесплатная крутка каждые {state?.cooldownHours ?? 72} часа. Дополнительные крутки выпадают в
-            ежедневных наградах.
+            {tr("Бесплатная крутка каждые", "A free spin every")} {state?.cooldownHours ?? 72} {tr("часа. Дополнительные крутки выпадают в", "hours. Extra spins drop from")}
+            {tr("ежедневных наградах.", "daily rewards.")}
           </p>
         </div>
 
@@ -149,7 +169,7 @@ export default function WheelPage() {
                       textShadow: "0 1px 3px rgba(0,0,0,0.6)",
                     }}
                   >
-                    {shortLabel(p.label)}
+                    {shortLabel(prizeLabel(p.key, p.label, lang))}
                   </span>
                 ))}
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#07070d] border-4 border-white/30 z-[1] flex items-center justify-center">
@@ -164,7 +184,7 @@ export default function WheelPage() {
                 ref={resultRef}
                 className="w-full rounded-2xl border border-purple-400/50 bg-purple-500/15 p-4 text-center mb-4"
               >
-                <p className="text-purple-300 text-sm">Выпало:</p>
+                <p className="text-purple-300 text-sm">{tr("Выпало:", "Result:")}</p>
                 <p className="text-xl font-bold">{result}</p>
               </div>
             )}
@@ -176,43 +196,43 @@ export default function WheelPage() {
             >
               {spinning ? (
                 <>
-                  <CircleNotch size={20} className="animate-spin" /> Крутим...
+                  <CircleNotch size={20} className="animate-spin" /> {tr("Крутим...", "Spinning...")}
                 </>
               ) : loading ? (
-                "Загрузка..."
+                tr("Загрузка...", "Loading...")
               ) : state && state.spins > 0 ? (
-                `Крутить (круток: ${state.spins})`
+                tr(`Крутить (круток: ${state.spins})`, `Spin (spins: ${state.spins})`)
               ) : state && state.hoursLeft > 0 ? (
-                `Крутка через ${state.hoursLeft} ч.`
+                tr(`Крутка через ${state.hoursLeft} ч.`, `Next spin in ${state.hoursLeft} h.`)
               ) : (
-                "Крутить бесплатно"
+                tr("Крутить бесплатно", "Spin for free")
               )}
             </button>
 
             <div className="flex items-center gap-6 mt-4 text-sm text-white/50">
               <span className="inline-flex items-center gap-1.5">
-                <ClockCounterClockwise size={16} /> Бесплатно раз в {state?.cooldownHours ?? 72} ч
+                <ClockCounterClockwise size={16} /> {tr("Бесплатно раз в", "Free every")} {state?.cooldownHours ?? 72} {tr("ч", "h")}
               </span>
-              <span>Бонус-крутки: <span className="text-purple-300 font-semibold">{state?.spins ?? 0}</span></span>
+              <span>{tr("Бонус-крутки:", "Bonus spins:")} <span className="text-purple-300 font-semibold">{state?.spins ?? 0}</span></span>
             </div>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-6 h-fit">
-            <h3 className="text-lg font-bold mb-4">Шансы</h3>
+            <h3 className="text-lg font-bold mb-4">{tr("Шансы", "Odds")}</h3>
             <div className="space-y-2">
               {(state?.prizes ?? []).map((p) => (
                 <div
                   key={p.key}
                   className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-white/5 last:border-0"
                 >
-                  <span className="text-white/70">{p.label}</span>
+                  <span className="text-white/70">{prizeLabel(p.key, p.label, lang)}</span>
                   <span className="text-purple-300 font-semibold whitespace-nowrap">{p.chance}%</span>
                 </div>
               ))}
             </div>
             <p className="text-white/30 text-xs mt-4">
-              Шансы указаны с учётом весов рулетки и в сумме дают 100%. Выигрыш в подписку добавляется к
-              текущей подписке.
+              {tr("Шансы указаны с учётом весов рулетки и в сумме дают 100%. Выигрыш в подписку добавляется к", "Odds are shown with roulette weights and add up to 100%. A subscription win is added to")}
+              {tr("текущей подписке.", "your current subscription.")}
             </p>
           </div>
         </div>
