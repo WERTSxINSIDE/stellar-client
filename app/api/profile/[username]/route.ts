@@ -145,8 +145,10 @@ export async function GET(
     );
 
     const computed = computeAchievements(stats);
+    // В публичном профиле показываем только полученные достижения,
+    // а не весь список с закрытыми.
     const achievements = computed
-      .filter((a) => a.available || a.unlocked || unlockedAt.has(a.key))
+      .filter((a) => a.unlocked || unlockedAt.has(a.key))
       .map((a) => ({
         key: a.key,
         title: a.hidden && !a.unlocked && !unlockedAt.has(a.key) ? "Секретное достижение" : a.title,
