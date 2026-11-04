@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { ArrowRight, CheckCircle, Ticket } from "@phosphor-icons/react";
 
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
@@ -18,7 +20,8 @@ type Product = {
 };
 
 export default function PricingPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const tr = (ru: string, en: string) => (lang === "en" ? en : ru);
   const products: Product[] = [
     { title: t("pricing.30days"), price: "130", rub: 130, days: 30, href: "https://funpay.com/lots/offer?id=73168850" },
     { title: t("pricing.90days"), price: "250", rub: 250, days: 90, href: "https://funpay.com/lots/offer?id=73168970" },
@@ -32,6 +35,7 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(false);
   const [topupLinks, setTopupLinks] = useState<Record<string, string>>({});
   const [topupAmounts, setTopupAmounts] = useState<number[]>([10, 20, 50, 150, 200, 300, 400]);
+  const [postPay, setPostPay] = useState<{ amount?: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/topup", { cache: "no-store" })
@@ -44,6 +48,26 @@ export default function PricingPage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("paid") === "1") {
+      const amount = Number(params.get("amount"));
+      setPostPay({ amount: Number.isFinite(amount) && amount > 0 ? amount : undefined });
+    }
+  }, []);
+
+  const supportHref = (() => {
+    const subject = tr(
+      "Не пришёл промокод после оплаты",
+      "Promo code not received after payment"
+    );
+    const body = tr(
+      `Оплатил на FunPay${postPay?.amount ? ` ${postPay.amount} ₽` : ""}, но промокод не пришёл.\n\nСсылка на лот / номер заказа: \nВремя оплаты: \nСпособ оплаты: \n\nПрошу проверить оплату.`,
+      `I paid on FunPay${postPay?.amount ? ` ${postPay.amount} ₽` : ""} but did not receive a promo code.\n\nLot link / order number: \nPayment time: \nPayment method: \n\nPlease check the payment.`
+    );
+    return `/support?category=payment&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  })();
 
   function openModal(p: Product) {
     setSelected(p);
@@ -138,6 +162,7 @@ export default function PricingPage() {
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => setPostPay({ amount })}
                     className="group rounded-2xl border border-purple-400/25 bg-purple-500/10 hover:bg-purple-500/20 px-4 py-6 text-center transition"
                   >
                     <p className="text-2xl font-bold">{amount} ₽</p>
@@ -161,6 +186,15 @@ export default function PricingPage() {
             </div>
 
             <p className="text-[11px] text-white/30 mt-4">{t("pricing.topupHint")}</p>
+
+            <button
+              onClick={() => setPostPay({})}
+              className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-purple-300 hover:text-purple-200 transition"
+            >
+              <CheckCircle size={18} />
+              {tr("Оплатил — что делать дальше?", "Paid already? See what's next")}
+              <ArrowRight size={15} />
+            </button>
           </motion.div>
         </section>
       </main>
@@ -197,6 +231,11 @@ export default function PricingPage() {
                   href={selected.href}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => {
+                    const amount = selected.rub;
+                    setSelected(null);
+                    setPostPay({ amount });
+                  }}
                   className="w-full py-3 rounded-xl font-semibold bg-purple-600 hover:bg-purple-500 transition text-center"
                 >
                   FunPay
@@ -221,6 +260,106 @@ export default function PricingPage() {
               >
                 {t("pricing.close")}
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {postPay && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 py-6 overflow-y-auto"
+            onClick={() => setPostPay(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.25 }}
+              className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#1a1a1a]/95 backdrop-blur-xl p-7 shadow-2xl shadow-black/60 my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-1">
+                <span className="w-10 h-10 rounded-2xl bg-green-500/15 border border-green-400/30 flex items-center justify-center text-green-300">
+                  <CheckCircle size={22} />
+                </span>
+                <h3 className="text-2xl font-bold">
+                  {tr("Оплата прошла — что дальше?", "Payment sent — what's next?")}
+                </h3>
+              </div>
+              <p className="text-white/45 text-sm mb-6">
+                {postPay.amount
+                  ? tr(
+                      `Пополнение на ${postPay.amount} ₽ проходит в три шага.`,
+                      `A ${postPay.amount} ₽ top-up takes three steps.`
+                    )
+                  : tr(
+                      "Пополнение и покупка проходят в три шага.",
+                      "Top-ups and purchases take three steps."
+                    )}
+              </p>
+
+              <ol className="space-y-4 mb-7">
+                {[
+                  {
+                    title: tr("Оплатили на FunPay", "Paid on FunPay"),
+                    text: tr(
+                      "Выберите лот и оплатите удобным способом. Ссылка на оплату открывается в новой вкладке.",
+                      "Pick a lot and pay with any method. The payment link opens in a new tab."
+                    ),
+                  },
+                  {
+                    title: tr("Получили промокод", "Received the promo code"),
+                    text: tr(
+                      "Продавец отправит код в чат FunPay — обычно в течение 1–5 минут. Не закрывайте заказ до получения кода.",
+                      "The seller sends the code in the FunPay chat, usually within 1–5 minutes. Keep the order open until it arrives."
+                    ),
+                  },
+                  {
+                    title: tr("Активировали здесь", "Activated it here"),
+                    text: tr(
+                      "Вставьте код в разделе «Баланс» в кабинете. Деньги зачислятся сразу, после этого можно оплатить подписку с баланса.",
+                      "Paste the code in the “Balance” section of your dashboard. The money is credited instantly, then you can pay for a subscription from your balance."
+                    ),
+                  },
+                ].map((step, index) => (
+                  <li key={step.title} className="flex gap-4">
+                    <span className="shrink-0 w-8 h-8 rounded-full bg-purple-600/20 border border-purple-400/30 text-purple-200 flex items-center justify-center text-sm font-bold">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="font-semibold">{step.title}</p>
+                      <p className="text-white/40 text-sm leading-relaxed mt-0.5">{step.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+
+              <div className="flex flex-col gap-3">
+                <Link
+                  href="/dashboard?tab=balance"
+                  className="w-full py-3 rounded-xl font-semibold bg-purple-600 hover:bg-purple-500 transition text-center inline-flex items-center justify-center gap-2"
+                >
+                  <Ticket size={18} />
+                  {tr("Перейти к активации кода", "Go to code activation")}
+                </Link>
+                <Link
+                  href={supportHref}
+                  className="w-full py-3 rounded-xl font-semibold bg-white/5 hover:bg-white/10 border border-white/10 transition text-center"
+                >
+                  {tr("Код не пришёл — написать в поддержку", "Code didn't arrive — contact support")}
+                </Link>
+                <button
+                  onClick={() => setPostPay(null)}
+                  className="w-full text-sm text-white/40 hover:text-white/70 transition py-1"
+                >
+                  {t("pricing.close")}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

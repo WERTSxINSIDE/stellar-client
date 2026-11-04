@@ -20,6 +20,7 @@ import {
 } from "@phosphor-icons/react";
 import {
   SUPPORT_CATEGORIES,
+  SUPPORT_CATEGORY_IDS,
   isAllowedAttachmentName,
   isImageAttachment,
   supportCategoryLabel,
@@ -272,6 +273,19 @@ export default function SupportPage() {
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const categoryParam = params.get("category");
+    if (
+      categoryParam &&
+      (SUPPORT_CATEGORY_IDS as readonly string[]).includes(categoryParam)
+    ) {
+      setCategory(categoryParam);
+    }
+    const subjectParam = params.get("subject");
+    if (subjectParam) setSubject(subjectParam.slice(0, 160));
+    const bodyParam = params.get("body");
+    if (bodyParam) setBody(bodyParam.slice(0, 4000));
+
     fetch("/api/me")
       .then((r) => r.json())
       .then((d) => {

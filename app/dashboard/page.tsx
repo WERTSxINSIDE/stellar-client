@@ -335,6 +335,26 @@ export default function Dashboard() {
   const [bioError, setBioError] = useState("");
 
   useEffect(() => {
+    const tabParam = new URLSearchParams(window.location.search).get("tab");
+    const allowed = [
+      "account",
+      "reward",
+      "balance",
+      "stats",
+      "achievements",
+      "history",
+      "referral",
+      "security",
+      "notifications",
+      "partners",
+      "media",
+      "tester",
+      "actions",
+    ];
+    if (tabParam && allowed.includes(tabParam)) setTab(tabParam);
+  }, []);
+
+  useEffect(() => {
     fetch("/api/me?profile=1")
       .then((r) => r.json())
       .then((data) => {
