@@ -20,9 +20,17 @@ const SLOT_BY_TYPE: Record<string, string> = {
   badge: "equipped_badge",
   theme: "profile_theme",
   site_theme: "site_theme",
+  game: "equipped_game",
 };
 
-const COLUMNS = ["nickname_color", "equipped_frame", "equipped_badge", "profile_theme", "site_theme"] as const;
+const COLUMNS = [
+  "nickname_color",
+  "equipped_frame",
+  "equipped_badge",
+  "profile_theme",
+  "site_theme",
+  "equipped_game",
+] as const;
 
 function equippedKeys(items: CosmeticRow[], values: Record<string, string | null>) {
   const byValue = new Map<string, string>();
@@ -31,6 +39,12 @@ function equippedKeys(items: CosmeticRow[], values: Record<string, string | null
   }
   const result: Record<string, string | null> = {};
   for (const [type, column] of Object.entries(SLOT_BY_TYPE)) {
+    // Для игровой косметики в колонке хранится ключ предмета, а не value (эмодзи).
+    if (type === "game") {
+      const key = values[column] ?? null;
+      result[type] = key && items.some((item) => item.type === "game" && item.key === key) ? key : null;
+      continue;
+    }
     const value = values[column] ?? null;
     result[type] = value ? byValue.get(`${type}:${value}`) ?? null : null;
   }
@@ -197,7 +211,10 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Сначала купите предмет" }, { status: 403 });
     }
 
-    await query(`UPDATE users SET ${column} = $2 WHERE id = $1`, [user.id, item.value]);
+    await query(`UPDATE users SET ${column} = $2 WHERE id = $1`, [
+      user.id,
+      type === "game" ? item.key : item.value,
+    ]);
     return NextResponse.json({ ok: true, equipped: item.key });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });

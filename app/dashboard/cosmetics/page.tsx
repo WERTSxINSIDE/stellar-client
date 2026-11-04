@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Coins,
   Crown,
+  GameController,
   Palette,
   Sparkle,
   WarningCircle,
@@ -20,7 +21,7 @@ import {
 
 type Cosmetic = {
   key: string;
-  type: "nickname_color" | "frame" | "badge" | "theme" | "site_theme";
+  type: "nickname_color" | "frame" | "badge" | "theme" | "site_theme" | "game";
   title: string;
   description: string | null;
   price: number;
@@ -62,7 +63,7 @@ export default function CosmeticsPage() {
   const [equipped, setEquipped] = useState<Record<string, string | null>>({});
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<CoinTx[]>([]);
-  const [tab, setTab] = useState<Cosmetic["type"]>("nickname_color");
+  const [tab, setTab] = useState<Cosmetic["type"]>("game");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
@@ -148,6 +149,7 @@ export default function CosmeticsPage() {
   }
 
   const tabs: { id: Cosmetic["type"]; label: string; icon: React.ReactNode }[] = [
+    { id: "game", label: tr("Покупка косметики в игру", "In-game cosmetics"), icon: <GameController size={16} /> },
     { id: "nickname_color", label: tr("Цвет ника", "Nickname color"), icon: <Palette size={16} /> },
     { id: "frame", label: tr("Рамки", "Frames"), icon: <Sparkle size={16} /> },
     { id: "badge", label: tr("Бейджи", "Badges"), icon: <Crown size={16} /> },
@@ -182,8 +184,8 @@ export default function CosmeticsPage() {
               </h1>
               <p className="text-white/45 mt-2 max-w-2xl">
                 {tr(
-                  "Тратьте SC-монеты на цвета ника, рамки, бейджи и темы. Монеты начисляются за ежедневные награды, покупки, отзывы и достижения.",
-                  "Spend SC coins on nickname colors, frames, badges and themes. Coins are earned from daily rewards, purchases, reviews and achievements."
+                  "Тратьте SC-монеты на косметику для профиля и для персонажа в Minecraft. Монеты начисляются за ежедневные награды, покупки, отзывы и достижения.",
+                  "Spend SC coins on profile cosmetics and on cosmetics for your Minecraft character. Coins are earned from daily rewards, purchases, reviews and achievements."
                 )}
               </p>
             </div>
@@ -234,6 +236,15 @@ export default function CosmeticsPage() {
               </button>
             ))}
           </div>
+
+          {tab === "game" && (
+            <div className="mb-5 rounded-2xl border border-emerald-400/20 bg-emerald-500/[0.06] px-4 py-3 text-xs text-white/55">
+              {tr(
+                "Покупка привязывается к вашему нику и автоматически подтягивается клиентом. Наденьте предмет здесь — он появится у персонажа в Minecraft после перезапуска клиента. Один активный предмет за раз.",
+                "A purchase is linked to your nickname and picked up by the client automatically. Equip an item here and it appears on your Minecraft character after restarting the client. One active item at a time."
+              )}
+            </div>
+          )}
 
           {tab === "site_theme" && (
             <div className="mb-5 rounded-2xl border border-cyan-400/20 bg-cyan-500/[0.06] px-4 py-3 text-xs text-white/55">
@@ -318,6 +329,16 @@ export default function CosmeticsPage() {
                         >
                           <span className="text-sm font-semibold text-white/90">
                             {tr("Профиль", "Profile")}
+                          </span>
+                        </div>
+                      )}
+                      {item.type === "game" && (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-4xl drop-shadow-[0_0_12px_rgba(168,85,247,0.45)]">
+                            {item.value || "✨"}
+                          </span>
+                          <span className="text-[10px] uppercase tracking-widest text-white/35">
+                            {tr("В игре", "In game")}
                           </span>
                         </div>
                       )}

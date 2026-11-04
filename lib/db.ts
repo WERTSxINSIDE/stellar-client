@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-05-6";
+const SCHEMA_VERSION = "2026-11-05-7";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -764,6 +764,14 @@ async function initDb() {
       END $$;
     `);
 
+    // Активная косметика для Minecraft (ключ предмета из cosmetic_items).
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN equipped_game TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
     await client.query(`
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN partner_code TEXT;
@@ -1123,7 +1131,17 @@ async function initDb() {
         ('site_matrix', 'site_theme', 'Матрица', 'Зелёная цифровая сетка и неоновое свечение.', 3200, 'matrix', 'legendary'),
         ('site_royal', 'site_theme', 'Королевский', 'Фиолетовый фон с золотыми акцентами.', 3400, 'royal', 'legendary'),
         ('site_deep_space', 'site_theme', 'Глубокий космос', 'Тёмное звёздное небо с синими и фиолетовыми туманностями.', 4000, 'deep_space', 'legendary'),
-        ('site_cosmic', 'site_theme', 'Космический RGB', 'Анимированный радужный фон на всех страницах сайта.', 9000, 'cosmic', 'cosmic')
+        ('site_cosmic', 'site_theme', 'Космический RGB', 'Анимированный радужный фон на всех страницах сайта.', 9000, 'cosmic', 'cosmic'),
+        ('game_cape_stardust', 'game', 'Плащ «Звёздная пыль»', 'Мерцающий плащ со звёздным шлейфом. Виден в игре на вашем нике.', 1500, '🧣', 'rare'),
+        ('game_cape_bloodmoon', 'game', 'Плащ «Кровавая луна»', 'Тёмно-красный плащ с холодным лунным свечением.', 2200, '🧥', 'epic'),
+        ('game_cape_neon', 'game', 'Плащ «Неон»', 'Кислотный неоновый плащ, который видно издалека.', 3000, '🟣', 'legendary'),
+        ('game_wings_angel', 'game', 'Крылья ангела', 'Белые крылья с мягким свечением за спиной.', 3500, '🕊️', 'epic'),
+        ('game_wings_demon', 'game', 'Крылья демона', 'Тёмные крылья с багровым огнём.', 3500, '🦇', 'epic'),
+        ('game_hat_halo', 'game', 'Нимб', 'Светящийся нимб над головой в игре.', 2000, '😇', 'rare'),
+        ('game_hat_crown', 'game', 'Корона', 'Золотая корона над ником в игре.', 2500, '👑', 'epic'),
+        ('game_aura_cosmic', 'game', 'Космическая аура', 'Радужные частицы вокруг персонажа.', 5000, '🌈', 'cosmic'),
+        ('game_pet_cat', 'game', 'Питомец «Космокот»', 'Кот в скафандре следует за вами по миру.', 4000, '🐱', 'epic'),
+        ('game_pet_dragon', 'game', 'Питомец «Мини-дракон»', 'Маленький дракон летает рядом с вами.', 6000, '🐉', 'legendary')
       ON CONFLICT (key) DO NOTHING
     `);
 
@@ -1276,6 +1294,7 @@ export type User = {
   equipped_frame?: string | null;
   equipped_badge?: string | null;
   site_theme?: string | null;
+  equipped_game?: string | null;
   partner_code?: string | null;
   partner_code_at?: string | null;
   sub_gifted?: number;
