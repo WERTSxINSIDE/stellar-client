@@ -98,6 +98,10 @@ export const CHANGELOG: ChangelogEntry[] = [
         ru: "Кабинет поддерживает прямые ссылки на вкладки, например /dashboard?tab=balance.",
         en: "Dashboard supports deep links to tabs, e.g. /dashboard?tab=balance.",
       },
+      {
+        ru: "Экран после оплаты учитывает тип покупки: пополнение активируется в «Балансе», ключ — в «Действиях → Дополнениях».",
+        en: "The post-payment screen adapts to the purchase type: top-ups activate in “Balance”, keys in “Actions → Add-ons”.",
+      },
     ],
   },
   {
