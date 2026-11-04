@@ -69,9 +69,9 @@ export async function POST(req: Request) {
       if (amount > MAX_SC) {
         return NextResponse.json({ error: `Максимум ${MAX_SC} SC за раз` }, { status: 400 });
       }
-      if (amount % SC_PER_RUBLE !== 0) {
+      if (amount < SC_PER_RUBLE) {
         return NextResponse.json(
-          { error: `Сумма SC должна быть кратна ${SC_PER_RUBLE}` },
+          { error: `Минимум ${SC_PER_RUBLE} SC за раз` },
           { status: 400 }
         );
       }
@@ -105,26 +105,33 @@ export async function POST(req: Request) {
         } as const;
       }
 
-      const rub = amount / SC_PER_RUBLE;
+      // Любую сумму SC можно обменять: рубли начисляются целыми,
+      // а остаток SC (меньше курса) остаётся на счету и не сгорает.
+      const rub = Math.floor(amount / SC_PER_RUBLE);
+      const spentSc = rub * SC_PER_RUBLE;
+      const remainder = amount - spentSc;
+      if (rub <= 0) return { error: `Минимум ${SC_PER_RUBLE} SC` } as const;
+
       const updated = await client.query(
         `UPDATE users
          SET sc_coins = COALESCE(sc_coins, 0) - $2,
              balance = COALESCE(balance, 0) + $3
          WHERE id = $1 AND COALESCE(sc_coins, 0) >= $2
          RETURNING COALESCE(balance, 0)::int AS balance, COALESCE(sc_coins, 0)::int AS sc_coins`,
-        [user.id, amount, rub]
+        [user.id, spentSc, rub]
       );
       if (!updated.rows.length) return { error: "Недостаточно SC-монет" } as const;
 
       await client.query(
         "INSERT INTO coin_transactions (user_id, amount, type, note) VALUES ($1, $2, 'exchange', $3)",
-        [user.id, -amount, `Обмен: ${amount} SC → ${rub} ₽`]
+        [user.id, -spentSc, `Обмен: ${spentSc} SC → ${rub} ₽`]
       );
-      await addBalanceHistory(user.id, rub, "exchange", `Обмен: ${amount} SC → ${rub} ₽`, client);
+      await addBalanceHistory(user.id, rub, "exchange", `Обмен: ${spentSc} SC → ${rub} ₽`, client);
 
       return {
-        spent: amount,
+        spent: spentSc,
         received: rub,
+        remainder,
         spent_label: "SC",
         received_label: "₽",
         ...balances(updated.rows[0]),

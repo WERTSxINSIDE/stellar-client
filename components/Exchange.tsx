@@ -51,10 +51,11 @@ export default function Exchange({
 
   const value = Math.floor(Number(amount) || 0);
   const rate = data?.sc_per_ruble ?? 50;
-  const received = direction === "rub_to_sc" ? value * rate : value / rate;
+  const received = direction === "rub_to_sc" ? value * rate : Math.floor(value / rate);
+  const remainder = direction === "sc_to_rub" ? value - received * rate : 0;
   const valid =
     value > 0 &&
-    (direction === "rub_to_sc" || value % rate === 0) &&
+    (direction === "rub_to_sc" || value >= rate) &&
     (direction === "rub_to_sc" ? value <= (data?.balance ?? 0) : value <= (data?.sc_coins ?? 0));
 
   async function submit(event: React.FormEvent) {
@@ -80,10 +81,15 @@ export default function Exchange({
       onBalances?.({ balance: json.balance, sc_coins: json.sc_coins });
       setAmount("");
       setNotice(
-        tr(
-          `Обменяно ${json.spent} ${json.spent_label} → ${json.received} ${json.received_label}`,
-          `Exchanged ${json.spent} ${json.spent_label} → ${json.received} ${json.received_label}`
-        )
+        json.remainder
+          ? tr(
+              `Обменяно ${json.spent} ${json.spent_label} → ${json.received} ${json.received_label}. Остаток ${json.remainder} SC остался на счету.`,
+              `Exchanged ${json.spent} ${json.spent_label} → ${json.received} ${json.received_label}. ${json.remainder} SC stayed on your balance.`
+            )
+          : tr(
+              `Обменяно ${json.spent} ${json.spent_label} → ${json.received} ${json.received_label}`,
+              `Exchanged ${json.spent} ${json.spent_label} → ${json.received} ${json.received_label}`
+            )
       );
     } catch {
       setError(tr("Ошибка сервера", "Server error"));
@@ -167,7 +173,7 @@ export default function Exchange({
         <input
           type="number"
           min={1}
-          step={direction === "rub_to_sc" ? 1 : rate}
+          step={1}
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
           placeholder="0"
@@ -175,7 +181,7 @@ export default function Exchange({
         />
 
         <div className="flex flex-wrap gap-2 mt-2">
-          {(direction === "rub_to_sc" ? [10, 50, 100, 500] : [100, 500, 1000, 5000]).map((quick) => (
+          {(direction === "rub_to_sc" ? [10, 50, 100, 500] : [50, 100, 500, 1000]).map((quick) => (
             <button
               key={quick}
               type="button"
@@ -192,9 +198,17 @@ export default function Exchange({
           <span className="text-white/75 font-medium">
             {direction === "rub_to_sc" ? `${received} SC` : `${received} ₽`}
           </span>
-          {direction === "sc_to_rub" && value > 0 && value % rate !== 0 && (
+          {direction === "sc_to_rub" && value > 0 && value < rate && (
             <span className="text-red-300 ml-2">
-              {tr(`сумма должна быть кратна ${rate}`, `must be a multiple of ${rate}`)}
+              {tr(`минимум ${rate} SC`, `minimum ${rate} SC`)}
+            </span>
+          )}
+          {direction === "sc_to_rub" && remainder > 0 && value >= rate && (
+            <span className="text-white/40 ml-2">
+              {tr(
+                `остаток ${remainder} SC останется на счету`,
+                `${remainder} SC will stay on your balance`
+              )}
             </span>
           )}
         </p>
