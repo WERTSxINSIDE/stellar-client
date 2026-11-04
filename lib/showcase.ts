@@ -36,15 +36,8 @@ export function normalizePrice(value: unknown): number | null {
   return price;
 }
 
-/** Игры, для которых можно публиковать материалы. */
-export const SHOWCASE_GAMES = [
-  "minecraft",
-  "cs2",
-  "gta5",
-  "rust",
-  "roblox",
-  "other",
-] as const;
+/** Клиент работает только с Minecraft, поэтому игра у материалов одна. */
+export const SHOWCASE_GAMES = ["minecraft"] as const;
 
 export type ShowcaseGame = (typeof SHOWCASE_GAMES)[number];
 

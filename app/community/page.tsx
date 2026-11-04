@@ -103,7 +103,6 @@ const MAX_FILE_BYTES = 1_500_000;
 const MAX_PRICE = 10_000;
 const MIN_PAID_PRICE = 10;
 const ALLOWED_EXT = [".cfg", ".txt", ".json", ".ini", ".toml", ".yml", ".yaml", ".zip"];
-const SHOWCASE_GAMES = ["minecraft", "cs2", "gta5", "rust", "roblox", "other"] as const;
 
 function parseDate(value: string) {
   const date = new Date(String(value).replace(" ", "T"));
@@ -185,9 +184,7 @@ export default function CommunityPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("new");
   const [activeTag, setActiveTag] = useState("");
-  const [activeGame, setActiveGame] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [allGames, setAllGames] = useState<string[]>([]);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
@@ -235,7 +232,6 @@ export default function CommunityPage() {
       if (search.trim()) params.set("q", search.trim());
       if (sort !== "new") params.set("sort", sort);
       if (activeTag) params.set("tag", activeTag);
-      if (activeGame) params.set("game", activeGame);
       if (favoritesOnly) params.set("favorites", "1");
       if (minPrice.trim()) params.set("min_price", minPrice.trim());
       if (maxPrice.trim()) params.set("max_price", maxPrice.trim());
@@ -245,14 +241,13 @@ export default function CommunityPage() {
       if (data.ok) {
         setItems(Array.isArray(data.items) ? data.items : []);
         if (Array.isArray(data.tags)) setAllTags(data.tags);
-        if (Array.isArray(data.games)) setAllGames(data.games);
       }
     } catch {
       // оставляем прошлый список
     } finally {
       setShowcaseLoading(false);
     }
-  }, [search, sort, activeTag, activeGame, favoritesOnly, minPrice, maxPrice]);
+  }, [search, sort, activeTag, favoritesOnly, minPrice, maxPrice]);
 
   const loadBundles = useCallback(async () => {
     setBundlesLoading(true);
@@ -603,22 +598,6 @@ export default function CommunityPage() {
                       ))}
                     </select>
 
-                    <select
-                      value={activeGame}
-                      onChange={(e) => setActiveGame(e.target.value)}
-                      aria-label={t("community.game")}
-                      className="bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-sm text-white/80 max-w-[180px]"
-                    >
-                      <option value="">{t("community.allGames")}</option>
-                      {SHOWCASE_GAMES.filter(
-                        (game) => allGames.length === 0 || allGames.includes(game)
-                      ).map((game) => (
-                        <option key={game} value={game}>
-                          {t(`community.game.${game}`)}
-                        </option>
-                      ))}
-                    </select>
-
                     <button
                       type="button"
                       onClick={() => {
@@ -661,7 +640,6 @@ export default function CommunityPage() {
 
                     {(search ||
                       activeTag ||
-                      activeGame ||
                       favoritesOnly ||
                       minPrice ||
                       maxPrice ||
@@ -671,7 +649,6 @@ export default function CommunityPage() {
                         onClick={() => {
                           setSearch("");
                           setActiveTag("");
-                          setActiveGame("");
                           setFavoritesOnly(false);
                           setMinPrice("");
                           setMaxPrice("");
@@ -1055,7 +1032,6 @@ function SubmitModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
-  const [game, setGame] = useState("");
   const [version, setVersion] = useState("1.0");
   const [price, setPrice] = useState("0");
   const [url, setUrl] = useState("");
@@ -1146,7 +1122,7 @@ function SubmitModal({
             .slice(0, 5),
           url: type === "video" ? url.trim() : undefined,
           price: type === "config" ? Number(price || 0) : 0,
-          game: game || undefined,
+          game: type === "config" ? "minecraft" : undefined,
           version: type === "config" ? version.trim() || "1.0" : undefined,
           file_name: type === "config" ? fileName : undefined,
           file_data: type === "config" ? fileData : undefined,
@@ -1268,27 +1244,6 @@ function SubmitModal({
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs uppercase tracking-wide text-white/40 mb-2">
-                {t("community.field.game")}
-              </label>
-              <select
-                value={game}
-                onChange={(e) => setGame(e.target.value)}
-                className="w-full bg-black/40 px-4 py-3 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-white/80"
-              >
-                <option value="">{t("community.allGames")}</option>
-                {SHOWCASE_GAMES.map((value) => (
-                  <option key={value} value={value}>
-                    {t(`community.game.${value}`)}
-                  </option>
-                ))}
-              </select>
-              <p className="text-[11px] text-white/30 mt-1">
-                {t("community.field.gameHint")}
-              </p>
-            </div>
-
             {type === "config" && (
               <div>
                 <label className="block text-xs uppercase tracking-wide text-white/40 mb-2">

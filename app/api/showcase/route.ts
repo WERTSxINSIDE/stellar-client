@@ -175,7 +175,8 @@ export async function POST(req: Request) {
     const title = String(body?.title || "").trim();
     const description = String(body?.description || "").trim();
     const tags = normalizeTags(body?.tags);
-    const game = normalizeGame(body?.game);
+    const game =
+      body?.type === "config" ? normalizeGame(body?.game) ?? "minecraft" : null;
     const version = normalizeVersion(body?.version);
 
     if (!isShowcaseType(type)) {
