@@ -213,7 +213,7 @@ export async function GET(
         stats: {
           seconds: stats.playSeconds,
           launches: Number(launchRow?.launches) || 0,
-          achievements_unlocked: achievements.filter((a) => !!a.unlocked_at).length,
+          achievements_unlocked: achievements.length,
           achievements_total: visibleTotal,
           reviews: Number(reviewRow?.count) || 0,
           review_rating: Number(reviewRow?.rating) || 0,
