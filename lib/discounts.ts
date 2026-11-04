@@ -2,6 +2,9 @@ import type { DbExecutor } from "./db";
 
 export type DiscountKind = "author" | "partner";
 
+/** Ключ localStorage, в котором хранится последний партнёрский код из `?ref=`. */
+export const REF_STORAGE_KEY = "stellar_ref";
+
 export type DiscountCodeRow = {
   id: number;
   owner_id: number;

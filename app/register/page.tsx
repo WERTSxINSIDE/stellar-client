@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import GridBackground from "@/components/GridBackground";
 import Turnstile from "@/components/Turnstile";
 import { useI18n } from "@/lib/i18n";
+import { REF_STORAGE_KEY } from "@/lib/discounts";
 
 export default function RegisterPage() {
   const { t } = useI18n();
@@ -35,8 +36,15 @@ export default function RegisterPage() {
   }, []);
 
   useEffect(() => {
-    const ref = new URLSearchParams(window.location.search).get("ref");
-    if (ref) setRefName(ref.trim().slice(0, 64));
+    const fromUrl = new URLSearchParams(window.location.search).get("ref");
+    let stored: string | null = null;
+    try {
+      stored = window.localStorage.getItem(REF_STORAGE_KEY);
+    } catch {
+      // localStorage может быть недоступен — тогда работает только параметр в ссылке.
+    }
+    const ref = (fromUrl || stored || "").trim().slice(0, 64);
+    if (ref) setRefName(ref);
   }, []);
 
   useEffect(() => {
@@ -98,6 +106,11 @@ export default function RegisterPage() {
       if (!res.ok) {
         setError(data.error || t("auth.registerError"));
         return;
+      }
+      try {
+        window.localStorage.removeItem(REF_STORAGE_KEY);
+      } catch {
+        // ignore
       }
       router.push("/dashboard");
       router.refresh();

@@ -242,7 +242,6 @@ export default function ItemClient({ initialItem }: { initialItem: BaseItem }) {
         code,
         item: String(item.id),
         amount: String(Math.round(item.final_price)),
-        track: "1",
       });
       const res = await fetch(`/api/discount-codes/validate?${params.toString()}`, {
         cache: "no-store",

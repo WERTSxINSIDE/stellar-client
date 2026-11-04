@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query, queryOne } from "@/lib/db";
+import { queryOne } from "@/lib/db";
 import {
   applyCodeDiscount,
   discountCodeError,
@@ -11,7 +11,7 @@ import { enforceRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-/** Проверка кода перед покупкой. Считает клик, если передан track=1. */
+/** Проверка кода перед покупкой. Клики считает отдельный эндпоинт /track. */
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -57,12 +57,6 @@ export async function GET(req: Request) {
     const safe = row as DiscountCodeRow;
     const amount = Math.max(0, Math.floor(Number(url.searchParams.get("amount") || 0)));
     const finalPrice = amount > 0 ? applyCodeDiscount(amount, safe.discount_percent) : null;
-
-    if (url.searchParams.get("track") === "1" && safe.owner_id !== buyerId) {
-      await query("UPDATE discount_codes SET clicks = COALESCE(clicks, 0) + 1 WHERE id = $1", [
-        safe.id,
-      ]);
-    }
 
     return NextResponse.json({
       ok: true,
