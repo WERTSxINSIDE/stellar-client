@@ -110,6 +110,8 @@ export async function GET() {
       const unlocked = achievement.unlocked || unlockedMap.has(achievement.key);
       return {
         ...achievement,
+        // На клиент отдаём название сезона строкой: объект нельзя рендерить в React.
+        season: achievement.season?.title ?? null,
         progress: unlocked ? achievement.target : achievement.progress,
         unlocked,
         unlocked_at: unlockedMap.get(achievement.key) ?? null,
