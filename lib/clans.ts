@@ -205,7 +205,6 @@ export const CLAN_XP = {
   dailyReward: 5,
   purchase: 10,
   review: 15,
-  clanMessage: 1,
 } as const;
 
 export function normalizeClanName(value: unknown): string {

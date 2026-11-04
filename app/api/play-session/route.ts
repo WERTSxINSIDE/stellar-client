@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query, queryOne } from "@/lib/db";
 import { logActivityOnce } from "@/lib/activity";
+import { grantPlaytimeRewards } from "@/lib/playtime";
 
 export const dynamic = "force-dynamic";
 
@@ -42,8 +43,25 @@ export async function POST(req: Request) {
          RETURNING seconds`,
         [sessionId, user.id]
       );
-      if (!res.rows.length) return NextResponse.json({ ok: true, seconds: 0 });
-      return NextResponse.json({ ok: true, seconds: res.rows[0].seconds });
+      if (!res.rows.length) {
+        return NextResponse.json({
+          ok: true,
+          seconds: 0,
+          rewards: { coins: 0, clan_xp: 0 },
+        });
+      }
+
+      const seconds = Number(res.rows[0].seconds) || 0;
+      let rewards = { coins: 0, clan_xp: 0 };
+      try {
+        const granted = await grantPlaytimeRewards(user.id, seconds);
+        rewards = { coins: granted.coins, clan_xp: granted.clan_xp };
+      } catch (error) {
+        // Награда не должна мешать завершению сессии.
+        console.error("playtime reward error:", error);
+      }
+
+      return NextResponse.json({ ok: true, seconds, rewards });
     }
 
     return NextResponse.json({ error: "Неизвестное действие" }, { status: 400 });

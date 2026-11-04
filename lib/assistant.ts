@@ -109,8 +109,8 @@ const FAQ: FaqEntry[] = [
     id: "faq-coins",
     question: { ru: "Что такое SC-монеты и как их получить?", en: "What are SC coins and how do I earn them?" },
     answer: {
-      ru: "SC — внутренняя валюта клуба. +10 SC дают за ежедневную награду, +25 за одобренный отзыв, 1 SC за каждые 10 ₽ покупки и +50 за новое достижение. Монеты тратятся на косметику: цвета ника, рамки, бейджи и темы профиля.",
-      en: "SC is the club's internal currency. You get +10 SC for a daily reward, +25 for an approved review, 1 SC per 10 ₽ spent and +50 for a new achievement. Coins are spent on cosmetics: nickname colors, frames, badges and profile themes.",
+      ru: "SC — внутренняя валюта клуба. +10 SC дают за ежедневную награду, +25 за одобренный отзыв, 1 SC за каждые 10 ₽ покупки, +50 за новое достижение и +1 SC за каждые 10 минут игры в клиенте (до 30 SC в день). Монеты тратятся на косметику: цвета ника, рамки, бейджи и темы профиля.",
+      en: "SC is the club's internal currency. You get +10 SC for a daily reward, +25 for an approved review, 1 SC per 10 ₽ spent, +50 for a new achievement and +1 SC per 10 minutes played in the client (up to 30 SC/day). Coins are spent on cosmetics: nickname colors, frames, badges and profile themes.",
     },
     keywords: ["sc", "монеты", "coins", "валюта", "currency", "косметика", "cosmetics"],
   },
@@ -118,8 +118,8 @@ const FAQ: FaqEntry[] = [
     id: "faq-clans",
     question: { ru: "Что дают кланы?", en: "What do clans give?" },
     answer: {
-      ru: "Клан объединяет игроков: общий прогресс и уровень, клановый лидерборд, казна и бонус к ежедневным SC за состав. Чем больше активных участников и ролей, тем выше бонус. Вступить можно по заявке или приглашению, а создать свой клан — на странице «Кланы».",
-      en: "A clan brings players together: shared progress and level, a clan leaderboard, treasury and a daily SC bonus based on composition. More active members and roles mean a bigger bonus. Join by application or invite, or create your own clan on the “Clans” page.",
+      ru: "Клан объединяет игроков: общий прогресс и уровень, клановый лидерборд, казна и бонус к ежедневным SC за состав. XP клану дают ежедневная награда, покупки, одобренные отзывы, взносы в казну и время в игре: 2 XP за каждые 30 минут (до 20 XP в день). Сообщения в чате XP не дают. Вступить можно по заявке или приглашению, а создать свой клан — на странице «Кланы».",
+      en: "A clan brings players together: shared progress and level, a clan leaderboard, treasury and a daily SC bonus based on composition. Clan XP comes from daily rewards, purchases, approved reviews, treasury deposits and playtime: 2 XP per 30 minutes (up to 20 XP/day). Chat messages give no XP. Join by application or invite, or create your own clan on the “Clans” page.",
     },
     keywords: ["клан", "clan", "кланы", "clans", "лидерборд", "leaderboard", "казна", "treasury"],
   },

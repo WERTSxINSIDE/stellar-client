@@ -61,12 +61,15 @@ export async function GET(_req: Request, { params }: Params) {
 
     const messages = isMember
       ? await queryAll(
-          `SELECT cm.id, cm.body, cm.created_at, cm.user_id, u.username, u.avatar_url, u.nickname_color
-           FROM clan_messages cm
-           LEFT JOIN users u ON u.id = cm.user_id
-           WHERE cm.clan_id = $1
-           ORDER BY cm.created_at DESC
-           LIMIT 60`,
+          `SELECT * FROM (
+             SELECT cm.id, cm.body, cm.created_at, cm.user_id, u.username, u.avatar_url, u.nickname_color
+             FROM clan_messages cm
+             LEFT JOIN users u ON u.id = cm.user_id
+             WHERE cm.clan_id = $1
+             ORDER BY cm.id DESC
+             LIMIT 100
+           ) sub
+           ORDER BY sub.id ASC`,
           [clanId]
         )
       : [];

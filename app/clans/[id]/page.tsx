@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -143,6 +143,16 @@ function fmtDate(value: string, lang: "ru" | "en") {
   });
 }
 
+/** Склеивает сообщения по id и держит строгий порядок: старые сверху, новые снизу. */
+function mergeMessages(current: Message[], incoming: Message[]): Message[] {
+  const map = new Map<number, Message>();
+  for (const message of current) map.set(message.id, message);
+  for (const message of incoming) {
+    map.set(message.id, { ...map.get(message.id), ...message });
+  }
+  return [...map.values()].sort((a, b) => a.id - b.id);
+}
+
 export default function ClanPage() {
   const params = useParams<{ id: string }>();
   const clanId = Number(params?.id);
@@ -161,6 +171,17 @@ export default function ClanPage() {
   const [chatText, setChatText] = useState("");
   const [inviteName, setInviteName] = useState("");
   const [money, setMoney] = useState("100");
+
+  const chatBoxRef = useRef<HTMLDivElement | null>(null);
+  const chatMessagesRef = useRef<Message[]>([]);
+  const chatCountRef = useRef(0);
+  const chatTabRef = useRef<Tab>("overview");
+
+  const scrollChatToBottom = useCallback((smooth = true) => {
+    const box = chatBoxRef.current;
+    if (!box) return;
+    box.scrollTo({ top: box.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+  }, []);
 
   const [settings, setSettings] = useState({ description: "", emblem: "🛡️", color: "#a78bfa", recruiting: true });
   const [settingsInit, setSettingsInit] = useState(false);
@@ -310,7 +331,14 @@ export default function ClanPage() {
         return;
       }
       setChatText("");
-      await load();
+      if (json.message) {
+        setData((prev) =>
+          prev
+            ? { ...prev, messages: mergeMessages(prev.messages, [json.message as Message]) }
+            : prev
+        );
+      }
+      requestAnimationFrame(() => scrollChatToBottom());
     } catch {
       setError(tr("Ошибка сети", "Network error"));
     } finally {
@@ -345,19 +373,42 @@ export default function ClanPage() {
   }
 
   useEffect(() => {
+    chatMessagesRef.current = data?.messages ?? [];
+  }, [data?.messages]);
+
+  useEffect(() => {
     if (!data?.is_member) return;
     const timer = setInterval(() => {
-      if (tab === "chat") {
-        fetch(`/api/clans/${clanId}/chat`)
-          .then((res) => res.json())
-          .then((json) => {
-            if (json.ok) setData((prev) => (prev ? { ...prev, messages: json.messages || [] } : prev));
-          })
-          .catch(() => {});
-      }
-    }, 8000);
+      if (tab !== "chat") return;
+      const lastId = chatMessagesRef.current[chatMessagesRef.current.length - 1]?.id ?? 0;
+      fetch(`/api/clans/${clanId}/chat${lastId > 0 ? `?after=${lastId}` : ""}`)
+        .then((res) => res.json())
+        .then((json) => {
+          if (!json.ok || !Array.isArray(json.messages) || json.messages.length === 0) return;
+          setData((prev) =>
+            prev
+              ? { ...prev, messages: mergeMessages(prev.messages, json.messages as Message[]) }
+              : prev
+          );
+        })
+        .catch(() => {});
+    }, 6000);
     return () => clearInterval(timer);
   }, [clanId, data?.is_member, tab]);
+
+  // Автоскролл: вниз при открытии чата и при каждом новом сообщении.
+  useEffect(() => {
+    const count = data?.messages?.length ?? 0;
+    const openedChat = tab === "chat" && chatTabRef.current !== "chat";
+    const hasNew = tab === "chat" && count !== chatCountRef.current;
+
+    chatTabRef.current = tab;
+    chatCountRef.current = count;
+
+    if (!openedChat && !hasNew) return;
+    const frame = requestAnimationFrame(() => scrollChatToBottom(!openedChat));
+    return () => cancelAnimationFrame(frame);
+  }, [tab, data?.messages, scrollChatToBottom]);
 
   const myWeight = useMemo(() => roleWeight(data?.my_role), [data?.my_role]);
   const can = useCallback(
@@ -606,8 +657,14 @@ export default function ClanPage() {
                     <li>+{tr("ежедневная награда участника", "member daily reward")}: 5 XP</li>
                     <li>+{tr("одобренный отзыв", "approved review")}: 15 XP</li>
                     <li>+{tr("покупка в клиенте", "client purchase")}: 10 XP</li>
-                    <li>+{tr("сообщение в клановом чате", "clan chat message")}: 1 XP</li>
+                    <li>
+                      +{tr("игра в клиенте", "time in game")}: 2 XP{" "}
+                      {tr("за 30 минут (до 20 XP в день)", "per 30 minutes (up to 20 XP/day)")}
+                    </li>
                     <li>+{tr("взнос в казну", "treasury deposit")}: до 20 XP</li>
+                    <li className="text-emerald-300/70">
+                      +1 SC {tr("за каждые 10 минут игры (до 30 SC в день)", "per 10 minutes played (up to 30 SC/day)")}
+                    </li>
                     <li className="text-white/60">
                       {tr(
                         "Бонус к SC: 3% с 3 участников, 6% с 6, 10% с 12, 15% с 20. Ещё до +5% за разнообразие ролей.",
@@ -904,13 +961,13 @@ export default function ClanPage() {
                     {tr("обновляется автоматически", "auto-refreshes")}
                   </span>
                 </div>
-                <div className="h-[420px] overflow-y-auto px-4 py-4 space-y-3">
+                <div ref={chatBoxRef} className="h-[420px] overflow-y-auto px-4 py-4 space-y-3">
                   {data.messages.length === 0 ? (
                     <p className="text-sm text-white/35 text-center py-10">
                       {tr("Сообщений пока нет. Начните разговор!", "No messages yet. Start the conversation!")}
                     </p>
                   ) : (
-                    [...data.messages].reverse().map((message) => (
+                    data.messages.map((message) => (
                       <div key={message.id} className="flex items-start gap-2.5">
                         <span className="w-8 h-8 shrink-0 rounded-lg bg-white/5 border border-white/10 grid place-items-center text-[10px] font-bold">
                           {message.avatar_url ? (

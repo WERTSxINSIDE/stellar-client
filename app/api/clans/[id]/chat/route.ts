@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { queryAll, queryOne } from "@/lib/db";
+import { query, queryAll, queryOne } from "@/lib/db";
 import { enforceRateLimit } from "@/lib/rate-limit";
-import { getMembership, logClanActivity } from "@/lib/clan-service";
+import { getMembership } from "@/lib/clan-service";
 
 export const dynamic = "force-dynamic";
 
@@ -23,15 +23,31 @@ export async function GET(req: Request, { params }: Params) {
     const url = new URL(req.url);
     const after = Number(url.searchParams.get("after") || 0);
 
-    const rows = await queryAll(
-      `SELECT cm.id, cm.body, cm.created_at, cm.user_id, u.username, u.avatar_url, u.nickname_color
-       FROM clan_messages cm
-       LEFT JOIN users u ON u.id = cm.user_id
-       WHERE cm.clan_id = $1 AND cm.id > $2
-       ORDER BY cm.id ASC
-       LIMIT 100`,
-      [clanId, Number.isInteger(after) && after > 0 ? after : 0]
-    );
+    // after > 0 — только новые сообщения для polling.
+    // after = 0 — последние 100 сообщений, всегда по возрастанию id.
+    const rows =
+      Number.isInteger(after) && after > 0
+        ? await queryAll(
+            `SELECT cm.id, cm.body, cm.created_at, cm.user_id, u.username, u.avatar_url, u.nickname_color
+             FROM clan_messages cm
+             LEFT JOIN users u ON u.id = cm.user_id
+             WHERE cm.clan_id = $1 AND cm.id > $2
+             ORDER BY cm.id ASC
+             LIMIT 100`,
+            [clanId, after]
+          )
+        : await queryAll(
+            `SELECT * FROM (
+               SELECT cm.id, cm.body, cm.created_at, cm.user_id, u.username, u.avatar_url, u.nickname_color
+               FROM clan_messages cm
+               LEFT JOIN users u ON u.id = cm.user_id
+               WHERE cm.clan_id = $1
+               ORDER BY cm.id DESC
+               LIMIT 100
+             ) sub
+             ORDER BY sub.id ASC`,
+            [clanId]
+          );
 
     return NextResponse.json({ ok: true, messages: rows });
   } catch {
@@ -66,16 +82,27 @@ export async function POST(req: Request, { params }: Params) {
 
     const created = (await queryOne(
       `INSERT INTO clan_messages (clan_id, user_id, body) VALUES ($1, $2, $3)
-       RETURNING id, body, created_at, user_id`,
+       RETURNING id`,
       [clanId, user.id, text]
-    )) as { id: number; body: string; created_at: string; user_id: number } | null;
+    )) as { id: number } | null;
 
-    await logClanActivity(clanId, user.id, "chat", 1);
+    const message = created
+      ? await queryOne(
+          `SELECT cm.id, cm.body, cm.created_at, cm.user_id, u.username, u.avatar_url, u.nickname_color
+           FROM clan_messages cm
+           LEFT JOIN users u ON u.id = cm.user_id
+           WHERE cm.id = $1`,
+          [created.id]
+        )
+      : null;
 
-    return NextResponse.json({
-      ok: true,
-      message: created ? { ...created, username: user.username } : null,
-    });
+    // Сообщения не дают XP: иначе чат превращается в бесконечный фарм.
+    await query(
+      "UPDATE clan_members SET last_active_at = NOW() WHERE user_id = $1 AND clan_id = $2",
+      [user.id, clanId]
+    );
+
+    return NextResponse.json({ ok: true, message });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });
   }
