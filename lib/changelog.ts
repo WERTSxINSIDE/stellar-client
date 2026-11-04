@@ -40,6 +40,10 @@ export const CHANGELOG: ChangelogEntry[] = [
         ru: "Публичная страница обновлений проекта.",
         en: "Public project changelog page.",
       },
+      {
+        ru: "Telegram-уведомления: привязка чата в кабинете, ответы поддержки и новые конфиги авторов.",
+        en: "Telegram notifications: link your chat in the dashboard for support replies and new author configs.",
+      },
     ],
   },
   {
