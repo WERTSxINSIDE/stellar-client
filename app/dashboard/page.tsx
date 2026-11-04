@@ -1862,7 +1862,7 @@ export default function Dashboard() {
               <div className="mb-12">
                 <h3 className="text-3xl font-bold mb-1">{tr("Обменник", "Exchange")}</h3>
                 <p className="text-white/40 mb-6">
-                  {tr("Меняйте рубли на SC и обратно. Курс фиксированный: 20 SC = 1 ₽.", "Swap rubles and SC. Fixed rate: 20 SC = 1 ₽.")}
+                  {tr("Меняйте рубли на SC и обратно. Курс фиксированный: 50 SC = 1 ₽.", "Swap rubles and SC. Fixed rate: 50 SC = 1 ₽.")}
                 </p>
                 <Exchange
                   onBalances={({ balance, sc_coins }) =>

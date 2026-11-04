@@ -118,8 +118,8 @@ const FAQ: FaqEntry[] = [
     id: "faq-exchange",
     question: { ru: "Как обменять SC на рубли?", en: "How do I exchange SC for rubles?" },
     answer: {
-      ru: "Откройте в кабинете раздел «Обменник». Курс фиксированный: 20 SC = 1 ₽. В рубли можно перевести любую сумму SC, кратную 20. Рубли на SC меняются любой целой суммой. Обмен происходит сразу, комиссии нет.",
-      en: "Open the “Exchange” section in the dashboard. The rate is fixed: 20 SC = 1 ₽. You can convert any SC amount that is a multiple of 20 into rubles. Rubles can be swapped to SC in any whole amount. The exchange is instant and has no fee.",
+      ru: "Откройте в кабинете раздел «Обменник». Курс фиксированный: 50 SC = 1 ₽. В рубли можно перевести любую сумму SC, кратную 50. Рубли на SC меняются любой целой суммой. Обмен происходит сразу, комиссии нет.",
+      en: "Open the “Exchange” section in the dashboard. The rate is fixed: 50 SC = 1 ₽. You can convert any SC amount that is a multiple of 50 into rubles. Rubles can be swapped to SC in any whole amount. The exchange is instant and has no fee.",
     },
     keywords: ["обмен", "exchange", "обменник", "sc в рубли", "рубли в sc", "курс", "rate"],
   },

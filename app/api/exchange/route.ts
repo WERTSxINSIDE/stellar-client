@@ -4,8 +4,8 @@ import { addBalanceHistory, queryOne, withTransaction } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-/** Курс обмена: 20 SC = 1 ₽. */
-const SC_PER_RUBLE = 20;
+/** Курс обмена: 50 SC = 1 ₽. */
+const SC_PER_RUBLE = 50;
 const MAX_RUB = 100000;
 const MAX_SC = 1000000;
 

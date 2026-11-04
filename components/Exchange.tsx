@@ -50,7 +50,7 @@ export default function Exchange({
   }, [load]);
 
   const value = Math.floor(Number(amount) || 0);
-  const rate = data?.sc_per_ruble ?? 20;
+  const rate = data?.sc_per_ruble ?? 50;
   const received = direction === "rub_to_sc" ? value * rate : value / rate;
   const valid =
     value > 0 &&
