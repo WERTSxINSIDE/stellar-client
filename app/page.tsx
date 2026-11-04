@@ -2,13 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 
 import Loader from "@/components/Loader";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Card from "@/components/Card";
-import GridBackground from "@/components/GridBackground";
 import { useI18n } from "@/lib/i18n";
 
 import {
@@ -50,79 +48,80 @@ export default function Home() {
           <motion.main
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.7 }}
-            className="text-white relative z-10"
+            transition={{ duration: 0.5 }}
+            className="relative z-10 text-white"
           >
-            <section className="min-h-screen px-4 sm:px-8 lg:px-16 xl:px-48 py-24 flex items-center relative">
-              <GridBackground className="absolute inset-0" />
-              <div className="relative z-[2] w-full flex items-center justify-center">
-                <motion.div
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7 }}
-                  viewport={{ once: true }}
-                  className="text-center"
-                >
-                  <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold leading-tight mb-6 sm:mb-8">
-                    {t("home.about")}
-                  </h1>
-
-                  <p className="text-base sm:text-xl text-white/60 max-w-2xl mx-auto mb-5 sm:mb-6 leading-relaxed">
-                    {t("home.p1")}
-                  </p>
-
-                  <p className="text-sm sm:text-lg text-white/45 max-w-2xl mx-auto mb-10 sm:mb-12 leading-relaxed">
-                    {t("home.p2")}
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6 mb-12 sm:mb-14">
-                    <div>
-                      <p className="text-3xl sm:text-4xl font-bold">{online !== null ? t("home.online", { count: online }) : "50+"}</p>
-                      <p className="text-white/50 text-sm sm:text-base">{t("home.activeUsers")}</p>
-                    </div>
-                    <div>
-                      <p className="text-3xl sm:text-4xl font-bold">30%+</p>
-                      <p className="text-white/50 text-sm sm:text-base">{t("home.moreFps")}</p>
-                    </div>
-                    <div>
-                      <p className="text-3xl sm:text-4xl font-bold">24/7</p>
-                      <p className="text-white/50 text-sm sm:text-base">{t("home.support")}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            </section>
-
-            <section className="min-h-screen flex items-center px-4 sm:px-8 lg:px-16 xl:px-48 py-24 relative">
+            <section className="px-5 pb-20 pt-32 sm:px-8 sm:pb-28 sm:pt-40">
               <motion.div
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7 }}
-                viewport={{ once: true }}
-                className="w-full"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.55, ease: "easeOut" }}
+                className="mx-auto max-w-3xl text-center"
               >
-                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold mb-8 sm:mb-10">
-                  {t("home.advantages")}
+                <p className="mb-5 text-[11px] uppercase tracking-[0.25em] text-purple-300/80">
+                  {t("home.about")}
+                </p>
+                <h1 className="text-3xl font-semibold leading-tight sm:text-5xl">
+                  Stellar Client
                 </h1>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8">
+                <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-white/60 sm:text-lg">
+                  {t("home.p1")}
+                </p>
+
+                <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-white/45 sm:text-base">
+                  {t("home.p2")}
+                </p>
+
+                <div className="mx-auto mt-12 grid max-w-2xl grid-cols-1 gap-6 border-t border-white/[0.08] pt-8 sm:grid-cols-3">
+                  <div>
+                    <p className="text-2xl font-semibold sm:text-3xl">
+                      {online !== null ? t("home.online", { count: online }) : "50+"}
+                    </p>
+                    <p className="mt-1 text-sm text-white/45">{t("home.activeUsers")}</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold sm:text-3xl">30%+</p>
+                    <p className="mt-1 text-sm text-white/45">{t("home.moreFps")}</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold sm:text-3xl">24/7</p>
+                    <p className="mt-1 text-sm text-white/45">{t("home.support")}</p>
+                  </div>
+                </div>
+              </motion.div>
+            </section>
+
+            <section className="px-5 pb-20 sm:px-8 sm:pb-28">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                viewport={{ once: true, amount: 0.2 }}
+                className="mx-auto max-w-6xl"
+              >
+                <h2 className="mb-8 text-2xl font-semibold sm:text-3xl">
+                  {t("home.advantages")}
+                </h2>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <Card
-                    icon={<Eye size={26} />}
+                    icon={<Eye size={20} />}
                     title={t("home.visualsTitle")}
                     description={t("home.visualsDesc")}
                   />
                   <Card
-                    icon={<SlidersHorizontal size={26} />}
+                    icon={<SlidersHorizontal size={20} />}
                     title={t("home.customTitle")}
                     description={t("home.customDesc")}
                   />
                   <Card
-                    icon={<Gauge size={26} />}
+                    icon={<Gauge size={20} />}
                     title={t("home.perfTitle")}
                     description={t("home.perfDesc")}
                   />
                   <Card
-                    icon={<ArrowsClockwise size={26} />}
+                    icon={<ArrowsClockwise size={20} />}
                     title={t("home.updatesTitle")}
                     description={t("home.updatesDesc")}
                   />
@@ -130,21 +129,21 @@ export default function Home() {
               </motion.div>
             </section>
 
-            <section className="min-h-screen flex items-center justify-center px-4 sm:px-8 lg:px-16 xl:px-48 py-24 relative">
+            <section className="px-5 pb-20 sm:px-8 sm:pb-28">
               <motion.div
-                initial={{ opacity: 0, y: 40 }}
+                initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7 }}
-                viewport={{ once: true }}
-                className="w-full flex flex-col items-center justify-center"
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                viewport={{ once: true, amount: 0.2 }}
+                className="mx-auto max-w-4xl"
               >
-                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold mb-8 sm:mb-12 text-center">
+                <h2 className="mb-6 text-2xl font-semibold sm:mb-8 sm:text-3xl">
                   {t("home.gameplay")}
-                </h1>
+                </h2>
 
-                <div className="w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+                <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black/40">
                   <iframe
-                    className="rounded-2xl w-full h-[220px] sm:h-[340px] lg:h-[450px]"
+                    className="h-[220px] w-full sm:h-[340px] lg:h-[420px]"
                     src="https://www.youtube.com/embed/dQw4w9WgXcQ"
                     title="Gameplay Video"
                     frameBorder="0"
@@ -156,38 +155,40 @@ export default function Home() {
             </section>
 
             {news.length > 0 && (
-              <section className="py-16 sm:py-24 px-4 sm:px-8 lg:px-16 xl:px-48 relative">
-                <motion.div
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7 }}
-                  viewport={{ once: true }}
-                  className="text-center mb-10 sm:mb-16"
-                >
-                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold mb-4">{t("home.news")}</h1>
-                  <p className="text-white/50 text-base sm:text-lg">{t("home.newsSubtitle")}</p>
-                </motion.div>
+              <section className="px-5 pb-20 sm:px-8 sm:pb-28">
+                <div className="mx-auto max-w-4xl">
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    viewport={{ once: true }}
+                    className="mb-8"
+                  >
+                    <h2 className="text-2xl font-semibold sm:text-3xl">{t("home.news")}</h2>
+                    <p className="mt-2 text-sm text-white/45">{t("home.newsSubtitle")}</p>
+                  </motion.div>
 
-                <div className="max-w-4xl mx-auto flex flex-col gap-6">
-                  {news.map((item: any) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
-                      viewport={{ once: true }}
-                      className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-6"
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <span className="text-xs px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300">
-                          {item.tag}
-                        </span>
-                        <span className="text-white/30 text-xs">{item.created_at?.slice(0, 10)}</span>
-                      </div>
-                      <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
-                      <p className="text-white/60 leading-relaxed">{item.content}</p>
-                    </motion.div>
-                  ))}
+                  <div className="flex flex-col gap-4">
+                    {news.map((item: any) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 12 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35 }}
+                        viewport={{ once: true }}
+                        className="rounded-xl border border-white/[0.08] bg-[#111114]/60 p-5"
+                      >
+                        <div className="mb-3 flex items-center gap-3">
+                          <span className="rounded-full border border-purple-500/30 bg-purple-500/15 px-2.5 py-0.5 text-xs text-purple-300">
+                            {item.tag}
+                          </span>
+                          <span className="text-xs text-white/30">{item.created_at?.slice(0, 10)}</span>
+                        </div>
+                        <h3 className="mb-2 text-lg font-medium text-white">{item.title}</h3>
+                        <p className="text-sm leading-relaxed text-white/55">{item.content}</p>
+                      </motion.div>
+                    ))}
+                  </div>
                 </div>
               </section>
             )}

@@ -208,39 +208,38 @@ export default function PricingPage() {
       <Header />
 
       <main className="text-white min-h-screen relative overflow-hidden">
-        <section className="relative z-10 pt-32 sm:pt-40 lg:pt-48 pb-20 sm:pb-32 lg:pb-40 flex flex-col items-center px-4 sm:px-6">
+        <section className="relative z-10 flex flex-col items-center px-4 pb-16 pt-28 sm:px-6 sm:pb-24 sm:pt-32">
           <motion.h1
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-10 sm:mb-16 lg:mb-20 text-center"
+            transition={{ duration: 0.4 }}
+            className="mb-10 text-center text-3xl font-semibold sm:mb-14 sm:text-4xl lg:text-5xl"
           >
             {t("pricing.title")}
           </motion.h1>
 
-          <div className="flex flex-wrap gap-6 sm:gap-10 lg:gap-14 justify-center w-full">
+          <div className="flex w-full flex-wrap justify-center gap-4 sm:gap-5">
             {products.map((p) => (
               <PricingCard
                 key={p.title}
                 title={p.title}
                 price={p.price}
-                image="/pricing.jpg"
                 onClick={() => openModal(p)}
               />
             ))}
           </div>
         </section>
 
-        <section id="topup" className="relative z-10 px-6 pb-32">
+        <section id="topup" className="relative z-10 px-5 pb-24 sm:px-6">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.45 }}
-            className="mx-auto max-w-6xl rounded-3xl border border-white/10 bg-white/[0.035] backdrop-blur-xl p-7 md:p-9"
+            transition={{ duration: 0.4 }}
+            className="mx-auto max-w-5xl rounded-2xl border border-white/[0.08] bg-[#111114]/70 p-6 sm:p-8"
           >
-            <h2 className="text-3xl font-bold mb-1">{t("pricing.topupTitle")}</h2>
-            <p className="text-white/45 text-sm max-w-2xl">{t("pricing.topupSubtitle")}</p>
+            <h2 className="mb-1 text-2xl font-semibold sm:text-3xl">{t("pricing.topupTitle")}</h2>
+            <p className="max-w-2xl text-sm text-white/45">{t("pricing.topupSubtitle")}</p>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-7">
               {topupAmounts.map((amount) => {
@@ -303,10 +302,10 @@ export default function PricingPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.25 }}
-              className="w-full max-w-md rounded-3xl border border-white/10 bg-[#1a1a1a]/95 backdrop-blur-xl p-7 shadow-2xl shadow-black/60"
+              className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#131316] p-6 shadow-2xl shadow-black/60 sm:p-7"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-2xl font-bold mb-1">{selected.title}</h3>
+              <h3 className="mb-1 text-xl font-semibold">{selected.title}</h3>
               <p className="text-white/50 mb-5">{t("pricing.price", { price: selected.rub })}</p>
 
               {balance !== null && (
@@ -370,14 +369,14 @@ export default function PricingPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.25 }}
-              className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#1a1a1a]/95 backdrop-blur-xl p-7 shadow-2xl shadow-black/60 my-auto"
+              className="my-auto w-full max-w-lg rounded-2xl border border-white/[0.08] bg-[#131316] p-6 shadow-2xl shadow-black/60 sm:p-7"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-1">
                 <span className="w-10 h-10 rounded-2xl bg-green-500/15 border border-green-400/30 flex items-center justify-center text-green-300">
                   <CheckCircle size={22} />
                 </span>
-                <h3 className="text-2xl font-bold">
+                <h3 className="text-xl font-semibold">
                   {tr("Оплата прошла — что дальше?", "Payment sent — what's next?")}
                 </h3>
               </div>

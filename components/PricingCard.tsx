@@ -1,14 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
-import TiltCard from "./TiltCard";
 import { useI18n } from "@/lib/i18n";
 
 type PricingCardProps = {
   title: string;
   price: string;
-  image: string;
+  image?: string;
   href?: string;
   onClick?: () => void;
 };
@@ -16,47 +14,19 @@ type PricingCardProps = {
 export default function PricingCard({
   title,
   price,
-  image,
   href,
   onClick,
 }: PricingCardProps) {
   const { t } = useI18n();
   const cardContent = (
-    <div
-      className="
-        group
-        bg-[#1a1a1a]/60
-        backdrop-blur-xl
-        rounded-3xl
-        p-6
-        w-full
-        flex flex-col
-        shadow-xl shadow-black/40
-        border border-white/10
-        hover:border-purple-400/40
-        transition-colors
-        cursor-pointer
-      "
-    >
-      <div className="rounded-2xl overflow-hidden mb-5">
-        <Image
-          src={image}
-          alt={title}
-          width={400}
-          height={400}
-          className="rounded-2xl w-full h-auto transition-transform duration-500 group-hover:scale-105"
-        />
-      </div>
+    <div className="group flex h-full w-full flex-col rounded-xl border border-white/[0.08] bg-[#111114]/70 p-5 transition-colors hover:border-purple-400/30 hover:bg-[#141418]">
+      <h3 className="text-sm font-medium text-white/55">{title}</h3>
+      <p className="mt-2 text-[32px] font-semibold leading-none tracking-tight text-white">
+        {price}
+        <span className="ml-1 text-base font-normal text-white/45">₽</span>
+      </p>
 
-      <h2 className="text-xl font-semibold text-white mb-1">{title}</h2>
-      <p className="text-sm text-white/60 mb-6">{t("pricing.price", { price })}</p>
-
-      <div
-        className="
-          w-full py-3 rounded-xl bg-purple-600 text-white font-medium
-          group-hover:bg-purple-500 transition-colors text-center
-        "
-      >
+      <div className="mt-6 flex h-10 items-center justify-center rounded-lg bg-purple-600 text-sm font-medium text-white transition-colors group-hover:bg-purple-500">
         {t("nav.buy")}
       </div>
     </div>
@@ -64,20 +34,21 @@ export default function PricingCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30, filter: "blur(6px)" }}
-      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      transition={{ type: "spring", damping: 18, stiffness: 160 }}
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
       viewport={{ once: true, amount: 0.3 }}
+      className="w-full max-w-[230px]"
     >
-      <TiltCard max={9} className="w-full max-w-[300px]">
-        {href ? (
-          <a href={href} target="_blank" rel="noopener noreferrer">
-            {cardContent}
-          </a>
-        ) : (
-          <div onClick={onClick}>{cardContent}</div>
-        )}
-      </TiltCard>
+      {href ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" className="block h-full">
+          {cardContent}
+        </a>
+      ) : (
+        <div onClick={onClick} className="h-full">
+          {cardContent}
+        </div>
+      )}
     </motion.div>
   );
 }

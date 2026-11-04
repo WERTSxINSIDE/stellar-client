@@ -11,6 +11,23 @@ import OnlineBadge from "@/components/OnlineBadge";
 import { useI18n } from "@/lib/i18n";
 import { localizeNotification } from "@/lib/notification-i18n";
 
+const navItems = [
+  { href: "/", labelKey: "nav.home", icon: House },
+  { href: "/pricing", labelKey: "nav.buy", icon: ShoppingCartSimple },
+  { href: "/leaderboard", labelKey: "nav.top", icon: Trophy },
+  { href: "/community", labelKey: "nav.community", icon: UsersThree },
+  { href: "/clans", labelKey: "nav.clans", icon: Shield },
+  { href: "/assistant", labelKey: "nav.assistant", icon: Robot },
+  { href: "/reviews", labelKey: "nav.reviews", icon: Star },
+  { href: "/support", labelKey: "nav.support", icon: Headset },
+  { href: "/faq", labelKey: "nav.faq", icon: Question },
+  { href: "/status", labelKey: "nav.status", icon: Pulse },
+] as const;
+
+function isActive(pathname: string, href: string) {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
+
 export default function Header() {
   const { t } = useI18n();
   const pathname = usePathname();
@@ -61,261 +78,59 @@ export default function Header() {
   }, [loggedIn]);
 
   return (
-    <motion.header
-      initial={{ opacity: 0, y: -15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className="
-        fixed top-0 left-0 z-[25]
-
-        h-20
-
-        w-full
-        px-3 sm:px-6
-
-        backdrop-blur-xl
-        bg-black/60
-        border-b border-white/10
-      "
-    >
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 py-4">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="flex items-center gap-3 group transition hover:opacity-100"
-          >
-            <Image src="/icon.png" alt="Icon" width={45} height={45} priority />
+    <header className="fixed inset-x-0 top-0 z-[25] border-b border-white/[0.08] bg-[#0a0a0c]/90 backdrop-blur-md">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-6">
+          <Link href="/" className="flex shrink-0 items-center gap-2.5">
+            <Image src="/icon.png" alt="Stellar Client" width={34} height={34} priority />
+            <span className="hidden font-display text-[15px] font-semibold tracking-tight text-white sm:block">
+              Stellar Client
+            </span>
           </Link>
 
-          <div className="hidden lg:flex items-center gap-3 xl:gap-4 text-white/85">
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
-              <Link
-                href="/"
-                aria-label={t("nav.home")}
-                title={t("nav.home")}
-                className="flex items-center gap-2 cursor-pointer group"
-              >
-                <House
-                  size={24}
-                  weight="fill"
-                  className="group-hover:text-purple-300 transition"
-                />
-                <span className="hidden xl:inline text-sm group-hover:text-white transition">
-                  {t("nav.home")}
-                </span>
-              </Link>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
-              <Link
-                href="/pricing"
-                aria-label={t("nav.buy")}
-                title={t("nav.buy")}
-                className="flex items-center gap-2 cursor-pointer group"
-              >
-                <ShoppingCartSimple
-                  size={24}
-                  weight="fill"
-                  className="group-hover:text-purple-300 transition"
-                />
-                <span className="hidden xl:inline text-sm group-hover:text-white transition">
-                  {t("nav.buy")}
-                </span>
-              </Link>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
-              <Link
-                href="/leaderboard"
-                aria-label={t("nav.top")}
-                title={t("nav.top")}
-                className="flex items-center gap-2 cursor-pointer group"
-              >
-                <Trophy
-                  size={24}
-                  weight="fill"
-                  className="group-hover:text-purple-300 transition"
-                />
-                <span className="hidden xl:inline text-sm group-hover:text-white transition">
-                  {t("nav.top")}
-                </span>
-              </Link>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
-              <Link
-                href="/community"
-                aria-label={t("nav.community")}
-                title={t("nav.community")}
-                className="flex items-center gap-2 cursor-pointer group"
-              >
-                <UsersThree
-                  size={24}
-                  weight="fill"
-                  className="group-hover:text-purple-300 transition"
-                />
-                <span className="hidden xl:inline text-sm group-hover:text-white transition">
-                  {t("nav.community")}
-                </span>
-              </Link>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
-              <Link
-                href="/faq"
-                aria-label={t("nav.faq")}
-                title={t("nav.faq")}
-                className="flex items-center gap-2 cursor-pointer group"
-              >
-                <Question
-                  size={24}
-                  weight="fill"
-                  className="group-hover:text-purple-300 transition"
-                />
-                <span className="hidden xl:inline text-sm group-hover:text-white transition">
-                  {t("nav.faq")}
-                </span>
-              </Link>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
-              <Link
-                href="/reviews"
-                aria-label={t("nav.reviews")}
-                title={t("nav.reviews")}
-                className="flex items-center gap-2 cursor-pointer group"
-              >
-                <Star
-                  size={24}
-                  weight="fill"
-                  className="group-hover:text-purple-300 transition"
-                />
-                <span className="hidden xl:inline text-sm group-hover:text-white transition">
-                  {t("nav.reviews")}
-                </span>
-              </Link>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
-              <Link
-                href="/support"
-                aria-label={t("nav.support")}
-                title={t("nav.support")}
-                className="flex items-center gap-2 cursor-pointer group"
-              >
-                <Headset
-                  size={24}
-                  weight="fill"
-                  className="group-hover:text-purple-300 transition"
-                />
-                <span className="hidden xl:inline text-sm group-hover:text-white transition">
-                  {t("nav.support")}
-                </span>
-                {supportUnread > 0 && (
-                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-purple-500 text-white text-[10px] font-bold grid place-items-center">
-                    {supportUnread > 99 ? "99+" : supportUnread}
-                  </span>
-                )}
-              </Link>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
-              <Link
-                href="/clans"
-                aria-label={t("nav.clans")}
-                title={t("nav.clans")}
-                className={`flex items-center gap-2 cursor-pointer group ${
-                  pathname.startsWith("/clans") ? "text-purple-300" : ""
-                }`}
-              >
-                <Shield
-                  size={24}
-                  weight="fill"
-                  className="group-hover:text-purple-300 transition"
-                />
-                <span className="hidden xl:inline text-sm group-hover:text-white transition">
-                  {t("nav.clans")}
-                </span>
-              </Link>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
-              <Link
-                href="/assistant"
-                aria-label={t("nav.assistant")}
-                title={t("nav.assistant")}
-                className={`flex items-center gap-2 cursor-pointer group ${
-                  pathname === "/assistant" ? "text-purple-300" : ""
-                }`}
-              >
-                <Robot
-                  size={24}
-                  weight="fill"
-                  className="group-hover:text-purple-300 transition"
-                />
-                <span className="hidden xl:inline text-sm group-hover:text-white transition">
-                  {t("nav.assistant")}
-                </span>
-              </Link>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.92 }} transition={{ type: "spring", damping: 14, stiffness: 350 }}>
-              <Link
-                href="/status"
-                aria-label={t("nav.status")}
-                title={t("nav.status")}
-                className={`flex items-center gap-2 cursor-pointer group ${
-                  pathname === "/status" ? "text-purple-300" : ""
-                }`}
-              >
-                <Pulse
-                  size={24}
-                  weight="fill"
-                  className="group-hover:text-purple-300 transition"
-                />
-                <span className="hidden xl:inline text-sm group-hover:text-white transition">
-                  {t("nav.status")}
-                </span>
-              </Link>
-            </motion.div>
-          </div>
+          <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Main">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-label={t(item.labelKey)}
+                  title={t(item.labelKey)}
+                  className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] transition-colors ${
+                    active
+                      ? "bg-white/[0.07] text-white"
+                      : "text-white/55 hover:bg-white/[0.04] hover:text-white"
+                  }`}
+                >
+                  <Icon size={17} weight={active ? "fill" : "regular"} />
+                </Link>
+              );
+            })}
+          </nav>
         </div>
 
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: "spring", damping: 15, stiffness: 350 }}>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <OnlineBadge withLabel />
-            <LanguageSwitcher />
-            {loggedIn && <NotificationBell />}
-            <Link
-              className="hidden sm:flex items-center"
-              href={loggedIn ? "/dashboard" : "/login"}
-            >
-              <p
-                className="
-                  text-white text-xs sm:text-sm font-medium
-                  px-3 sm:px-5 py-2
-                  rounded-xl
-                  bg-white/10
-                  hover:bg-white/20
-                  transition-colors
-                  backdrop-blur-xl
-                  whitespace-nowrap
-                "
-              >
-                {loggedIn ? t("nav.profile") : t("nav.login")}
-              </p>
-            </Link>
-            <button
-              type="button"
-              onClick={() => setMenuOpen((value) => !value)}
-              aria-label={menuOpen ? t("common.close") : t("nav.menu")}
-              aria-expanded={menuOpen}
-              className="lg:hidden w-10 h-10 grid place-items-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition"
-            >
-              {menuOpen ? <X size={22} /> : <List size={22} />}
-            </button>
-          </div>
-        </motion.div>
+        <div className="flex shrink-0 items-center gap-2">
+          <OnlineBadge withLabel />
+          <LanguageSwitcher />
+          {loggedIn && <NotificationBell />}
+          <Link
+            href={loggedIn ? "/dashboard" : "/login"}
+            className="hidden h-9 items-center rounded-lg border border-white/10 bg-white/[0.05] px-4 text-sm font-medium text-white transition-colors hover:bg-white/[0.09] sm:flex"
+          >
+            {loggedIn ? t("nav.profile") : t("nav.login")}
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((value) => !value)}
+            aria-label={menuOpen ? t("common.close") : t("nav.menu")}
+            aria-expanded={menuOpen}
+            className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/80 transition-colors hover:bg-white/[0.08] lg:hidden"
+          >
+            {menuOpen ? <X size={20} /> : <List size={20} />}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -328,51 +143,46 @@ export default function Header() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMenuOpen(false)}
-              className="lg:hidden fixed inset-0 z-[24] bg-black/60 backdrop-blur-sm cursor-default"
+              className="fixed inset-0 top-16 z-[24] cursor-default bg-black/60 lg:hidden"
             />
             <motion.nav
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="lg:hidden absolute left-0 right-0 top-full z-[26] max-h-[calc(100vh-5rem)] overflow-y-auto border-b border-white/10 bg-[#0a0710]/95 backdrop-blur-xl px-4 py-4"
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="absolute inset-x-0 top-full z-[26] max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-white/[0.08] bg-[#0b0b0e] px-4 py-4 lg:hidden"
             >
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { href: "/", label: t("nav.home"), icon: <House size={20} weight="fill" /> },
-                  { href: "/pricing", label: t("nav.buy"), icon: <ShoppingCartSimple size={20} weight="fill" /> },
-                  { href: "/leaderboard", label: t("nav.top"), icon: <Trophy size={20} weight="fill" /> },
-                  { href: "/community", label: t("nav.community"), icon: <UsersThree size={20} weight="fill" /> },
-                  { href: "/clans", label: t("nav.clans"), icon: <Shield size={20} weight="fill" /> },
-                  { href: "/assistant", label: t("nav.assistant"), icon: <Robot size={20} weight="fill" /> },
-                  { href: "/reviews", label: t("nav.reviews"), icon: <Star size={20} weight="fill" /> },
-                  { href: "/support", label: t("nav.support"), icon: <Headset size={20} weight="fill" /> },
-                  { href: "/faq", label: t("nav.faq"), icon: <Question size={20} weight="fill" /> },
-                  { href: "/status", label: t("nav.status"), icon: <Pulse size={20} weight="fill" /> },
-                ].map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-2.5 rounded-xl border px-3 py-3 text-sm font-medium transition ${
-                      pathname === item.href
-                        ? "border-purple-400/40 bg-purple-500/15 text-purple-200"
-                        : "border-white/10 bg-white/[0.03] text-white/75 hover:bg-white/10"
-                    }`}
-                  >
-                    <span className="text-purple-300">{item.icon}</span>
-                    {item.label}
-                    {item.href === "/support" && supportUnread > 0 && (
-                      <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-purple-500 text-white text-[10px] font-bold grid place-items-center">
-                        {supportUnread > 99 ? "99+" : supportUnread}
+              <div className="grid grid-cols-2 gap-1.5">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(pathname, item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                        active
+                          ? "bg-white/[0.07] text-white"
+                          : "text-white/65 hover:bg-white/[0.04] hover:text-white"
+                      }`}
+                    >
+                      <span className={active ? "text-purple-300" : "text-white/40"}>
+                        <Icon size={18} weight={active ? "fill" : "regular"} />
                       </span>
-                    )}
-                  </Link>
-                ))}
+                      {t(item.labelKey)}
+                      {item.href === "/support" && supportUnread > 0 && (
+                        <span className="ml-auto grid h-[18px] min-w-[18px] place-items-center rounded-full bg-purple-600 px-1 text-[10px] font-bold text-white">
+                          {supportUnread > 99 ? "99+" : supportUnread}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
               </div>
 
               <Link
                 href={loggedIn ? "/dashboard" : "/login"}
-                className="mt-3 flex items-center justify-center rounded-xl bg-purple-600 hover:bg-purple-700 px-4 py-3 text-sm font-semibold transition"
+                className="mt-3 flex items-center justify-center rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-purple-500"
               >
                 {loggedIn ? t("nav.profile") : t("nav.login")}
               </Link>
@@ -380,7 +190,7 @@ export default function Header() {
           </>
         )}
       </AnimatePresence>
-    </motion.header>
+    </header>
   );
 }
 
@@ -455,11 +265,11 @@ function NotificationBell() {
         type="button"
         onClick={toggle}
         aria-label={t("nav.notifications")}
-        className="relative w-10 h-10 grid place-items-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition"
+        className="relative grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/[0.04] transition-colors hover:bg-white/[0.08]"
       >
-        <BellSimple size={20} weight={unread > 0 ? "fill" : "regular"} className={unread > 0 ? "text-purple-300" : "text-white/70"} />
+        <BellSimple size={18} weight={unread > 0 ? "fill" : "regular"} className={unread > 0 ? "text-purple-300" : "text-white/70"} />
         {unread > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-purple-500 text-white text-[10px] font-bold grid place-items-center">
+          <span className="absolute -right-1.5 -top-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-purple-600 px-1 text-[10px] font-bold text-white">
             {unread > 99 ? "99+" : unread}
           </span>
         )}
@@ -473,8 +283,8 @@ function NotificationBell() {
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-40 cursor-default bg-black/20"
           />
-          <div className="absolute right-0 mt-3 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl shadow-2xl z-50 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <div className="absolute right-0 z-50 mt-3 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-white/10 bg-[#111114] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
               <p className="text-sm font-semibold">{t("nav.notifications")}</p>
               {items.length > 0 && (
                 <span className="flex items-center gap-1 text-[11px] text-white/40">
@@ -496,20 +306,20 @@ function NotificationBell() {
                     key={item.id}
                     type="button"
                     onClick={() => openItem(item)}
-                    className={`w-full text-left px-4 py-3 border-b border-white/5 last:border-0 transition hover:bg-white/5 ${
+                    className={`w-full border-b border-white/5 px-4 py-3 text-left transition last:border-0 hover:bg-white/5 ${
                       item.read_at ? "opacity-70" : "bg-purple-500/[0.07]"
                     }`}
                   >
                     <div className="flex items-start gap-2">
                       {!item.read_at && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0 mt-1.5" />
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-purple-400" />
                       )}
                       <div className="min-w-0">
                         <p className="text-sm font-medium leading-snug break-words">{copy.title}</p>
                         {copy.body && (
-                          <p className="text-xs text-white/50 leading-relaxed mt-0.5 break-words">{copy.body}</p>
+                          <p className="mt-0.5 text-xs leading-relaxed text-white/50 break-words">{copy.body}</p>
                         )}
-                        <p className="text-[10px] text-white/25 mt-1">
+                        <p className="mt-1 text-[10px] text-white/25">
                           {new Date(item.created_at).toLocaleString(lang === "ru" ? "ru-RU" : "en-US", {
                             day: "2-digit",
                             month: "2-digit",

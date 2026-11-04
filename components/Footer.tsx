@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 
 const columns = [
@@ -43,96 +42,40 @@ const columns = [
   },
 ];
 
-const container = {
-  hidden: {},
-  show: {
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-  },
-};
-
-const colVar = {
-  hidden: { opacity: 0, y: 24, filter: "blur(6px)" },
-  show: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-    transition: { type: "spring" as const, damping: 18, stiffness: 200 },
-  },
-};
-
-const linkVar = {
-  hidden: { opacity: 0, x: -10 },
-  show: { opacity: 1, x: 0 },
-};
-
 export default function Footer() {
   const { t } = useI18n();
   return (
-    <motion.footer
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      viewport={{ once: true }}
-      className="
-        w-full
-        relative
-        bg-black/50
-        backdrop-blur-md
-        border-t border-white/10
-        overflow-hidden
-      "
-    >
-      <motion.div
-        variants={container}
-        initial="hidden"
-        whileInView="show"
-        viewport={{ once: true, amount: 0.3 }}
-        className="relative z-10 px-4 sm:px-8 lg:px-16 xl:px-48 py-12 sm:py-16 lg:py-20 flex flex-col lg:flex-row lg:justify-between items-start gap-10 text-white/70"
-      >
-        <motion.div variants={colVar} className="flex flex-col gap-3 max-w-xs">
-          <h3 className="text-xl font-semibold text-white">Stellar Client</h3>
-          <p className="text-sm text-white/50 leading-relaxed">
+    <footer className="relative w-full border-t border-white/[0.08] bg-[#08080a]/60">
+      <div className="mx-auto grid w-full max-w-6xl gap-10 px-5 py-14 sm:px-6 lg:grid-cols-[1fr_2fr] lg:gap-16">
+        <div className="max-w-xs">
+          <p className="text-base font-semibold text-white">Stellar Client</p>
+          <p className="mt-3 text-sm leading-relaxed text-white/45">
             © {new Date().getFullYear()} Stellar Client.
             <br />
             {t("footer.rights")}
           </p>
-        </motion.div>
+        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:flex gap-8 sm:gap-10 lg:gap-16 xl:gap-20 w-full lg:w-auto">
+        <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           {columns.map((col) => (
-            <motion.div
-              key={col.title}
-              variants={colVar}
-              className="flex flex-col gap-3"
-            >
-              <h4 className="text-lg font-semibold text-white">{t(col.title)}</h4>
+            <div key={col.title} className="flex flex-col gap-2.5">
+              <p className="text-[13px] font-medium text-white">{t(col.title)}</p>
               {col.links.map((link) => (
-                <motion.a
+                <a
                   key={link.label}
                   href={link.href}
                   {...("external" in link && link.external
                     ? { target: "_blank", rel: "noopener noreferrer" }
                     : {})}
-                  variants={linkVar}
-                  whileHover={{ x: 6, color: "rgba(216,180,254,1)" }}
-                  whileTap={{ scale: 0.94 }}
-                  transition={{ type: "spring", damping: 15, stiffness: 350 }}
-                  className="relative inline-block w-fit text-white/60"
+                  className="w-fit text-[13px] text-white/45 transition-colors hover:text-white"
                 >
-                  <span className="relative">
-                    {t(link.label)}
-                    <motion.span
-                      className="absolute -bottom-0.5 left-0 h-px bg-purple-300"
-                      initial={{ width: 0 }}
-                      whileHover={{ width: "100%" }}
-                    />
-                  </span>
-                </motion.a>
+                  {t(link.label)}
+                </a>
               ))}
-            </motion.div>
+            </div>
           ))}
         </div>
-      </motion.div>
-    </motion.footer>
+      </div>
+    </footer>
   );
 }

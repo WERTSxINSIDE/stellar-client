@@ -9,7 +9,7 @@ type LoaderProps = {
   durationMs?: number;
 };
 
-export default function Loader({ onFinished, durationMs = 1000 }: LoaderProps) {
+export default function Loader({ onFinished, durationMs = 600 }: LoaderProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,39 +39,28 @@ export default function Loader({ onFinished, durationMs = 1000 }: LoaderProps) {
       {loading && (
         <motion.div
           suppressHydrationWarning
-          className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#08080a]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="mb-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="flex flex-col items-center gap-5"
           >
-            <Image
-              src="/icon.png"
-              width={140}
-              height={140}
-              alt="Icon"
-              priority
-            />
+            <Image src="/icon.png" width={52} height={52} alt="Stellar Client" priority />
+            <span className="h-0.5 w-12 overflow-hidden rounded-full bg-white/10">
+              <motion.span
+                className="block h-full w-1/2 rounded-full bg-purple-400"
+                animate={{ x: ["-100%", "200%"] }}
+                transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
+              />
+            </span>
           </motion.div>
-
-          <motion.div
-            className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1, rotate: 360 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{
-              opacity: { duration: 0.5, ease: "easeOut" },
-              scale: { duration: 0.5, ease: "easeOut" },
-              rotate: { repeat: Infinity, duration: 1.2, ease: "linear" },
-            }}
-          />
         </motion.div>
       )}
     </AnimatePresence>

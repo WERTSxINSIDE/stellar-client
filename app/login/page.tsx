@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import GridBackground from "@/components/GridBackground";
 import Turnstile from "@/components/Turnstile";
 import { useI18n } from "@/lib/i18n";
 
@@ -81,24 +80,22 @@ export default function LoginPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen w-full text-white relative overflow-hidden flex items-center justify-center px-4 sm:px-6 pt-28 sm:pt-32 pb-16">
-        <GridBackground className="absolute inset-0 z-0 pointer-events-none" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/40 via-black/70 to-black/90 pointer-events-none" />
-        <div className="relative z-20 w-full max-w-lg bg-black/30 backdrop-blur-xl rounded-3xl border border-white/10 p-6 sm:p-10 shadow-2xl">
-          <h1 className="text-3xl sm:text-4xl font-bold text-center mb-3">{twofa ? t("auth.twofaTitle") : t("auth.loginTitle")}</h1>
-          <p className="text-center text-white/60 mb-10">{twofa ? t("auth.twofaSubtitle") : t("auth.loginSubtitle")}</p>
+      <main className="relative flex min-h-screen w-full items-center justify-center px-4 pb-16 pt-28 text-white sm:px-6">
+        <div className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0f0f12]/90 p-6 sm:p-8">
+          <h1 className="mb-2 text-center text-2xl font-semibold sm:text-3xl">{twofa ? t("auth.twofaTitle") : t("auth.loginTitle")}</h1>
+          <p className="mb-8 text-center text-sm text-white/50">{twofa ? t("auth.twofaSubtitle") : t("auth.loginSubtitle")}</p>
 
           {twofa ? (
             <form onSubmit={handleTwofa} className="flex flex-col gap-5">
-              <input type="text" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder={t("auth.code6")} maxLength={6} className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-center tracking-[0.4em] text-xl" />
+              <input type="text" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder={t("auth.code6")} maxLength={6} className="bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors text-center tracking-[0.4em] text-xl" />
               {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-              <button type="submit" disabled={loading} className="mt-4 py-4 rounded-xl font-semibold transition bg-purple-600 hover:bg-purple-700 disabled:opacity-60">{loading ? t("auth.checking") : t("auth.confirm")}</button>
+              <button type="submit" disabled={loading} className="mt-4 rounded-lg bg-purple-600 py-3 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60">{loading ? t("auth.checking") : t("auth.confirm")}</button>
               <p className="text-center text-white/40 text-sm">{t("auth.noEmail")} <button type="button" onClick={() => { setTwofa(false); setCode(""); setError(""); }} className="text-purple-400 hover:text-purple-300">{t("auth.back")}</button></p>
             </form>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              <input type="text" value={login} onChange={(e) => setLogin(e.target.value)} placeholder={t("auth.emailOrUsername")} className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none" />
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("auth.password")} className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none" />
+              <input type="text" value={login} onChange={(e) => setLogin(e.target.value)} placeholder={t("auth.emailOrUsername")} className="bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors" />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("auth.password")} className="bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors" />
               <div className="flex justify-end -mt-2">
                 <Link href="/forgot-password" className="text-sm text-white/40 hover:text-purple-300 transition">{t("auth.forgot")}</Link>
               </div>
@@ -108,7 +105,7 @@ export default function LoginPage() {
                 <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="w-4 h-4 rounded border-white/20 bg-black/40 accent-purple-600" />
                 <span className="text-white/60 text-sm">{t("auth.remember")}</span>
               </label>
-              <button type="submit" disabled={loading} className="mt-4 py-4 rounded-xl font-semibold transition bg-purple-600 hover:bg-purple-700 disabled:opacity-60">{loading ? t("auth.signingIn") : t("auth.signIn")}</button>
+              <button type="submit" disabled={loading} className="mt-4 rounded-lg bg-purple-600 py-3 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60">{loading ? t("auth.signingIn") : t("auth.signIn")}</button>
               <p className="text-center mt-3 text-white/50">{t("auth.noAccount")} <Link href="/register" className="text-purple-400 hover:text-purple-300">{t("auth.registerLink")}</Link></p>
             </form>
           )}

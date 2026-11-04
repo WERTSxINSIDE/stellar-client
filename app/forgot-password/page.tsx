@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import GridBackground from "@/components/GridBackground";
 import { useI18n } from "@/lib/i18n";
 
 type Step = "email" | "reset" | "done";
@@ -79,12 +78,10 @@ export default function ForgotPasswordPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen w-full text-white relative overflow-hidden flex items-center justify-center px-6 pt-32">
-        <GridBackground className="absolute inset-0 z-0 pointer-events-none" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/40 via-black/70 to-black/90 pointer-events-none" />
-        <div className="relative z-20 w-full max-w-lg bg-black/30 backdrop-blur-xl rounded-3xl border border-white/10 p-10 shadow-2xl">
-          <h1 className="text-4xl font-bold text-center mb-3">{t("forgot.title")}</h1>
-          <p className="text-center text-white/60 mb-8">
+      <main className="relative flex min-h-screen w-full items-center justify-center px-4 pb-16 pt-28 text-white sm:px-6">
+        <div className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0f0f12]/90 p-6 sm:p-8">
+          <h1 className="mb-2 text-center text-2xl font-semibold sm:text-3xl">{t("forgot.title")}</h1>
+          <p className="mb-8 text-center text-sm text-white/50">
             {step === "email" && t("forgot.emailHint")}
             {step === "reset" && t("forgot.resetHint")}
             {step === "done" && t("forgot.doneHint")}
@@ -98,10 +95,10 @@ export default function ForgotPasswordPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email"
                 required
-                className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+                className="bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors"
               />
               {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-              <button type="submit" disabled={loading} className="mt-2 py-4 rounded-xl font-semibold transition bg-purple-600 hover:bg-purple-700 disabled:opacity-60">
+              <button type="submit" disabled={loading} className="mt-2 rounded-lg bg-purple-600 py-3 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60">
                 {loading ? t("forgot.sending") : t("forgot.sendCode")}
               </button>
               <p className="text-center text-white/50">
@@ -121,24 +118,24 @@ export default function ForgotPasswordPage() {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder={t("auth.code6")}
                 maxLength={6}
-                className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-center tracking-[0.4em] text-xl"
+                className="bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors text-center tracking-[0.4em] text-xl"
               />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("forgot.newPassword")}
-                className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+                className="bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors"
               />
               <input
                 type="password"
                 value={password2}
                 onChange={(e) => setPassword2(e.target.value)}
                 placeholder={t("forgot.repeatPassword")}
-                className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+                className="bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors"
               />
               {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-              <button type="submit" disabled={loading} className="mt-2 py-4 rounded-xl font-semibold transition bg-purple-600 hover:bg-purple-700 disabled:opacity-60">
+              <button type="submit" disabled={loading} className="mt-2 rounded-lg bg-purple-600 py-3 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60">
                 {loading ? t("forgot.saving") : t("forgot.save")}
               </button>
               <button
@@ -161,7 +158,7 @@ export default function ForgotPasswordPage() {
               <p className="text-white/70">
                 {t("forgot.doneText")}
               </p>
-              <Link href="/login" className="py-4 rounded-xl font-semibold bg-purple-600 hover:bg-purple-700 transition">
+              <Link href="/login" className="rounded-lg bg-purple-600 py-3 font-medium transition-colors hover:bg-purple-500">
                 {t("forgot.goLogin")}
               </Link>
             </div>

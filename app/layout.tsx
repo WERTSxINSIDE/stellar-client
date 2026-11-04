@@ -1,15 +1,21 @@
 import type { Metadata } from "next";
-import { Unbounded } from "next/font/google";
+import { Inter, Unbounded } from "next/font/google";
 import "./globals.css";
-import Cursor from "@/components/Cursor";
 import LanguageGate from "@/components/LanguageGate";
 import RefTracker from "@/components/RefTracker";
 import SiteTheme from "@/components/SiteTheme";
 import { LanguageProvider } from "@/lib/i18n";
 
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+});
+
 const unbounded = Unbounded({
   variable: "--font-unbounded",
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
 });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stellar-client.vercel.app";
@@ -66,11 +72,10 @@ export default function RootLayout({
     <html lang="ru" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${unbounded.variable} antialiased`}
+        className={`${inter.variable} ${unbounded.variable} font-sans antialiased`}
       >
         <LanguageProvider>
           <SiteTheme />
-          <Cursor />
           <RefTracker />
           {children}
           <LanguageGate />

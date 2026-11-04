@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import GridBackground from "@/components/GridBackground";
 import Turnstile from "@/components/Turnstile";
 import { useI18n } from "@/lib/i18n";
 import { REF_STORAGE_KEY } from "@/lib/discounts";
@@ -125,13 +124,10 @@ export default function RegisterPage() {
     <>
       <Header />
 
-      <main className="min-h-screen w-full text-white relative overflow-hidden flex items-center justify-center px-4 sm:px-6 pt-28 sm:pt-32 pb-16">
-        <GridBackground className="absolute inset-0 z-0 pointer-events-none" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/40 via-black/60 to-black/80 pointer-events-none" />
-
-        <div className="relative z-20 w-full max-w-lg bg-black/30 backdrop-blur-xl rounded-3xl border border-white/10 p-6 sm:p-10 shadow-2xl">
-          <h1 className="text-3xl sm:text-4xl font-bold text-center mb-3">{t("auth.registerTitle")}</h1>
-          <p className="text-center text-white/60 mb-10">
+      <main className="relative flex min-h-screen w-full items-center justify-center px-4 pb-16 pt-28 text-white sm:px-6">
+        <div className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0f0f12]/90 p-6 sm:p-8">
+          <h1 className="mb-2 text-center text-2xl font-semibold sm:text-3xl">{t("auth.registerTitle")}</h1>
+          <p className="mb-8 text-center text-sm text-white/50">
             {t("auth.registerSubtitle")}
           </p>
 
@@ -147,7 +143,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+              className="bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors"
             />
 
             {codeEnabled && (
@@ -159,13 +155,13 @@ export default function RegisterPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                   placeholder={t("auth.codePlaceholder")}
-                  className="flex-1 min-w-0 bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none tracking-widest"
+                  className="flex-1 min-w-0 bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors tracking-widest"
                 />
                 <button
                   type="button"
                   onClick={sendCode}
                   disabled={codeLoading || cooldown > 0}
-                  className="shrink-0 px-4 py-4 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 transition"
+                  className="shrink-0 rounded-lg border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-medium transition-colors hover:bg-white/10 disabled:opacity-50"
                 >
                   {codeLoading
                     ? t("auth.sending")
@@ -184,7 +180,7 @@ export default function RegisterPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder={t("auth.username")}
-              className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+              className="bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors"
             />
 
             <input
@@ -192,7 +188,7 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t("auth.password")}
-              className="bg-black/40 px-5 py-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none"
+              className="bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors"
             />
 
             <Turnstile onToken={setTurnstileToken} className="flex justify-center" />
@@ -204,7 +200,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-4 py-4 rounded-xl font-semibold transition bg-purple-600 hover:bg-purple-700 disabled:opacity-60"
+              className="mt-4 rounded-lg bg-purple-600 py-3 font-medium text-white transition-colors hover:bg-purple-500 disabled:opacity-60"
             >
               {loading ? t("auth.creating") : t("auth.createAccount")}
             </button>
