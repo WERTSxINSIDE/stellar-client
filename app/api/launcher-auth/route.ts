@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { query, queryOne, User } from "@/lib/db";
+import { signToken } from "@/lib/launch-token";
 import { enforceRateLimit, getClientIp } from "@/lib/rate-limit";
 import { safeRefreshUserRisk } from "@/lib/risk";
 
@@ -66,6 +67,8 @@ export async function POST(req: Request) {
       role: user.role || "user",
       subscription_end: user.subscription_end || null,
       beta_access: !!user.is_admin,
+      launch_token: signToken(user.id, user.username),
+      expires_in: 300,
     });
   } catch {
     return NextResponse.json({ success: false, error: "Ошибка сервера" }, { status: 500 });
