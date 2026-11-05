@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-05-8";
+const SCHEMA_VERSION = "2026-11-05-9";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -681,10 +681,16 @@ async function initDb() {
       );
 
       CREATE TABLE IF NOT EXISTS parties (
-        id         SERIAL PRIMARY KEY,
-        leader_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        created_at TIMESTAMP DEFAULT NOW()
+        id           SERIAL PRIMARY KEY,
+        leader_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        realtime_key TEXT,
+        created_at   TIMESTAMP DEFAULT NOW()
       );
+
+      ALTER TABLE parties ADD COLUMN IF NOT EXISTS realtime_key TEXT;
+      UPDATE parties
+      SET realtime_key = md5(random()::text || clock_timestamp()::text || id::text)
+      WHERE realtime_key IS NULL;
 
       CREATE TABLE IF NOT EXISTS party_members (
         party_id  INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,

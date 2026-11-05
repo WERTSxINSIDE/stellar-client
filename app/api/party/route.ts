@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { query, queryOne, queryAll, withTransaction } from "@/lib/db";
 import { notifyUser } from "@/lib/notify";
 import { getPartyUser } from "@/lib/party-auth";
+import { getRealtimeConfig, newRealtimeKey } from "@/lib/realtime";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -21,13 +22,19 @@ type MemberRow = {
 
 async function membership(userId: number) {
   return (await queryOne(
-    `SELECT pm.party_id, pm.joined_at, p.leader_id, p.created_at
+    `SELECT pm.party_id, pm.joined_at, p.leader_id, p.created_at, p.realtime_key
      FROM party_members pm
      JOIN parties p ON p.id = pm.party_id
      WHERE pm.user_id = $1`,
     [userId]
   )) as
-    | { party_id: number; joined_at: string; leader_id: number; created_at: string }
+    | {
+        party_id: number;
+        joined_at: string;
+        leader_id: number;
+        created_at: string;
+        realtime_key: string | null;
+      }
     | null;
 }
 
@@ -80,6 +87,7 @@ async function loadState(userId: number) {
     invites: [],
     max_members: PARTY_MAX_MEMBERS,
     position_ttl_seconds: POSITION_TTL_SECONDS,
+    realtime: getRealtimeConfig(own.party_id, own.realtime_key),
   };
 }
 
@@ -134,8 +142,8 @@ export async function POST(req: Request) {
 
       await withTransaction(async (client) => {
         const inserted = await client.query(
-          "INSERT INTO parties (leader_id) VALUES ($1) RETURNING id",
-          [user.id]
+          "INSERT INTO parties (leader_id, realtime_key) VALUES ($1, $2) RETURNING id",
+          [user.id, newRealtimeKey()]
         );
         await client.query(
           "INSERT INTO party_members (party_id, user_id) VALUES ($1, $2)",
@@ -308,8 +316,6 @@ export async function POST(req: Request) {
           [own.party_id, user.id]
         );
 
-        if (own.leader_id !== user.id) return;
-
         const remaining = await client.query(
           `SELECT user_id FROM party_members
            WHERE party_id = $1
@@ -323,8 +329,16 @@ export async function POST(req: Request) {
           return;
         }
 
-        await client.query("UPDATE parties SET leader_id = $1 WHERE id = $2", [
-          remaining.rows[0].user_id,
+        if (own.leader_id === user.id) {
+          await client.query("UPDATE parties SET leader_id = $1 WHERE id = $2", [
+            remaining.rows[0].user_id,
+            own.party_id,
+          ]);
+        }
+
+        // Меняем ключ канала, чтобы вышедший участник не мог слушать позиции дальше.
+        await client.query("UPDATE parties SET realtime_key = $1 WHERE id = $2", [
+          newRealtimeKey(),
           own.party_id,
         ]);
       });
@@ -361,6 +375,10 @@ export async function POST(req: Request) {
         [own.party_id, targetId]
       );
       await query("DELETE FROM party_positions WHERE user_id = $1", [targetId]);
+      await query("UPDATE parties SET realtime_key = $1 WHERE id = $2", [
+        newRealtimeKey(),
+        own.party_id,
+      ]);
 
       await notifyUser(targetId, {
         type: "party",
