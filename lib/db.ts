@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-05-7";
+const SCHEMA_VERSION = "2026-11-05-8";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -680,6 +680,42 @@ async function initDb() {
         PRIMARY KEY (user_id, season, level, track)
       );
 
+      CREATE TABLE IF NOT EXISTS parties (
+        id         SERIAL PRIMARY KEY,
+        leader_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS party_members (
+        party_id  INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+        user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        joined_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (party_id, user_id),
+        UNIQUE (user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS party_invites (
+        id         SERIAL PRIMARY KEY,
+        party_id   INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+        inviter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        invitee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE (party_id, invitee_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS party_positions (
+        user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        party_id   INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+        server     TEXT,
+        dimension  TEXT,
+        x          DOUBLE PRECISION,
+        y          DOUBLE PRECISION,
+        z          DOUBLE PRECISION,
+        yaw        DOUBLE PRECISION,
+        health     INTEGER,
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
       CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
       CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
@@ -732,6 +768,9 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_gifts_recipient ON gifts(recipient_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_gifts_sender ON gifts(sender_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_battle_pass_claims_user ON battle_pass_claims(user_id, season);
+      CREATE INDEX IF NOT EXISTS idx_party_members_party ON party_members(party_id);
+      CREATE INDEX IF NOT EXISTS idx_party_invites_invitee ON party_invites(invitee_id);
+      CREATE INDEX IF NOT EXISTS idx_party_positions_party ON party_positions(party_id, updated_at DESC);
 
 
       CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);

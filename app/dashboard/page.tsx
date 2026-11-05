@@ -53,6 +53,7 @@ import {
   Megaphone,
   ArrowsLeftRight,
   ChatCircleDots,
+  Crosshair,
 } from "@phosphor-icons/react";
 
 function tx(lang: Lang, ru: string, en: string) {
@@ -1270,6 +1271,14 @@ export default function Dashboard() {
                   >
                     <UsersThree size={18} />
                     {tr("Друзья", "Friends")}
+                  </Link>
+
+                  <Link
+                    href="/dashboard/party"
+                    className="mt-2 flex items-center gap-3 px-4 py-3 rounded-2xl border border-teal-400/20 bg-teal-500/10 text-sm font-medium text-teal-100/80 hover:text-teal-100 hover:bg-teal-500/15 transition"
+                  >
+                    <Crosshair size={18} />
+                    {tr("Пати и метки", "Party and markers")}
                   </Link>
 
                   <Link
@@ -3067,6 +3076,12 @@ export default function Dashboard() {
                     icon={<UsersThree size={22} />}
                     title={tr("Друзья", "Friends")}
                     desc={tr("Заявки, онлайн и статус «в игре»", "Requests, online and in-game status")}
+                  />
+                  <ActionCard
+                    href="/dashboard/party"
+                    icon={<Crosshair size={22} />}
+                    title={tr("Пати и метки", "Party and markers")}
+                    desc={tr("Группа друзей и координаты для меток", "Friend group and marker coordinates")}
                   />
                   <ActionCard
                     href="/dashboard/gifts"
