@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { queryAll, queryOne, withTransaction } from "@/lib/db";
 import { grantCoins } from "@/lib/coins";
+import { addBattlePassXp, BATTLE_PASS } from "@/lib/battle-pass";
 import { DAILY_QUESTS, DAILY_QUEST_MAX_REWARD, type QuestTemplate } from "@/lib/quests";
 
 export const dynamic = "force-dynamic";
@@ -155,6 +156,7 @@ export async function POST(req: Request) {
         `Ежедневный квест: ${quest.titleRu}`,
         client
       );
+      await addBattlePassXp(user.id, BATTLE_PASS.xp.quest, client);
       return { already: false, balance } as const;
     });
 

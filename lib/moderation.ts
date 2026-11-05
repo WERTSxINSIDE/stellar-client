@@ -12,7 +12,7 @@ import { escapeTelegramHtml, notifyAdmins } from "./telegram";
  * Гости и служебные аккаунты страйков не получают.
  */
 
-export type ModerationChannel = "assistant" | "clan_chat" | "support";
+export type ModerationChannel = "assistant" | "clan_chat" | "support" | "global_chat";
 export type ViolationKind = "profanity" | "jailbreak";
 
 export const MAX_STRIKES = 3;
@@ -328,6 +328,7 @@ export function detectViolation(value: string): Violation | null {
 
 function channelLabel(channel: ModerationChannel): string {
   if (channel === "clan_chat") return "чат клана";
+  if (channel === "global_chat") return "общий чат";
   if (channel === "support") return "поддержка";
   return "помощник";
 }

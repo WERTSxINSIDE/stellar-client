@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-05-6";
+const SCHEMA_VERSION = "2026-11-05-7";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -633,6 +633,53 @@ async function initDb() {
         PRIMARY KEY (clan_id, mission_key, week_start)
       );
 
+      CREATE TABLE IF NOT EXISTS friendships (
+        id           SERIAL PRIMARY KEY,
+        requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        addressee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status       TEXT NOT NULL DEFAULT 'pending',
+        created_at   TIMESTAMP DEFAULT NOW(),
+        updated_at   TIMESTAMP DEFAULT NOW(),
+        UNIQUE (requester_id, addressee_id),
+        CHECK (requester_id <> addressee_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        channel    TEXT NOT NULL DEFAULT 'general',
+        body       TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS gifts (
+        id           SERIAL PRIMARY KEY,
+        sender_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind         TEXT NOT NULL,
+        amount       INTEGER NOT NULL DEFAULT 0,
+        item_key     TEXT,
+        message      TEXT,
+        created_at   TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS battle_pass_progress (
+        user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        season     TEXT NOT NULL,
+        xp         INTEGER NOT NULL DEFAULT 0,
+        premium    INTEGER NOT NULL DEFAULT 0,
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS battle_pass_claims (
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        season     TEXT NOT NULL,
+        level      INTEGER NOT NULL,
+        track      TEXT NOT NULL,
+        claimed_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (user_id, season, level, track)
+      );
+
       CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
       CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
@@ -679,6 +726,12 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_clan_activity_clan ON clan_activity(clan_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_clan_messages_clan ON clan_messages(clan_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_clans_xp ON clans(xp DESC, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships(requester_id, status);
+      CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships(addressee_id, status);
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_channel ON chat_messages(channel, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_gifts_recipient ON gifts(recipient_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_gifts_sender ON gifts(sender_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_battle_pass_claims_user ON battle_pass_claims(user_id, season);
 
 
       CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
@@ -760,6 +813,14 @@ async function initDb() {
     await client.query(`
       DO $$ BEGIN
         ALTER TABLE users ADD COLUMN site_theme TEXT;
+      EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    // Время последней активности на сайте — для статуса «онлайн» у друзей.
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ADD COLUMN last_seen TIMESTAMP;
       EXCEPTION WHEN duplicate_column THEN null;
       END $$;
     `);
@@ -1276,6 +1337,7 @@ export type User = {
   equipped_frame?: string | null;
   equipped_badge?: string | null;
   site_theme?: string | null;
+  last_seen?: string | null;
   partner_code?: string | null;
   partner_code_at?: string | null;
   sub_gifted?: number;

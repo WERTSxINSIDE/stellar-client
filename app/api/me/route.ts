@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { touchPresence } from "@/lib/presence";
 import { query, queryOne } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,8 @@ export async function GET(req: Request) {
   if (!user) {
     return NextResponse.json({ user: null });
   }
+
+  touchPresence(user.id).catch(() => {});
 
   const pa = await queryOne(
     `SELECT platform FROM partner_applications

@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Coins,
   Crown,
+  Gift,
   Palette,
   Sparkle,
   WarningCircle,
@@ -209,6 +210,29 @@ export default function CosmeticsPage() {
               {notice.text}
             </div>
           )}
+
+          <Link
+            href="/dashboard/gifts"
+            className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/[0.08] px-5 py-4 hover:bg-fuchsia-500/[0.14] transition"
+          >
+            <span className="h-10 w-10 rounded-xl bg-fuchsia-500/20 text-fuchsia-200 flex items-center justify-center">
+              <Gift size={20} weight="fill" />
+            </span>
+            <span className="flex-1 min-w-[200px]">
+              <span className="block text-sm font-semibold text-fuchsia-100">
+                {tr("Подарите косметику другу", "Gift cosmetics to a friend")}
+              </span>
+              <span className="block text-xs text-white/45">
+                {tr(
+                  "Любой предмет из инвентаря можно передать другому игроку.",
+                  "Any inventory item can be passed to another player."
+                )}
+              </span>
+            </span>
+            <span className="text-xs font-semibold text-fuchsia-200">
+              {tr("Перейти →", "Open →")}
+            </span>
+          </Link>
 
           <div className="mb-6 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/[0.06] px-4 py-3 text-xs text-white/55">
             <span className="cosmic-rgb-text font-bold">COSMIC</span>{" "}

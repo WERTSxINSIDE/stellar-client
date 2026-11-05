@@ -52,6 +52,7 @@ import {
   Coins,
   Megaphone,
   ArrowsLeftRight,
+  ChatCircleDots,
 } from "@phosphor-icons/react";
 
 function tx(lang: Lang, ru: string, en: string) {
@@ -1253,6 +1254,30 @@ export default function Dashboard() {
                   >
                     <Megaphone size={18} />
                     {tr("Коды стримера", "Streamer codes")}
+                  </Link>
+
+                  <Link
+                    href="/dashboard/battle-pass"
+                    className="mt-2 flex items-center gap-3 px-4 py-3 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/10 text-sm font-medium text-fuchsia-100/80 hover:text-fuchsia-100 hover:bg-fuchsia-500/15 transition"
+                  >
+                    <Trophy size={18} />
+                    {tr("Батл-пасс", "Battle pass")}
+                  </Link>
+
+                  <Link
+                    href="/dashboard/friends"
+                    className="mt-2 flex items-center gap-3 px-4 py-3 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 text-sm font-medium text-cyan-100/80 hover:text-cyan-100 hover:bg-cyan-500/15 transition"
+                  >
+                    <UsersThree size={18} />
+                    {tr("Друзья", "Friends")}
+                  </Link>
+
+                  <Link
+                    href="/dashboard/gifts"
+                    className="mt-2 flex items-center gap-3 px-4 py-3 rounded-2xl border border-rose-400/20 bg-rose-500/10 text-sm font-medium text-rose-100/80 hover:text-rose-100 hover:bg-rose-500/15 transition"
+                  >
+                    <Gift size={18} />
+                    {tr("Подарки", "Gifts")}
                   </Link>
 
                   {/* Колесо фортуны */}
@@ -3030,6 +3055,30 @@ export default function Dashboard() {
                     icon={<Cube size={22} />}
                     title={tr("Дополнения", "Add-ons")}
                     desc={tr("Ключ и смена пароля", "Key and password change")}
+                  />
+                  <ActionCard
+                    href="/dashboard/battle-pass"
+                    icon={<Trophy size={22} />}
+                    title={tr("Батл-пасс", "Battle pass")}
+                    desc={tr("Уровни и сезонные награды", "Levels and seasonal rewards")}
+                  />
+                  <ActionCard
+                    href="/dashboard/friends"
+                    icon={<UsersThree size={22} />}
+                    title={tr("Друзья", "Friends")}
+                    desc={tr("Заявки, онлайн и статус «в игре»", "Requests, online and in-game status")}
+                  />
+                  <ActionCard
+                    href="/dashboard/gifts"
+                    icon={<Gift size={22} />}
+                    title={tr("Подарки", "Gifts")}
+                    desc={tr("Отправить SC или косметику", "Send SC or cosmetics")}
+                  />
+                  <ActionCard
+                    href="/chat"
+                    icon={<ChatCircleDots size={22} />}
+                    title={tr("Общий чат", "Global chat")}
+                    desc={tr("Каналы general и trade", "General and trade channels")}
                   />
                   <ActionCard
                     href="/dashboard/author"

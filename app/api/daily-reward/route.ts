@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { addBalanceHistory, query, queryOne, withTransaction, type DbExecutor } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { grantCoins } from "@/lib/coins";
+import { addBattlePassXp, BATTLE_PASS } from "@/lib/battle-pass";
 import { clanBonusPercent, CLAN_XP } from "@/lib/clans";
 import { logClanActivity } from "@/lib/clan-service";
 
@@ -256,6 +257,7 @@ export async function POST() {
           `Ежедневная награда — день ${reward.day}${coinsNote}`,
           client
         );
+        await addBattlePassXp(user.id, BATTLE_PASS.xp.dailyReward, client);
         if (clan) {
           await logClanActivity(
             clan.id,
@@ -292,6 +294,7 @@ export async function POST() {
         `Ежедневная награда — день ${reward.day}${coinsNote}`,
         client
       );
+      await addBattlePassXp(user.id, BATTLE_PASS.xp.dailyReward, client);
       if (clan) {
         await logClanActivity(
           clan.id,

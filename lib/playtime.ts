@@ -1,5 +1,6 @@
 import { withTransaction } from "./db";
 import { grantCoins } from "./coins";
+import { addBattlePassXp } from "./battle-pass";
 import { logClanActivity } from "./clan-service";
 
 /**
@@ -85,6 +86,8 @@ export async function grantPlaytimeRewards(
           `Игра в клиенте — ${Math.floor(reward.seconds / 60)} мин`,
           client
         );
+        // +1 XP батл-пасса за каждый SC, заработанный за игру.
+        await addBattlePassXp(userId, coins, client);
       }
     }
 

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { House, ShoppingCartSimple, Question, Trophy, Headset, Star, BellSimple, Check, UsersThree, Pulse, List, X, Robot, Shield } from "@phosphor-icons/react";
+import { House, ShoppingCartSimple, Question, Trophy, Headset, Star, BellSimple, Check, UsersThree, Pulse, List, X, Robot, Shield, ChatCircleDots } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import OnlineBadge from "@/components/OnlineBadge";
@@ -17,6 +17,7 @@ const navItems = [
   { href: "/leaderboard", labelKey: "nav.top", icon: Trophy },
   { href: "/community", labelKey: "nav.community", icon: UsersThree },
   { href: "/clans", labelKey: "nav.clans", icon: Shield },
+  { href: "/chat", labelKey: "nav.chat", icon: ChatCircleDots },
   { href: "/assistant", labelKey: "nav.assistant", icon: Robot },
   { href: "/reviews", labelKey: "nav.reviews", icon: Star },
   { href: "/support", labelKey: "nav.support", icon: Headset },
