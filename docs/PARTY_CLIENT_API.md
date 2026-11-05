@@ -263,6 +263,70 @@ wss://<project>.supabase.co/realtime/v1/websocket?apikey=<anon_key>&vsn=1.0.0
 
 Realtime остаётся основным каналом для мгновенных меток, HTTP — страховкой.
 
+### 9. Метки-пинги (ping)
+
+Пинг — это точка, которую участник поставил взглядом: луч до первого блока в
+радиусе 50 м либо точка в 50 м по направлению взгляда. Пинг живёт 30 секунд,
+в базе не хранится и существует только в памяти клиентов.
+
+Отправка по WebSocket — тем же broadcast-каналом:
+
+```json
+{
+  "topic": "realtime:party_12_<secret>",
+  "event": "broadcast",
+  "ref": "42",
+  "payload": {
+    "type": "broadcast",
+    "event": "ping",
+    "payload": {
+      "id": "6f1c2a4e-1f0a-4f5e-9c55-2f0b6f8a7d11",
+      "user_id": 74,
+      "username": "friend",
+      "server": "play.example.com",
+      "dimension": "minecraft:overworld",
+      "x": 100.0,
+      "y": 64.0,
+      "z": -280.0,
+      "t": 1762345678800
+    }
+  }
+}
+```
+
+Если WebSocket ещё не подключён, пинг можно отправить HTTP-фолбэком Supabase
+Broadcast (задержка ~100–300 мс, без хранения):
+
+```http
+POST https://<project>.supabase.co/realtime/v1/api/broadcast
+apikey: <anon_key>
+Authorization: Bearer <anon_key>
+Content-Type: application/json
+
+{
+  "messages": [
+    {
+      "topic": "party_12_<secret>",
+      "event": "ping",
+      "payload": { "id": "...", "user_id": 74, "...": "как выше" },
+      "private": false
+    }
+  ]
+}
+```
+
+Обратите внимание: в `messages[].topic` канал указывается **без** префикса
+`realtime:`; в WebSocket — с ним. Приём — обычное `broadcast`-событие с
+`payload.event === "ping"`.
+
+Клиент:
+- добавляет свой пинг локально (broadcast не возвращается отправителю);
+- принимает пинги только от участников текущего состава пати;
+- дедуплицирует по `id` (пинг может прийти и по WS, и по HTTP);
+- хранит не больше 12 пингов, старые вытесняет;
+- удаляет пинг сразу, если автор вышел из пати;
+- рисует пинг только при совпадении `server` и `dimension` с локальными.
+
 ## Действия
 
 `POST /api/party` с телом:
