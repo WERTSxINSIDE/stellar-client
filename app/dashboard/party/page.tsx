@@ -521,15 +521,6 @@ export default function PartyPage() {
                 </p>
               </div>
 
-              <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-xs text-white/45 flex items-start gap-2">
-                <MapPin size={16} className="text-fuchsia-300 shrink-0 mt-0.5" />
-                <p>
-                  {tr(
-                    "Пинги: в клиенте открой Misc → Party, назначь «Ping Bind» и нажми клавишу — метка появится у всех в пати на 30 секунд. Она ставится на блок в прицеле, а если блока нет — в 50 м по направлению взгляда.",
-                    "Pings: in the client open Misc → Party, assign “Ping Bind” and press it — the marker appears for everyone in the party for 30 seconds. It lands on the block you look at, or 50 m ahead when there is none."
-                  )}
-                </p>
-              </div>
             </div>
           )}
         </div>
