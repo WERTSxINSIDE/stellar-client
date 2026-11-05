@@ -49,11 +49,20 @@ type Invite = {
   created_at: string;
 };
 
+type RealtimeConfig = {
+  url: string;
+  ws_url: string;
+  anon_key: string;
+  channel: string;
+  position_hz: number;
+};
+
 type PartyState = {
   party: Party | null;
   invites: Invite[];
   max_members: number;
   position_ttl_seconds?: number;
+  realtime?: RealtimeConfig | null;
 };
 
 type Position = {
@@ -239,6 +248,20 @@ export default function PartyPage() {
               <p className="text-3xl font-bold text-cyan-200">
                 {party ? party.members.length : 0}
                 <span className="text-white/40 text-base"> / {state?.max_members ?? 8}</span>
+              </p>
+              <p
+                className={`mt-2 flex items-center gap-1.5 text-[11px] ${
+                  state?.realtime ? "text-emerald-300" : "text-white/35"
+                }`}
+              >
+                <span
+                  className={`inline-block h-1.5 w-1.5 rounded-full ${
+                    state?.realtime ? "bg-emerald-300" : "bg-white/30"
+                  }`}
+                />
+                {state?.realtime
+                  ? tr("Realtime · ~100 мс", "Realtime · ~100 ms")
+                  : tr("HTTP-синхронизация", "HTTP sync")}
               </p>
             </div>
           </div>
