@@ -22,7 +22,7 @@ export const LAUNCHER_SHA256 =
  * Технические работы: пока true, обычные пользователи видят плашку вместо
  * скачивания. Персонал (admin/support) скачивает как обычно.
  */
-export const LAUNCHER_MAINTENANCE = true;
+export const LAUNCHER_MAINTENANCE = false;
 
 export const LAUNCHER_MAINTENANCE_MESSAGE =
   "Технические работы на стороне клиента, подождите пожалуйста новостей в телеграмм канале клиента:";
