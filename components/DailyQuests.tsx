@@ -24,7 +24,6 @@ type QuestData = {
   quests: Quest[];
   claimed_reward: number;
   claimable_reward: number;
-  max_reward: number;
   resets_at: string;
 };
 
@@ -88,7 +87,6 @@ export default function DailyQuests({ onBalance }: { onBalance?: (balance: numbe
         quests: json.quests,
         claimed_reward: json.claimed_reward,
         claimable_reward: json.claimable_reward,
-        max_reward: json.max_reward,
         resets_at: json.resets_at,
       });
       if (typeof json.balance === "number") onBalance?.(json.balance);
@@ -155,9 +153,6 @@ export default function DailyQuests({ onBalance }: { onBalance?: (balance: numbe
             hour: "2-digit",
             minute: "2-digit",
           })}
-        </span>
-        <span className="text-white/25">
-          {tr("Максимум за день", "Daily maximum")}: {data.max_reward} SC
         </span>
       </div>
 

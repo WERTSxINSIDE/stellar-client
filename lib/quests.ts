@@ -75,5 +75,3 @@ export const DAILY_QUESTS: QuestTemplate[] = [
     requiresClan: true,
   },
 ];
-
-export const DAILY_QUEST_MAX_REWARD = DAILY_QUESTS.reduce((sum, quest) => sum + quest.reward, 0);

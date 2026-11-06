@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { queryAll, queryOne, withTransaction } from "@/lib/db";
 import { grantCoins } from "@/lib/coins";
 import { addBattlePassXp, BATTLE_PASS } from "@/lib/battle-pass";
-import { DAILY_QUESTS, DAILY_QUEST_MAX_REWARD, type QuestTemplate } from "@/lib/quests";
+import { DAILY_QUESTS, type QuestTemplate } from "@/lib/quests";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +105,6 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       ...state,
-      max_reward: DAILY_QUEST_MAX_REWARD,
       resets_at: nextReset(),
       balance: Number(user.sc_coins || 0),
     });
@@ -171,7 +170,6 @@ export async function POST(req: Request) {
       reward: quest.reward,
       balance: result.balance,
       ...state,
-      max_reward: DAILY_QUEST_MAX_REWARD,
       resets_at: nextReset(),
     });
   } catch {
