@@ -13,10 +13,10 @@ export const LAUNCHER_DOWNLOAD_API_PATH = "/api/launcher-download";
 
 export const LAUNCHER_DOWNLOAD_URL = `https://stellar-client.vercel.app${LAUNCHER_DOWNLOAD_PATH}`;
 
-export const LAUNCHER_SIZE = 24_697_856;
+export const LAUNCHER_SIZE = 24_697_344;
 
 export const LAUNCHER_SHA256 =
-  "0c37e5eff8da445842d51a16238a878a5024d5514c1e0e30e336c8998ad4b96e";
+  "62a183c4988146c54a8962dbf8500dd711de2495c627645df7638623cb2553f1";
 
 /**
  * Технические работы: пока true, обычные пользователи видят плашку вместо
