@@ -95,7 +95,6 @@ const ru: Dictionary = {
   "home.gameplay": "Демонстрация геймплея",
   "home.news": "Новости",
   "home.newsSubtitle": "Последние обновления и события",
-  "home.downloadLauncher": "Скачать лаунчер",
 
   "pricing.title": "Купить",
   "pricing.30days": "30 дней",
@@ -560,7 +559,6 @@ const en: Dictionary = {
   "home.gameplay": "Gameplay showcase",
   "home.news": "News",
   "home.newsSubtitle": "Latest updates and events",
-  "home.downloadLauncher": "Download launcher",
 
   "pricing.title": "Buy",
   "pricing.30days": "30 days",

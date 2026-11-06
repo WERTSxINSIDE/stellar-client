@@ -2,18 +2,15 @@
 export const LAUNCHER_VERSION = "1.0.0";
 
 /**
- * Лаунчер отдаётся напрямую с сайта (public/downloads), без Google Drive и
- * сторонних файлообменников. Файл маленький, поэтому спокойно живёт в
- * статике Vercel.
- *
- * Раздаём zip, а не один exe: рядом с ним обязаны лежать client/mods, web и
- * DLL — без них лаунчер не запустится.
+ * Раздаём один exe. При первом запуске он сам скачивает client/mods, web и
+ * DLL с /downloads/launcher-bundle.zip и распаковывает их рядом с собой.
+ * Пользователю не нужен zip.
  */
-export const LAUNCHER_DOWNLOAD_PATH = "/downloads/StellarLauncher.zip";
+export const LAUNCHER_DOWNLOAD_PATH = "/downloads/StellarLauncher.exe";
 
 export const LAUNCHER_DOWNLOAD_URL = `https://stellar-client.vercel.app${LAUNCHER_DOWNLOAD_PATH}`;
 
-export const LAUNCHER_SIZE = 23_398_541;
+export const LAUNCHER_SIZE = 2_307_584;
 
 export const LAUNCHER_SHA256 =
-  "d17f89f109740e13bbe439986727ce7fa9deceda243dc1f7b1c59cb14fc843ec";
+  "fc0154063e745186cbba5e35d1690dc8a16936e4f4434bd896b82be31c0d995e";
