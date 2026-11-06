@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: captcha.error }, { status: 400 });
     }
 
-    const exists = await queryOne("SELECT id FROM users WHERE username = $1 OR email = $2", [username, email]);
+    const exists = await queryOne("SELECT id FROM users WHERE LOWER(username) = LOWER($1) OR email = $2", [username, email]);
     if (exists) {
       return NextResponse.json({ error: "Пользователь с таким именем или email уже существует" }, { status: 409 });
     }
