@@ -14,7 +14,9 @@ import {
   SlidersHorizontal,
   Gauge,
   ArrowsClockwise,
+  DownloadSimple,
 } from "@phosphor-icons/react";
+import { LAUNCHER_DOWNLOAD_PATH } from "@/lib/launcher";
 
 export default function Home() {
   const { t } = useI18n();
@@ -72,6 +74,17 @@ export default function Home() {
                 <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-white/45 sm:text-base">
                   {t("home.p2")}
                 </p>
+
+                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                  <a
+                    href={LAUNCHER_DOWNLOAD_PATH}
+                    download
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-purple-500"
+                  >
+                    <DownloadSimple size={18} />
+                    {t("home.downloadLauncher")}
+                  </a>
+                </div>
 
                 <div className="mx-auto mt-12 grid max-w-2xl grid-cols-1 gap-6 border-t border-white/[0.08] pt-8 sm:grid-cols-3">
                   <div>

@@ -13,6 +13,7 @@ import Exchange from "@/components/Exchange";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { achievementEn } from "@/lib/achievements";
 import { localizeApiError } from "@/lib/api-error";
+import { LAUNCHER_DOWNLOAD_PATH } from "@/lib/launcher";
 import {
   SignOut,
   ShoppingCartSimple,
@@ -3109,7 +3110,8 @@ export default function Dashboard() {
                   />
                   {hasSub ? (
                     <ActionCard
-                      href="https://drive.google.com/uc?export=download&id=1aTDsNJiaJVAYsJ7WYJUnR6PUQ0I7oMZV"
+                      href={LAUNCHER_DOWNLOAD_PATH}
+                      download
                       icon={<DownloadSimple size={22} />}
                       title={tr("Скачать лаунчер", "Download launcher")}
                       desc={tr("Загрузить последнюю версию", "Get the latest version")}
@@ -3178,36 +3180,50 @@ function ActionCard({
   icon,
   title,
   desc,
+  download = false,
 }: {
   href: string;
   icon: React.ReactNode;
   title: string;
   desc: string;
+  download?: boolean;
 }) {
+  const className =
+    "group relative flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition p-6 overflow-hidden";
+
+  const body = (
+    <>
+      <div className="relative flex items-center gap-4">
+        <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 grid place-items-center text-white/70 group-hover:text-purple-300 transition">
+          {icon}
+        </div>
+        <div>
+          <p className="font-semibold">{title}</p>
+          <p className="text-white/40 text-sm">{desc}</p>
+        </div>
+      </div>
+      <ArrowUpRight
+        size={20}
+        className="relative text-white/30 group-hover:text-white/70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
+      />
+    </>
+  );
+
   return (
     <motion.div
       whileHover={{ scale: 1.02, y: -3 }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", damping: 20, stiffness: 300 }}
     >
-      <Link
-        href={href}
-        className="group relative flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition p-6 overflow-hidden"
-      >
-        <div className="relative flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 grid place-items-center text-white/70 group-hover:text-purple-300 transition">
-            {icon}
-          </div>
-          <div>
-            <p className="font-semibold">{title}</p>
-            <p className="text-white/40 text-sm">{desc}</p>
-          </div>
-        </div>
-        <ArrowUpRight
-          size={20}
-          className="relative text-white/30 group-hover:text-white/70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
-        />
-      </Link>
+      {download ? (
+        <a href={href} download className={className}>
+          {body}
+        </a>
+      ) : (
+        <Link href={href} className={className}>
+          {body}
+        </Link>
+      )}
     </motion.div>
   );
 }
