@@ -1,7 +1,21 @@
 import crypto from "crypto";
 
-/** Секрет подписи launch-токена. Токен живёт 5 минут и содержит userId. */
-const SECRET = "euphoria-launch-2024-secret";
+/**
+ * Секрет подписи launch-токена. Токен живёт 5 минут и содержит userId.
+ *
+ * В проде лучше задать отдельную переменную окружения `LAUNCH_TOKEN_SECRET`
+ * (Vercel → Project → Environment Variables). Если её нет, ключ выводится из
+ * `DATABASE_URL`: публичной константы в репозитории больше нет, а менять
+ * конфигурацию для деплоя не требуется.
+ */
+const SECRET = (() => {
+  const fromEnv = process.env.LAUNCH_TOKEN_SECRET?.trim();
+  if (fromEnv) return fromEnv;
+  return crypto
+    .createHash("sha256")
+    .update(`stellar-launch|${process.env.DATABASE_URL ?? "local"}`)
+    .digest("hex");
+})();
 
 export function signToken(userId: number, username: string): string {
   const payload = `${userId}:${username}:${Date.now()}`;

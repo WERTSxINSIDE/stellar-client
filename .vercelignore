@@ -1,5 +1,5 @@
 # Vercel file-size limit: 100 MB per file
-public/launcher/Euphoria.exe
+public/launcher/*.exe
 
 # Local/development artifacts
 .git
@@ -8,4 +8,3 @@ node_modules
 *.db
 *.db-shm
 *.db-wal
-euphoria.db*

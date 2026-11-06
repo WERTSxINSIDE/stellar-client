@@ -237,7 +237,7 @@ export default function AddonsPage() {
                 <div className="flex items-center gap-1.5 text-[10px] text-black/50 leading-tight text-right">
                   <span className="text-orange-500 text-lg">☁</span>
                   <div>
-                    EUPHORIA
+                    STELLAR
                     <br />
                     <span className="underline">{tr("Конфиденциальность • Справка", "Privacy • Help")}</span>
                   </div>
