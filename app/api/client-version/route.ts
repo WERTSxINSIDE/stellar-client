@@ -7,8 +7,9 @@ export const dynamic = "force-dynamic";
  * Public, cache-free version probe used by the mod.
  *
  * The client compares this value with its own Fabric mod version. When the
- * site is newer, the mod shows a small "restart the client" notice in the
- * corner of the HUD. No auth is required: the response contains no user data.
+ * site is newer, the mod shows a small "update the launcher" notice in the
+ * corner of the HUD: the player downloads the new exe from the site. No auth
+ * is required: the response contains no user data.
  */
 export async function GET() {
   return NextResponse.json(
