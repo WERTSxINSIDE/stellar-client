@@ -13,7 +13,7 @@ import Exchange from "@/components/Exchange";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { achievementEn } from "@/lib/achievements";
 import { localizeApiError } from "@/lib/api-error";
-import { LAUNCHER_DOWNLOAD_PATH } from "@/lib/launcher";
+import { LAUNCHER_DOWNLOAD_API_PATH, LAUNCHER_MAINTENANCE, LAUNCHER_MAINTENANCE_MESSAGE, LAUNCHER_TELEGRAM_URL } from "@/lib/launcher";
 import {
   SignOut,
   ShoppingCartSimple,
@@ -55,6 +55,7 @@ import {
   ArrowsLeftRight,
   ChatCircleDots,
   Crosshair,
+  X,
 } from "@phosphor-icons/react";
 
 function tx(lang: Lang, ru: string, en: string) {
@@ -254,6 +255,7 @@ export default function Dashboard() {
   const [rewardMsg, setRewardMsg] = useState("");
   const [rewardLoading, setRewardLoading] = useState(false);
   const [tab, setTab] = useState<string>("account");
+  const [launcherMaintenance, setLauncherMaintenance] = useState(false);
   const [partnerStage, setPartnerStage] = useState<"list" | "info">("list");
   const [partnerPlatform, setPartnerPlatform] = useState<"youtube" | "tiktok">("youtube");
   const [mediaSubs, setMediaSubs] = useState<{ id: number; video_url: string; status: string; reward: number; views: number; admin_note: string | null; created_at: string }[]>([]);
@@ -3109,13 +3111,24 @@ export default function Dashboard() {
                     desc={tr("Публичная страница с достижениями", "Public page with achievements")}
                   />
                   {hasSub ? (
-                    <ActionCard
-                      href={LAUNCHER_DOWNLOAD_PATH}
-                      download
-                      icon={<DownloadSimple size={22} />}
-                      title={tr("Скачать лаунчер", "Download launcher")}
-                      desc={tr("Загрузить последнюю версию", "Get the latest version")}
-                    />
+                    LAUNCHER_MAINTENANCE &&
+                    !(user?.role === "admin" || user?.role === "support" || user?.is_admin === 1) ? (
+                      <ActionCard
+                        href="#"
+                        onClick={() => setLauncherMaintenance(true)}
+                        icon={<DownloadSimple size={22} />}
+                        title={tr("Скачать лаунчер", "Download launcher")}
+                        desc={tr("Технические работы", "Temporarily unavailable")}
+                      />
+                    ) : (
+                      <ActionCard
+                        href={LAUNCHER_DOWNLOAD_API_PATH}
+                        download
+                        icon={<DownloadSimple size={22} />}
+                        title={tr("Скачать лаунчер", "Download launcher")}
+                        desc={tr("Загрузить последнюю версию", "Get the latest version")}
+                      />
+                    )
                   ) : (
                     <ActionCard
                       href="/pricing"
@@ -3149,6 +3162,47 @@ export default function Dashboard() {
           </main>
 
           <Footer />
+
+          {launcherMaintenance && (
+            <div
+              className="fixed inset-0 z-[200] grid place-items-center bg-black/75 px-4 backdrop-blur-sm"
+              onClick={() => setLauncherMaintenance(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0d0d13] p-6 shadow-2xl"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <h3 className="text-lg font-semibold">
+                    {tr("Технические работы", "Maintenance")}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setLauncherMaintenance(false)}
+                    className="text-white/40 transition hover:text-white"
+                    aria-label="Close"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-white/60">
+                  {LAUNCHER_MAINTENANCE_MESSAGE}
+                </p>
+                <a
+                  href={LAUNCHER_TELEGRAM_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-600/15 px-4 py-2 text-sm font-medium text-purple-200 transition hover:bg-purple-600/25"
+                >
+                  <TelegramLogo size={16} />
+                  @Stellar1dlc
+                </a>
+              </motion.div>
+            </div>
+          )}
         </>
       )}
     </>
@@ -3181,12 +3235,14 @@ function ActionCard({
   title,
   desc,
   download = false,
+  onClick,
 }: {
   href: string;
   icon: React.ReactNode;
   title: string;
   desc: string;
   download?: boolean;
+  onClick?: () => void;
 }) {
   const className =
     "group relative flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition p-6 overflow-hidden";
@@ -3215,7 +3271,11 @@ function ActionCard({
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", damping: 20, stiffness: 300 }}
     >
-      {download ? (
+      {onClick ? (
+        <button type="button" onClick={onClick} className={`${className} w-full text-left`}>
+          {body}
+        </button>
+      ) : download ? (
         <a href={href} download className={className}>
           {body}
         </a>
