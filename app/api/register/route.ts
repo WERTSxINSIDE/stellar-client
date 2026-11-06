@@ -18,13 +18,22 @@ import {
   isDisposableEmail,
 } from "@/lib/disposable-emails";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { minecraftNameError, normalizeMinecraftName } from "@/lib/minecraft-name";
 
 export async function POST(req: Request) {
   try {
-    const { username, email, password, code, ref, turnstile_token } = await req.json();
+    const { username: rawUsername, email, password, code, ref, turnstile_token } = await req.json();
+    const username = normalizeMinecraftName(rawUsername);
 
     if (!username || !email || !password) {
       return NextResponse.json({ error: "Заполните все поля" }, { status: 400 });
+    }
+
+    // Ник сайта = ник в Minecraft. Без этой проверки игрока с кириллицей
+    // или ником длиннее 16 символов сервер встречает `Invalid session`.
+    const nameError = minecraftNameError(username);
+    if (nameError) {
+      return NextResponse.json({ error: nameError }, { status: 400 });
     }
     if (String(password).length < 6) {
       return NextResponse.json({ error: "Пароль должен быть не меньше 6 символов" }, { status: 400 });

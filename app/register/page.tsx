@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import Turnstile from "@/components/Turnstile";
 import { useI18n } from "@/lib/i18n";
 import { REF_STORAGE_KEY } from "@/lib/discounts";
+import { isMinecraftName } from "@/lib/minecraft-name";
 
 export default function RegisterPage() {
   const { t } = useI18n();
@@ -87,6 +88,10 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (!isMinecraftName(username)) {
+      setError(t("auth.usernameInvalid"));
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/register", {
@@ -180,8 +185,12 @@ export default function RegisterPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder={t("auth.username")}
+              maxLength={16}
+              autoComplete="username"
+              spellCheck={false}
               className="bg-[#0a0a0c] px-4 py-3 rounded-lg border border-white/10 focus:border-purple-400/70 outline-none transition-colors"
             />
+            <p className="-mt-3 text-xs text-white/40">{t("auth.usernameHint")}</p>
 
             <input
               type="password"

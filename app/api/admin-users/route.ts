@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { query, queryOne, queryAll, addBalanceHistory, withTransaction } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { logAdminAction, findUserForLog } from "@/lib/audit";
+import { minecraftNameError, normalizeMinecraftName } from "@/lib/minecraft-name";
 import bcrypt from "bcrypt";
 
 export async function POST(req: Request) {
@@ -105,11 +106,13 @@ export async function POST(req: Request) {
 
     if (action === "change-username") {
       if (!user_id) return NextResponse.json({ error: "Укажите user_id" }, { status: 400 });
-      if (!new_username || String(new_username).length < 2) return NextResponse.json({ error: "Ник минимум 2 символа" }, { status: 400 });
-      const exists = await queryOne("SELECT id FROM users WHERE LOWER(username) = LOWER($1) AND id != $2", [String(new_username), user_id]);
+      const name = normalizeMinecraftName(new_username);
+      const nameError = minecraftNameError(name);
+      if (nameError) return NextResponse.json({ error: nameError }, { status: 400 });
+      const exists = await queryOne("SELECT id FROM users WHERE LOWER(username) = LOWER($1) AND id != $2", [name, user_id]);
       if (exists) return NextResponse.json({ error: "Ник уже занят" }, { status: 400 });
-      await query("UPDATE users SET username = $1 WHERE id = $2", [String(new_username), user_id]);
-      await logTarget("user.change-username", user_id, `Новый ник: ${String(new_username)}`);
+      await query("UPDATE users SET username = $1 WHERE id = $2", [name, user_id]);
+      await logTarget("user.change-username", user_id, `Новый ник: ${name}`);
       return NextResponse.json({ ok: true });
     }
 
