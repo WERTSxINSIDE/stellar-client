@@ -77,7 +77,10 @@ export async function GET() {
       equipped: equippedKeys(items, values),
       equipped_values: values,
       balance: Number(user.sc_coins || 0),
-      transactions,
+      transactions: (transactions as any[]).map((tx) => ({
+        ...tx,
+        amount: Number(tx.amount || 0),
+      })),
     });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });

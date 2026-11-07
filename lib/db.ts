@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-07-1";
+const SCHEMA_VERSION = "2026-11-07-2";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -544,7 +544,7 @@ async function initDb() {
       CREATE TABLE IF NOT EXISTS coin_transactions (
         id         SERIAL PRIMARY KEY,
         user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        amount     INTEGER NOT NULL,
+        amount     BIGINT NOT NULL,
         type       TEXT NOT NULL,
         note       TEXT,
         created_at TIMESTAMP DEFAULT NOW()
@@ -844,6 +844,16 @@ async function initDb() {
       DO $$ BEGIN
         ALTER TABLE users ALTER COLUMN sc_coins TYPE BIGINT;
       EXCEPTION WHEN undefined_column THEN null;
+      END $$;
+    `);
+
+    // История операций должна вмещать те же суммы: разовый грант может быть
+    // больше 2 147 483 647, а INTEGER такое значение не примет и откатит
+    // всю транзакцию начисления.
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE coin_transactions ALTER COLUMN amount TYPE BIGINT;
+      EXCEPTION WHEN undefined_table THEN null;
       END $$;
     `);
 
