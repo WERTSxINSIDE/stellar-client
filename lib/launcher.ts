@@ -1,5 +1,5 @@
 /** Единая точка правды о версии лаунчера и ссылке на скачивание. */
-export const LAUNCHER_VERSION = "1.0.9";
+export const LAUNCHER_VERSION = "1.1.0";
 
 /**
  * Раздаём один самодостаточный exe: web/, client/mods и DLL уже внутри него.
@@ -13,10 +13,10 @@ export const LAUNCHER_DOWNLOAD_API_PATH = "/api/launcher-download";
 
 export const LAUNCHER_DOWNLOAD_URL = `https://stellar-client.vercel.app${LAUNCHER_DOWNLOAD_PATH}`;
 
-export const LAUNCHER_SIZE = 25_208_832;
+export const LAUNCHER_SIZE = 25_221_632;
 
 export const LAUNCHER_SHA256 =
-  "ff7c67edd6fceba8287d75f69a4bfbb9b6ed1cc81151a6bbd5bf7af52f70dfb";
+  "e3ef111d8e00caed693a281b3d862e5a1954c1459c39bb9ef440d11bab292e63";
 
 /**
  * Технические работы: пока true, обычные пользователи видят плашку вместо
