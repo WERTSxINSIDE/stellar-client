@@ -40,19 +40,30 @@ async function initDb() {
   let client: PoolClient | null = null;
   try {
     client = await pool.connect();
-    // Сериализуем инициализацию схемы между процессами/инстансами,
-    // иначе параллельные CREATE TABLE ... IF NOT EXISTS могут конфликтовать.
-    // Берём блокировку без ожидания: на холодном старте десятки инстансов
-    // не должны стоять в очереди и упираться в statement timeout.
-    const lock = await client.query("SELECT pg_try_advisory_lock(842137642) AS locked");
+    // Миграция идёт одной транзакцией, а блокировка — транзакционная
+    // (pg_try_advisory_xact_lock). Сессионную pg_try_advisory_lock здесь
+    // держать нельзя: Vercel замораживает инстанс сразу после ответа, а
+    // открытое соединение с сессионной блокировкой остаётся висеть в
+    // пулере навсегда — после этого все остальные инстансы видят
+    // «another instance is initializing» и схема больше никогда не
+    // обновляется. Транзакционная блокировка снимается сама, а
+    // idle_in_transaction_session_timeout гарантирует, что зависшая
+    // транзакция не продержит её дольше двух минут.
+    await client.query("SET idle_in_transaction_session_timeout = '120s'");
+    await client.query("BEGIN");
+    const lock = await client.query("SELECT pg_try_advisory_xact_lock(842137642) AS locked");
     if (!lock.rows[0]?.locked) {
+      await client.query("ROLLBACK");
       console.log("DB init skipped: another instance is initializing the schema");
       return;
     }
     // Пока ждали соединение, другой инстанс мог уже всё проинициализировать.
     try {
       const current = await client.query("SELECT value FROM app_meta WHERE key = 'schema_version'");
-      if (current.rows[0]?.value === SCHEMA_VERSION) return;
+      if (current.rows[0]?.value === SCHEMA_VERSION) {
+        await client.query("COMMIT");
+        return;
+      }
     } catch {
       // app_meta ещё нет — идём в полную инициализацию
     }
@@ -1248,16 +1259,19 @@ async function initDb() {
       [SCHEMA_VERSION]
     );
 
+    await client.query("COMMIT");
     console.log("DB tables initialized");
   } catch (e: any) {
-    console.error("DB init error:", e.message);
-  } finally {
     if (client) {
       try {
-        await client.query("SELECT pg_advisory_unlock(842137642)");
+        await client.query("ROLLBACK");
       } catch {
         // соединение могло закрыться — не критично
       }
+    }
+    console.error("DB init error:", e.message);
+  } finally {
+    if (client) {
       client.release();
     }
   }
