@@ -14,8 +14,6 @@ export const LAUNCHER_DOWNLOAD_API_PATH = "/api/launcher-download";
 
 export const LAUNCHER_DOWNLOAD_URL = `https://stellar-client.vercel.app${LAUNCHER_DOWNLOAD_PATH}`;
 
-export const LAUNCHER_SIZE = 25_264_128;
-
 export const LAUNCHER_SHA256 =
   "902d70d4151c9e1c0c4bd581b419e1c7e65da60bb9e79fe85716973ecea39c62";
 
