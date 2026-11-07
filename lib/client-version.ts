@@ -7,4 +7,4 @@
  * notice: the player downloads the fresh exe from the site instead of just
  * restarting the old installation.
  */
-export const CLIENT_VERSION = "1.0.11";
+export const CLIENT_VERSION = "1.0.13";
