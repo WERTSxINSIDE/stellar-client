@@ -18,7 +18,7 @@ export async function GET() {
       ),
       getAchievementLeaderboard(20),
       queryAll(
-        `SELECT u.username, COALESCE(u.sc_coins, 0)::int as coins
+        `SELECT u.username, COALESCE(u.sc_coins, 0)::bigint as coins
          FROM users u
          WHERE COALESCE(u.banned, 0) = 0 AND COALESCE(u.sc_coins, 0) > 0
          ORDER BY coins DESC, u.username ASC
@@ -26,7 +26,15 @@ export async function GET() {
       ),
     ]);
 
-    return NextResponse.json({ ok: true, top, achievements, coins });
+    return NextResponse.json({
+      ok: true,
+      top,
+      achievements,
+      coins: coins.map((row: any) => ({
+        username: row.username,
+        coins: Number(row.coins || 0),
+      })),
+    });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });
   }

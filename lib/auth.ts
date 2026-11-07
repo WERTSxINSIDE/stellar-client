@@ -115,7 +115,14 @@ export async function getCurrentUser(): Promise<Omit<User, "password"> | null> {
     [token]
   );
 
-  return row ?? null;
+  if (!row) return null;
+
+  // BIGINT приходит из pg строкой — приводим к числу для клиентских типов.
+  if (row.sc_coins !== null && row.sc_coins !== undefined) {
+    row.sc_coins = Number(row.sc_coins);
+  }
+
+  return row;
 }
 
 export async function requireAdmin(): Promise<Omit<User, "password"> | null> {

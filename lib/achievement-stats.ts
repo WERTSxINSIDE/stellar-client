@@ -28,7 +28,7 @@ const STATS_SELECT = `
   COALESCE((SELECT COUNT(*) FROM support_tickets WHERE user_id = u.id), 0)::int AS tickets,
   COALESCE((SELECT COUNT(*) FROM balance_history
             WHERE user_id = u.id AND type = 'hwid'), 0)::int AS hwid_resets,
-  COALESCE(u.sc_coins, 0)::int AS sc_coins,
+  COALESCE(u.sc_coins, 0)::bigint AS sc_coins,
   COALESCE((SELECT COUNT(*) FROM user_cosmetics uc WHERE uc.user_id = u.id), 0)::int AS cosmetics_owned,
   COALESCE((SELECT COUNT(*) FROM review_votes rv
             JOIN reviews r ON r.id = rv.review_id

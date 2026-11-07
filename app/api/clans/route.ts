@@ -146,7 +146,7 @@ export async function POST(req: Request) {
       const paid = await client.query(
         `UPDATE users SET sc_coins = COALESCE(sc_coins, 0) - $2
          WHERE id = $1 AND COALESCE(sc_coins, 0) >= $2
-         RETURNING COALESCE(sc_coins, 0)::int AS coins`,
+         RETURNING COALESCE(sc_coins, 0)::bigint AS coins`,
         [user.id, CLAN_CREATE_COST]
       );
       if (!paid.rows.length) {

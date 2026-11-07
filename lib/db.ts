@@ -14,7 +14,7 @@ const pool = new Pool({
 
 // Меняем при изменении схемы ниже. Пока версия совпадает,
 // инициализация пропускается — это сильно ускоряет холодный старт.
-const SCHEMA_VERSION = "2026-11-05-9";
+const SCHEMA_VERSION = "2026-11-07-1";
 
 async function isSchemaUpToDate(): Promise<boolean> {
   try {
@@ -822,8 +822,17 @@ async function initDb() {
 
     await client.query(`
       DO $$ BEGIN
-        ALTER TABLE users ADD COLUMN sc_coins INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN sc_coins BIGINT DEFAULT 0;
       EXCEPTION WHEN duplicate_column THEN null;
+      END $$;
+    `);
+
+    // Баланс SC может превышать 2 147 483 647, поэтому храним его в BIGINT.
+    // Для уже существующей колонки INTEGER выполняем безопасное расширение.
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TABLE users ALTER COLUMN sc_coins TYPE BIGINT;
+      EXCEPTION WHEN undefined_column THEN null;
       END $$;
     `);
 

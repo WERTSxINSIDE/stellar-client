@@ -24,7 +24,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
 
     const fresh = await queryOne(
-      "SELECT COALESCE(balance, 0)::int AS balance, COALESCE(sc_coins, 0)::int AS sc_coins FROM users WHERE id = $1",
+      "SELECT COALESCE(balance, 0)::int AS balance, COALESCE(sc_coins, 0)::bigint AS sc_coins FROM users WHERE id = $1",
       [user.id]
     );
 
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
            SET balance = COALESCE(balance, 0) - $2,
                sc_coins = COALESCE(sc_coins, 0) + $3
            WHERE id = $1 AND COALESCE(balance, 0) >= $2
-           RETURNING COALESCE(balance, 0)::int AS balance, COALESCE(sc_coins, 0)::int AS sc_coins`,
+           RETURNING COALESCE(balance, 0)::int AS balance, COALESCE(sc_coins, 0)::bigint AS sc_coins`,
           [user.id, amount, sc]
         );
         if (!updated.rows.length) return { error: "Недостаточно средств на балансе" } as const;
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
          SET sc_coins = COALESCE(sc_coins, 0) - $2,
              balance = COALESCE(balance, 0) + $3
          WHERE id = $1 AND COALESCE(sc_coins, 0) >= $2
-         RETURNING COALESCE(balance, 0)::int AS balance, COALESCE(sc_coins, 0)::int AS sc_coins`,
+         RETURNING COALESCE(balance, 0)::int AS balance, COALESCE(sc_coins, 0)::bigint AS sc_coins`,
         [user.id, spentSc, rub]
       );
       if (!updated.rows.length) return { error: "Недостаточно SC-монет" } as const;

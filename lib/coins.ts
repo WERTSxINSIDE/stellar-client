@@ -10,13 +10,13 @@ export async function grantCoins(
 ): Promise<number> {
   const value = Math.max(0, Math.floor(Number(amount) || 0));
   if (value <= 0) {
-    const row = await queryOne("SELECT COALESCE(sc_coins, 0)::int AS coins FROM users WHERE id = $1", [userId]);
+    const row = await queryOne("SELECT COALESCE(sc_coins, 0)::bigint AS coins FROM users WHERE id = $1", [userId]);
     return Number(row?.coins || 0);
   }
 
   if (db) {
     const updated = await db.query(
-      "UPDATE users SET sc_coins = COALESCE(sc_coins, 0) + $2 WHERE id = $1 RETURNING COALESCE(sc_coins, 0)::int AS coins",
+      "UPDATE users SET sc_coins = COALESCE(sc_coins, 0) + $2 WHERE id = $1 RETURNING COALESCE(sc_coins, 0)::bigint AS coins",
       [userId, value]
     );
     await db.query(
@@ -28,7 +28,7 @@ export async function grantCoins(
 
   return withTransaction(async (client) => {
     const updated = await client.query(
-      "UPDATE users SET sc_coins = COALESCE(sc_coins, 0) + $2 WHERE id = $1 RETURNING COALESCE(sc_coins, 0)::int AS coins",
+      "UPDATE users SET sc_coins = COALESCE(sc_coins, 0) + $2 WHERE id = $1 RETURNING COALESCE(sc_coins, 0)::bigint AS coins",
       [userId, value]
     );
     await client.query(
@@ -54,7 +54,7 @@ export async function spendCoins(
       `UPDATE users
        SET sc_coins = COALESCE(sc_coins, 0) - $2
        WHERE id = $1 AND COALESCE(sc_coins, 0) >= $2
-       RETURNING COALESCE(sc_coins, 0)::int AS coins`,
+       RETURNING COALESCE(sc_coins, 0)::bigint AS coins`,
       [userId, value]
     );
     if (!updated.rows.length) return null;
