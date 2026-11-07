@@ -8,7 +8,7 @@ import Footer from "@/components/Footer";
 import Loader from "@/components/Loader";
 import GridBackground from "@/components/GridBackground";
 import { useI18n } from "@/lib/i18n";
-import { Trophy, Clock, RocketLaunch, Medal } from "@phosphor-icons/react";
+import { Trophy, Clock, RocketLaunch, Medal, Coins } from "@phosphor-icons/react";
 
 type TimeRow = { username: string; seconds: number; launches: number };
 type AchievementRow = {
@@ -17,12 +17,14 @@ type AchievementRow = {
   total: number;
   seconds: number;
 };
+type CoinRow = { username: string; coins: number };
 
 export default function Leaderboard() {
   const { t } = useI18n();
   const [ready, setReady] = useState(false);
   const [top, setTop] = useState<TimeRow[]>([]);
   const [achievements, setAchievements] = useState<AchievementRow[]>([]);
+  const [coins, setCoins] = useState<CoinRow[]>([]);
   const [status, setStatus] = useState<{ online: number; launches_today: number } | null>(null);
 
   useEffect(() => {
@@ -32,6 +34,7 @@ export default function Leaderboard() {
         if (!d.ok) return;
         setTop(d.top || []);
         setAchievements(d.achievements || []);
+        setCoins(d.coins || []);
       })
       .catch(() => {});
     fetch("/api/server-status")
@@ -178,6 +181,51 @@ export default function Leaderboard() {
                                   <span className="text-white/30"> / {p.total}</span>
                                 </td>
                                 <td className="px-4 py-3 text-white/40">{formatTime(p.seconds)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-2">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Coins size={20} className="text-yellow-300" />
+                      <h2 className="text-xl font-bold">{t("top.byCoins")}</h2>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
+                      {coins.length === 0 ? (
+                        <p className="p-6 text-white/40">{t("top.noData")}</p>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-white/40 border-b border-white/10">
+                              <th className="px-4 py-3">#</th>
+                              <th className="px-4 py-3">{t("top.player")}</th>
+                              <th className="px-4 py-3">{t("top.coins")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {coins.map((p, i) => (
+                              <tr key={p.username} className="border-b border-white/5 last:border-0">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    {medal(i)}
+                                    <span>{i + 1}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 font-semibold">
+                                  <Link
+                                    href={`/u/${encodeURIComponent(p.username)}`}
+                                    className="hover:text-purple-300 transition"
+                                  >
+                                    {p.username}
+                                  </Link>
+                                </td>
+                                <td className="px-4 py-3 font-semibold text-yellow-200">
+                                  {p.coins.toLocaleString("ru-RU")} SC
+                                </td>
                               </tr>
                             ))}
                           </tbody>

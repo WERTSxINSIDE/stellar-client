@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const [top, achievements] = await Promise.all([
+    const [top, achievements, coins] = await Promise.all([
       queryAll(
         `SELECT u.username, COALESCE(SUM(ps.seconds), 0)::int as seconds, COUNT(ps.id)::int as launches
          FROM users u
@@ -17,9 +17,16 @@ export async function GET() {
          LIMIT 20`
       ),
       getAchievementLeaderboard(20),
+      queryAll(
+        `SELECT u.username, COALESCE(u.sc_coins, 0)::int as coins
+         FROM users u
+         WHERE COALESCE(u.banned, 0) = 0 AND COALESCE(u.sc_coins, 0) > 0
+         ORDER BY coins DESC, u.username ASC
+         LIMIT 20`
+      ),
     ]);
 
-    return NextResponse.json({ ok: true, top, achievements });
+    return NextResponse.json({ ok: true, top, achievements, coins });
   } catch {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 });
   }
